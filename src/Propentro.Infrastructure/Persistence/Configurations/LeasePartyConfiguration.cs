@@ -10,13 +10,14 @@ public sealed class LeasePartyConfiguration : IEntityTypeConfiguration<LeasePart
     {
         builder.ToTable("lease_parties");
 
-        builder.HasKey(e => new { e.LeaseId, e.PartyId });
+        builder.HasKey(e => new { e.LeaseId, e.PartyId, e.Role });
+
         builder.Property(e => e.LeaseId).HasColumnName("lease_id");
         builder.Property(e => e.PartyId).HasColumnName("party_id");
-        builder.Property(e => e.Role).HasColumnName("role");
-        builder.Property(e => e.IsPrimary).HasColumnName("is_primary");
-        builder.Property(e => e.IsSignatory).HasColumnName("is_signatory");
-        builder.Property(e => e.IsOccupant).HasColumnName("is_occupant");
+        builder.Property(e => e.Role).HasColumnName("role").IsRequired();
+        builder.Property(e => e.IsPrimary).HasColumnName("is_primary").HasDefaultValue(false);
+        builder.Property(e => e.IsSignatory).HasColumnName("is_signatory").HasDefaultValue(true);
+        builder.Property(e => e.IsOccupant).HasColumnName("is_occupant").HasDefaultValue(false);
         builder.Property(e => e.Note).HasColumnName("note");
         builder.Property(e => e.CreatedAt).HasColumnName("created_at");
 
@@ -28,6 +29,6 @@ public sealed class LeasePartyConfiguration : IEntityTypeConfiguration<LeasePart
         builder.HasOne(e => e.Party)
             .WithMany()
             .HasForeignKey(e => e.PartyId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
