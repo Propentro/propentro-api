@@ -6,7 +6,6 @@ namespace Propentro.Infrastructure.Caching;
 
 public sealed class CacheService(IDistributedCache cache) : ICacheService
 {
-    private readonly IDistributedCache _cache = cache;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -14,7 +13,7 @@ public sealed class CacheService(IDistributedCache cache) : ICacheService
 
     public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default)
     {
-        var cached = await _cache.GetStringAsync(key, ct);
+        var cached = await cache.GetStringAsync(key, ct);
 
         if (string.IsNullOrEmpty(cached))
         {
@@ -36,11 +35,11 @@ public sealed class CacheService(IDistributedCache cache) : ICacheService
         };
 
         var json = JsonSerializer.Serialize(value, JsonOptions);
-        await _cache.SetStringAsync(key, json, options, ct);
+        await cache.SetStringAsync(key, json, options, ct);
     }
 
     public async Task RemoveAsync(string key, CancellationToken ct = default)
     {
-        await _cache.RemoveAsync(key, ct);
+        await cache.RemoveAsync(key, ct);
     }
 }

@@ -12,8 +12,6 @@ public sealed class PermissionRequirement(string permission) : IAuthorizationReq
 public sealed class PermissionAuthorizationHandler(
     IPermissionService permissionService) : AuthorizationHandler<PermissionRequirement>
 {
-    private readonly IPermissionService _permissionService = permissionService;
-
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         PermissionRequirement requirement)
@@ -31,7 +29,7 @@ public sealed class PermissionAuthorizationHandler(
             return;
         }
 
-        var permissions = await _permissionService.GetUserPermissionsAsync(userId, orgId);
+        var permissions = await permissionService.GetUserPermissionsAsync(userId, orgId);
 
         if (permissions.Contains(requirement.Permission))
         {

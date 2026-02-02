@@ -5,14 +5,12 @@ namespace Propentro.Infrastructure.Services;
 
 public sealed class PermissionService(IDbConnectionFactory db) : IPermissionService
 {
-    private readonly IDbConnectionFactory _db = db;
-
     public async Task<HashSet<string>> GetUserPermissionsAsync(
         Guid userId,
         Guid organizationId,
         CancellationToken ct = default)
     {
-        using var connection = _db.CreateConnection();
+        using var connection = db.CreateConnection();
 
         const string sql = """
             SELECT DISTINCT p.code

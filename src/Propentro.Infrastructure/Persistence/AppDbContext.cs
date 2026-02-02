@@ -10,9 +10,6 @@ public sealed class AppDbContext(
     ICurrentUser currentUser,
     IDateTimeProvider dateTime) : DbContext(options), IAppDbContext
 {
-    private readonly ICurrentUser _currentUser = currentUser;
-    private readonly IDateTimeProvider _dateTime = dateTime;
-
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<User> Users => Set<User>();
     public DbSet<OrganizationUser> OrganizationUsers => Set<OrganizationUser>();
@@ -80,12 +77,12 @@ public sealed class AppDbContext(
         return System.Linq.Expressions.Expression.Lambda(equals, parameter);
     }
 
-    public Guid CurrentOrganizationId => _currentUser.OrganizationId;
+    public Guid CurrentOrganizationId => currentUser.OrganizationId;
 
     public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
-        var now = _dateTime.UtcNow;
-        var userId = _currentUser.UserId is not null ? Guid.Parse(_currentUser.UserId) : (Guid?)null;
+        var now = dateTime.UtcNow;
+        var userId = currentUser.UserId is not null ? Guid.Parse(currentUser.UserId) : (Guid?)null;
 
         foreach (var entry in ChangeTracker.Entries<IAuditableEntity>())
         {
@@ -106,7 +103,7 @@ public sealed class AppDbContext(
         {
             if (entry.State == EntityState.Added && entry.Entity.OrganizationId == Guid.Empty)
             {
-                entry.Entity.OrganizationId = _currentUser.OrganizationId;
+                entry.Entity.OrganizationId = currentUser.OrganizationId;
             }
         }
 
