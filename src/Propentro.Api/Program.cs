@@ -4,74 +4,82 @@ using Propentro.Application;
 using Propentro.Infrastructure;
 using Scalar.AspNetCore;
 using Serilog;
+using Serilog.Events;
 
-var builder = WebApplication.CreateBuilder(args);
+// Configure Dapper to match snake_case DB columns to PascalCase C# properties
+Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
 
-// Serilog
-builder.Host.UseSerilog((context, config) =>
-    config.ReadFrom.Configuration(context.Configuration));
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .Enrich.WithMachineName()
+    .Enrich.WithProperty("Application", "Propentro.Api")
+    .WriteTo.Console(outputTemplate:
+        "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
 
-// Aspire service defaults
-builder.AddServiceDefaults();
-
-// OpenAPI
-builder.Services.AddOpenApi();
-
-// Authentication (placeholder for Clerk integration)
-builder.Services.AddAuthentication()
-    .AddJwtBearer();
-
-builder.Services.AddAuthorization();
-
-// HttpContext accessor for CurrentUser service
-builder.Services.AddHttpContextAccessor();
-
-// Application layer services
-builder.Services.AddApplicationServices();
-
-// Infrastructure layer services
-builder.Services.AddInfrastructureServices(builder.Configuration);
-
-// API versioning
-builder.Services.AddApiVersioning(options =>
+try
 {
-    options.DefaultApiVersion = new Asp.Versioning.ApiVersion(1, 0);
-    options.AssumeDefaultVersionWhenUnspecified = true;
-    options.ReportApiVersions = true;
-});
+    Log.Information("Starting Propentro API...");
 
-var app = builder.Build();
+    var builder = WebApplication.CreateBuilder(args);
 
-// Global exception handling middleware
-app.UseMiddleware<ExceptionHandlingMiddleware>();
+    // Add Aspire ServiceDefaults (OpenTelemetry, Health Checks, Service Discovery)
+    builder.AddServiceDefaults();
 
-// Serilog request logging
-app.UseSerilogRequestLogging();
+    builder.Host.UseSerilog();
 
-// Aspire endpoints (health checks)
-app.MapDefaultEndpoints();
+    // Layer registrations
+    builder.Services.AddApplicationServices();
+    builder.Services.AddInfrastructureServices(builder.Configuration);
 
-// OpenAPI + Scalar
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-    app.MapScalarApiReference(options =>
+    // API services
+    builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+    builder.Services.AddProblemDetails();
+    builder.Services.AddOpenApi();
+
+    var app = builder.Build();
+
+    // Map Aspire default endpoints (/health, /alive)
+    app.MapDefaultEndpoints();
+
+    // Middleware pipeline (order matters!)
+    app.UseExceptionHandler();
+    app.UseSerilogRequestLogging();
+
+    // Push OrganizationId and UserId into Serilog LogContext for every request
+    // This ensures all logs (including DB exceptions) are tagged with tenant context
+    app.UseMiddleware<UserContextMiddleware>();
+
+    if (app.Environment.IsDevelopment())
     {
-        options.WithTitle("Propentro API");
-        options.WithTheme(ScalarTheme.BluePlanet);
-    });
+        app.MapOpenApi();
+        app.MapScalarApiReference(options =>
+        {
+            options.Title = "Propentro API";
+            options.Theme = ScalarTheme.Purple;
+        });
+    }
+
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    // Endpoints
+    app.MapApiEndpoints();
+
+    await app.RunAsync();
 }
-
-app.UseAuthentication();
-app.UseAuthorization();
-
-// Map endpoints
-app.MapPropertyEndpoints();
-app.MapUnitEndpoints();
-app.MapLeaseEndpoints();
-app.MapPartyEndpoints();
-
-app.Run();
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+    throw;
+}
+finally
+{
+    await Log.CloseAndFlushAsync();
+}
 
 // For integration testing
 public partial class Program { }
