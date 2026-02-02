@@ -5,6 +5,7 @@ using Propentro.Application.Parties.Commands.UpdateParty;
 using Propentro.Application.Parties.Commands.DeleteParty;
 using Propentro.Application.Parties.Queries.GetParties;
 using Propentro.Application.Parties.Queries.GetPartyById;
+using Propentro.Application.Common.Models;
 using Propentro.Contracts.Parties;
 using Propentro.Infrastructure.Authorization;
 

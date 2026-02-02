@@ -5,6 +5,7 @@ using Propentro.Application.Leases.Commands.UpdateLease;
 using Propentro.Application.Leases.Commands.DeleteLease;
 using Propentro.Application.Leases.Queries.GetLeases;
 using Propentro.Application.Leases.Queries.GetLeaseById;
+using Propentro.Application.Common.Models;
 using Propentro.Contracts.Leases;
 using Propentro.Infrastructure.Authorization;
 

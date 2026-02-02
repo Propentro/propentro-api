@@ -5,6 +5,7 @@ using Propentro.Application.Properties.Commands.UpdateProperty;
 using Propentro.Application.Properties.Commands.DeleteProperty;
 using Propentro.Application.Properties.Queries.GetProperties;
 using Propentro.Application.Properties.Queries.GetPropertyById;
+using Propentro.Application.Common.Models;
 using Propentro.Contracts.Properties;
 using Propentro.Infrastructure.Authorization;
 
@@ -132,9 +133,3 @@ public static class PropertyEndpoints
         return result.ToHttpResult();
     }
 }
-
-public record PagedResult<T>(
-    IReadOnlyList<T> Items,
-    int TotalCount,
-    int Page,
-    int PageSize);
