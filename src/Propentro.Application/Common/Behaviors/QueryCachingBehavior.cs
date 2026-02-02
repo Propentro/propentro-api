@@ -1,21 +1,16 @@
 using MediatR;
 using Propentro.Application.Common.Interfaces;
+using Propentro.Application.Common.Models;
 
 namespace Propentro.Application.Common.Behaviors;
 
-public interface ICachedQuery
-{
-    string CacheKey { get; }
-    TimeSpan? CacheDuration => null;
-}
-
 public sealed class QueryCachingBehavior<TRequest, TResponse>(
-    ICacheService cache) : IPipelineBehavior<TRequest, TResponse>
-    where TRequest : ICachedQuery
+    ICacheService cache) : IPipelineBehavior<TRequest, Result<TResponse>>
+    where TRequest : ICachedQuery<TResponse>
 {
-    public async Task<TResponse> Handle(
+    public async Task<Result<TResponse>> Handle(
         TRequest request,
-        RequestHandlerDelegate<TResponse> next,
+        RequestHandlerDelegate<Result<TResponse>> next,
         CancellationToken ct)
     {
         var cached = await cache.GetAsync<TResponse>(request.CacheKey, ct);
@@ -24,14 +19,17 @@ public sealed class QueryCachingBehavior<TRequest, TResponse>(
             return cached;
         }
 
-        var response = await next();
+        var result = await next();
 
-        await cache.SetAsync(
-            request.CacheKey,
-            response,
-            request.CacheDuration ?? TimeSpan.FromMinutes(5),
-            ct);
+        if (result.IsSuccess && result.Value is not null)
+        {
+            await cache.SetAsync(
+                request.CacheKey,
+                result.Value,
+                request.Expiration ?? TimeSpan.FromMinutes(5),
+                ct);
+        }
 
-        return response;
+        return result;
     }
 }

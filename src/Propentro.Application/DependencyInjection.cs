@@ -14,8 +14,9 @@ public static class DependencyInjection
         services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssembly(assembly);
-            cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-            cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+            cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
+            cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+            cfg.AddOpenBehavior(typeof(QueryCachingBehavior<,>));
         });
 
         services.AddValidatorsFromAssembly(assembly);

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Propentro.Application.Common.Interfaces;
