@@ -1,0 +1,25 @@
+namespace Propentro.Contracts.Units;
+
+public record CreateUnitRequest(
+    Guid PropertyId,
+    string Name,
+    string UnitType,
+    string? UsageType,
+    string? OwnershipType,
+    string? RentalMode,
+    Guid? AddressId,
+    Guid? ParentUnitId,
+    int? Floor,
+    string? UnitNumber,
+    string? BuildingSection,
+    int? Bedrooms,
+    decimal? Bathrooms,
+    decimal? AreaSqm,
+    string? FurnishedStatus,
+    long? DefaultRentMinor,
+    long? DefaultDepositMinor,
+    string? DefaultCurrency,
+    long? MonthlyFeesMinor,
+    string? MonthlyFeesNote,
+    int? MaxOccupants,
+    string? Note);

@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/aspire/">
+    <Project Path="aspire/Propentro.AppHost/Propentro.AppHost.csproj" />
+    <Project Path="aspire/Propentro.ServiceDefaults/Propentro.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Propentro.Api/Propentro.Api.csproj" />
+    <Project Path="src/Propentro.Application/Propentro.Application.csproj" />
+    <Project Path="src/Propentro.Contracts/Propentro.Contracts.csproj" />
+    <Project Path="src/Propentro.Domain/Propentro.Domain.csproj" />
+    <Project Path="src/Propentro.Infrastructure/Propentro.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Propentro.Api.Tests/Propentro.Api.Tests.csproj" />
+    <Project Path="tests/Propentro.Application.Tests/Propentro.Application.Tests.csproj" />
+    <Project Path="tests/Propentro.Domain.Tests/Propentro.Domain.Tests.csproj" />
+    <Project Path="tests/Propentro.Integration.Tests/Propentro.Integration.Tests.csproj" />
+  </Folder>
+</Solution>

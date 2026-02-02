@@ -1,0 +1,25 @@
+using Microsoft.EntityFrameworkCore;
+using Propentro.Application.Common.Interfaces;
+using Propentro.Application.Common.Models;
+
+namespace Propentro.Application.Leases.Commands.DeleteLease;
+
+public sealed class DeleteLeaseHandler(
+    IAppDbContext db) : ICommandHandler<DeleteLeaseCommand>
+{
+    public async Task<Result> Handle(DeleteLeaseCommand request, CancellationToken ct)
+    {
+        var lease = await db.Leases
+            .FirstOrDefaultAsync(l => l.PublicId == request.PublicId, ct);
+
+        if (lease is null)
+        {
+            return LeaseErrors.NotFoundById(request.PublicId);
+        }
+
+        lease.IsActive = false;
+        await db.SaveChangesAsync(ct);
+
+        return Result.Success();
+    }
+}

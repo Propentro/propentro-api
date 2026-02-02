@@ -1,0 +1,168 @@
+using MediatR;
+using Propentro.Application.Properties.Commands.CreateProperty;
+using Propentro.Application.Properties.Commands.UpdateProperty;
+using Propentro.Application.Properties.Commands.DeleteProperty;
+using Propentro.Application.Properties.Queries.GetProperties;
+using Propentro.Application.Properties.Queries.GetPropertyById;
+using Propentro.Contracts.Properties;
+
+namespace Propentro.Api.Endpoints;
+
+public static class PropertyEndpoints
+{
+    public static void MapPropertyEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/v1/properties")
+            .WithTags("Properties")
+            .RequireAuthorization();
+
+        group.MapGet("/", GetProperties)
+            .WithName("GetProperties")
+            .WithSummary("Get all properties")
+            .Produces<PagedResult<PropertyDto>>()
+            .Produces(StatusCodes.Status401Unauthorized);
+
+        group.MapGet("/{publicId}", GetPropertyById)
+            .WithName("GetPropertyById")
+            .WithSummary("Get a property by public ID")
+            .Produces<PropertyDetailDto>()
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status401Unauthorized);
+
+        group.MapPost("/", CreateProperty)
+            .WithName("CreateProperty")
+            .WithSummary("Create a new property")
+            .Produces<string>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized);
+
+        group.MapPut("/{publicId}", UpdateProperty)
+            .WithName("UpdateProperty")
+            .WithSummary("Update a property")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status401Unauthorized);
+
+        group.MapDelete("/{publicId}", DeleteProperty)
+            .WithName("DeleteProperty")
+            .WithSummary("Delete a property")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status401Unauthorized);
+    }
+
+    private static async Task<IResult> GetProperties(
+        ISender sender,
+        [AsParameters] GetPropertiesQuery query,
+        CancellationToken ct)
+    {
+        var result = await sender.Send(query, ct);
+
+        return result.Match(
+            success => Results.Ok(success),
+            error => Results.Problem(
+                statusCode: GetStatusCode(error.Type),
+                title: error.Code,
+                detail: error.Message));
+    }
+
+    private static async Task<IResult> GetPropertyById(
+        string publicId,
+        ISender sender,
+        CancellationToken ct)
+    {
+        var result = await sender.Send(new GetPropertyByIdQuery(publicId), ct);
+
+        return result.Match(
+            success => Results.Ok(success),
+            error => Results.Problem(
+                statusCode: GetStatusCode(error.Type),
+                title: error.Code,
+                detail: error.Message));
+    }
+
+    private static async Task<IResult> CreateProperty(
+        CreatePropertyRequest request,
+        ISender sender,
+        CancellationToken ct)
+    {
+        var command = new CreatePropertyCommand(
+            request.Name,
+            request.PropertyKind,
+            request.AddressId,
+            request.ParentPropertyId,
+            request.YearBuilt,
+            request.TotalAreaSqm,
+            request.TotalFloors,
+            request.ReferenceCode,
+            request.Note);
+
+        var result = await sender.Send(command, ct);
+
+        return result.Match(
+            success => Results.Created($"/api/v1/properties/{success}", new { publicId = success }),
+            error => Results.Problem(
+                statusCode: GetStatusCode(error.Type),
+                title: error.Code,
+                detail: error.Message));
+    }
+
+    private static async Task<IResult> UpdateProperty(
+        string publicId,
+        UpdatePropertyRequest request,
+        ISender sender,
+        CancellationToken ct)
+    {
+        var command = new UpdatePropertyCommand(
+            publicId,
+            request.Name,
+            request.PropertyKind,
+            request.AddressId,
+            request.YearBuilt,
+            request.TotalAreaSqm,
+            request.TotalFloors,
+            request.ReferenceCode,
+            request.Note);
+
+        var result = await sender.Send(command, ct);
+
+        return result.Match(
+            () => Results.NoContent(),
+            error => Results.Problem(
+                statusCode: GetStatusCode(error.Type),
+                title: error.Code,
+                detail: error.Message));
+    }
+
+    private static async Task<IResult> DeleteProperty(
+        string publicId,
+        ISender sender,
+        CancellationToken ct)
+    {
+        var result = await sender.Send(new DeletePropertyCommand(publicId), ct);
+
+        return result.Match(
+            () => Results.NoContent(),
+            error => Results.Problem(
+                statusCode: GetStatusCode(error.Type),
+                title: error.Code,
+                detail: error.Message));
+    }
+
+    private static int GetStatusCode(Application.Common.Models.ErrorType errorType) => errorType switch
+    {
+        Application.Common.Models.ErrorType.NotFound => StatusCodes.Status404NotFound,
+        Application.Common.Models.ErrorType.Validation => StatusCodes.Status400BadRequest,
+        Application.Common.Models.ErrorType.Conflict => StatusCodes.Status409Conflict,
+        Application.Common.Models.ErrorType.Unauthorized => StatusCodes.Status401Unauthorized,
+        Application.Common.Models.ErrorType.Forbidden => StatusCodes.Status403Forbidden,
+        _ => StatusCodes.Status500InternalServerError
+    };
+}
+
+public record PagedResult<T>(
+    IReadOnlyList<T> Items,
+    int TotalCount,
+    int Page,
+    int PageSize);
