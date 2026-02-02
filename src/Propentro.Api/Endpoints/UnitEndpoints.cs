@@ -5,6 +5,7 @@ using Propentro.Application.Units.Commands.DeleteUnit;
 using Propentro.Application.Units.Queries.GetUnits;
 using Propentro.Application.Units.Queries.GetUnitById;
 using Propentro.Contracts.Units;
+using Propentro.Infrastructure.Authorization;
 
 namespace Propentro.Api.Endpoints;
 
@@ -18,23 +19,45 @@ public static class UnitEndpoints
 
         group.MapGet("/", GetUnits)
             .WithName("GetUnits")
-            .WithSummary("Get all units");
+            .WithSummary("Get all units")
+            .WithMetadata(new RequirePermissionAttribute("units:read"))
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapGet("/{publicId}", GetUnitById)
             .WithName("GetUnitById")
-            .WithSummary("Get a unit by public ID");
+            .WithSummary("Get a unit by public ID")
+            .WithMetadata(new RequirePermissionAttribute("units:read"))
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapPost("/", CreateUnit)
             .WithName("CreateUnit")
-            .WithSummary("Create a new unit");
+            .WithSummary("Create a new unit")
+            .WithMetadata(new RequirePermissionAttribute("units:create"))
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapPut("/{publicId}", UpdateUnit)
             .WithName("UpdateUnit")
-            .WithSummary("Update a unit");
+            .WithSummary("Update a unit")
+            .WithMetadata(new RequirePermissionAttribute("units:update"))
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapDelete("/{publicId}", DeleteUnit)
             .WithName("DeleteUnit")
-            .WithSummary("Delete a unit");
+            .WithSummary("Delete a unit")
+            .WithMetadata(new RequirePermissionAttribute("units:delete"))
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
     }
 
     private static async Task<IResult> GetUnits(

@@ -5,6 +5,7 @@ using Propentro.Application.Parties.Commands.DeleteParty;
 using Propentro.Application.Parties.Queries.GetParties;
 using Propentro.Application.Parties.Queries.GetPartyById;
 using Propentro.Contracts.Parties;
+using Propentro.Infrastructure.Authorization;
 
 namespace Propentro.Api.Endpoints;
 
@@ -18,23 +19,45 @@ public static class PartyEndpoints
 
         group.MapGet("/", GetParties)
             .WithName("GetParties")
-            .WithSummary("Get all parties");
+            .WithSummary("Get all parties")
+            .WithMetadata(new RequirePermissionAttribute("parties:read"))
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapGet("/{publicId}", GetPartyById)
             .WithName("GetPartyById")
-            .WithSummary("Get a party by public ID");
+            .WithSummary("Get a party by public ID")
+            .WithMetadata(new RequirePermissionAttribute("parties:read"))
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapPost("/", CreateParty)
             .WithName("CreateParty")
-            .WithSummary("Create a new party");
+            .WithSummary("Create a new party")
+            .WithMetadata(new RequirePermissionAttribute("parties:create"))
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapPut("/{publicId}", UpdateParty)
             .WithName("UpdateParty")
-            .WithSummary("Update a party");
+            .WithSummary("Update a party")
+            .WithMetadata(new RequirePermissionAttribute("parties:update"))
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapDelete("/{publicId}", DeleteParty)
             .WithName("DeleteParty")
-            .WithSummary("Delete a party");
+            .WithSummary("Delete a party")
+            .WithMetadata(new RequirePermissionAttribute("parties:delete"))
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
     }
 
     private static async Task<IResult> GetParties(

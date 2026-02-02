@@ -55,7 +55,6 @@ public static class DependencyInjection
         services.AddScoped<ICacheService, CacheService>();
 
         // Authorization
-        services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
         return services;

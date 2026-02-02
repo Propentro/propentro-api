@@ -5,6 +5,7 @@ using Propentro.Application.Leases.Commands.DeleteLease;
 using Propentro.Application.Leases.Queries.GetLeases;
 using Propentro.Application.Leases.Queries.GetLeaseById;
 using Propentro.Contracts.Leases;
+using Propentro.Infrastructure.Authorization;
 
 namespace Propentro.Api.Endpoints;
 
@@ -18,23 +19,45 @@ public static class LeaseEndpoints
 
         group.MapGet("/", GetLeases)
             .WithName("GetLeases")
-            .WithSummary("Get all leases");
+            .WithSummary("Get all leases")
+            .WithMetadata(new RequirePermissionAttribute("leases:read"))
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapGet("/{publicId}", GetLeaseById)
             .WithName("GetLeaseById")
-            .WithSummary("Get a lease by public ID");
+            .WithSummary("Get a lease by public ID")
+            .WithMetadata(new RequirePermissionAttribute("leases:read"))
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapPost("/", CreateLease)
             .WithName("CreateLease")
-            .WithSummary("Create a new lease");
+            .WithSummary("Create a new lease")
+            .WithMetadata(new RequirePermissionAttribute("leases:create"))
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapPut("/{publicId}", UpdateLease)
             .WithName("UpdateLease")
-            .WithSummary("Update a lease");
+            .WithSummary("Update a lease")
+            .WithMetadata(new RequirePermissionAttribute("leases:update"))
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapDelete("/{publicId}", DeleteLease)
             .WithName("DeleteLease")
-            .WithSummary("Delete a lease");
+            .WithSummary("Delete a lease")
+            .WithMetadata(new RequirePermissionAttribute("leases:delete"))
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
     }
 
     private static async Task<IResult> GetLeases(
