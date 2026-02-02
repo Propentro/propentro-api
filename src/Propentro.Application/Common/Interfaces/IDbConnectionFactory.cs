@@ -1,8 +1,8 @@
-using System.Data;
+using Npgsql;
 
 namespace Propentro.Application.Common.Interfaces;
 
 public interface IDbConnectionFactory
 {
-    IDbConnection CreateConnection();
+    NpgsqlConnection CreateConnection();
 }

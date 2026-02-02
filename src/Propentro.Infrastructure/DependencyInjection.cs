@@ -1,7 +1,10 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 using Propentro.Application.Common.Interfaces;
 using Propentro.Infrastructure.Authorization;
 using Propentro.Infrastructure.Caching;
@@ -16,46 +19,38 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("Database")
-            ?? throw new InvalidOperationException("Database connection string not configured");
-
-        // Entity Framework Core with PostgreSQL
+        // Database
         services.AddDbContext<AppDbContext>(options =>
-            options.UseNpgsql(connectionString, npgsqlOptions =>
-            {
-                npgsqlOptions.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName);
-                npgsqlOptions.EnableRetryOnFailure(3);
-            }));
+            options.UseNpgsql(configuration.GetConnectionString("Database")));
 
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
-
-        // Dapper connection factory
-        services.AddSingleton<IDbConnectionFactory>(_ => new DbConnectionFactory(connectionString));
+        services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
 
         // Services
         services.AddScoped<ICurrentUser, CurrentUserService>();
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
         services.AddScoped<IPermissionService, PermissionService>();
+        services.AddSingleton<ICacheService, MemoryCacheService>();
 
-        // Caching with Redis
-        var redisConnection = configuration.GetConnectionString("Redis");
-        if (!string.IsNullOrEmpty(redisConnection))
-        {
-            services.AddStackExchangeRedisCache(options =>
-            {
-                options.Configuration = redisConnection;
-                options.InstanceName = "propentro:";
-            });
-        }
-        else
-        {
-            services.AddDistributedMemoryCache();
-        }
-
-        services.AddScoped<ICacheService, CacheService>();
+        // Memory cache
+        services.AddMemoryCache();
 
         // Authorization
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+
+        // Authentication (Clerk JWT)
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.Authority = configuration["Clerk:Authority"];
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateAudience = false,
+                    NameClaimType = ClaimTypes.NameIdentifier
+                };
+            });
+
+        services.AddAuthorization();
 
         return services;
     }
