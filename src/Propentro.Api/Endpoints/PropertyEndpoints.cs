@@ -1,4 +1,5 @@
 using MediatR;
+using Propentro.Api.Extensions;
 using Propentro.Application.Properties.Commands.CreateProperty;
 using Propentro.Application.Properties.Commands.UpdateProperty;
 using Propentro.Application.Properties.Commands.DeleteProperty;
@@ -69,13 +70,7 @@ public static class PropertyEndpoints
         CancellationToken ct)
     {
         var result = await sender.Send(query, ct);
-
-        return result.Match(
-            success => Results.Ok(success),
-            error => Results.Problem(
-                statusCode: GetStatusCode(error.Type),
-                title: error.Code,
-                detail: error.Message));
+        return result.ToHttpResult();
     }
 
     private static async Task<IResult> GetPropertyById(
@@ -84,13 +79,7 @@ public static class PropertyEndpoints
         CancellationToken ct)
     {
         var result = await sender.Send(new GetPropertyByIdQuery(publicId), ct);
-
-        return result.Match(
-            success => Results.Ok(success),
-            error => Results.Problem(
-                statusCode: GetStatusCode(error.Type),
-                title: error.Code,
-                detail: error.Message));
+        return result.ToHttpResult();
     }
 
     private static async Task<IResult> CreateProperty(
@@ -110,13 +99,7 @@ public static class PropertyEndpoints
             request.Note);
 
         var result = await sender.Send(command, ct);
-
-        return result.Match(
-            success => Results.Created($"/api/v1/properties/{success}", new { publicId = success }),
-            error => Results.Problem(
-                statusCode: GetStatusCode(error.Type),
-                title: error.Code,
-                detail: error.Message));
+        return result.ToCreatedResult(id => $"/api/v1/properties/{id}");
     }
 
     private static async Task<IResult> UpdateProperty(
@@ -137,13 +120,7 @@ public static class PropertyEndpoints
             request.Note);
 
         var result = await sender.Send(command, ct);
-
-        return result.Match(
-            () => Results.NoContent(),
-            error => Results.Problem(
-                statusCode: GetStatusCode(error.Type),
-                title: error.Code,
-                detail: error.Message));
+        return result.ToHttpResult();
     }
 
     private static async Task<IResult> DeleteProperty(
@@ -152,24 +129,8 @@ public static class PropertyEndpoints
         CancellationToken ct)
     {
         var result = await sender.Send(new DeletePropertyCommand(publicId), ct);
-
-        return result.Match(
-            () => Results.NoContent(),
-            error => Results.Problem(
-                statusCode: GetStatusCode(error.Type),
-                title: error.Code,
-                detail: error.Message));
+        return result.ToHttpResult();
     }
-
-    private static int GetStatusCode(Application.Common.Models.ErrorType errorType) => errorType switch
-    {
-        Application.Common.Models.ErrorType.NotFound => StatusCodes.Status404NotFound,
-        Application.Common.Models.ErrorType.Validation => StatusCodes.Status400BadRequest,
-        Application.Common.Models.ErrorType.Conflict => StatusCodes.Status409Conflict,
-        Application.Common.Models.ErrorType.Unauthorized => StatusCodes.Status401Unauthorized,
-        Application.Common.Models.ErrorType.Forbidden => StatusCodes.Status403Forbidden,
-        _ => StatusCodes.Status500InternalServerError
-    };
 }
 
 public record PagedResult<T>(

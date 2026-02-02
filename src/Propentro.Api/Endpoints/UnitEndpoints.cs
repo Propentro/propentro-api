@@ -1,4 +1,5 @@
 using MediatR;
+using Propentro.Api.Extensions;
 using Propentro.Application.Units.Commands.CreateUnit;
 using Propentro.Application.Units.Commands.UpdateUnit;
 using Propentro.Application.Units.Commands.DeleteUnit;
@@ -21,6 +22,7 @@ public static class UnitEndpoints
             .WithName("GetUnits")
             .WithSummary("Get all units")
             .WithMetadata(new RequirePermissionAttribute("units:read"))
+            .Produces<PagedResult<UnitDto>>()
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
 
@@ -28,6 +30,7 @@ public static class UnitEndpoints
             .WithName("GetUnitById")
             .WithSummary("Get a unit by public ID")
             .WithMetadata(new RequirePermissionAttribute("units:read"))
+            .Produces<UnitDetailDto>()
             .Produces(StatusCodes.Status404NotFound)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
@@ -36,6 +39,7 @@ public static class UnitEndpoints
             .WithName("CreateUnit")
             .WithSummary("Create a new unit")
             .WithMetadata(new RequirePermissionAttribute("units:create"))
+            .Produces<string>(StatusCodes.Status201Created)
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
@@ -66,13 +70,7 @@ public static class UnitEndpoints
         CancellationToken ct)
     {
         var result = await sender.Send(query, ct);
-
-        return result.Match(
-            success => Results.Ok(success),
-            error => Results.Problem(
-                statusCode: GetStatusCode(error.Type),
-                title: error.Code,
-                detail: error.Message));
+        return result.ToHttpResult();
     }
 
     private static async Task<IResult> GetUnitById(
@@ -81,13 +79,7 @@ public static class UnitEndpoints
         CancellationToken ct)
     {
         var result = await sender.Send(new GetUnitByIdQuery(publicId), ct);
-
-        return result.Match(
-            success => Results.Ok(success),
-            error => Results.Problem(
-                statusCode: GetStatusCode(error.Type),
-                title: error.Code,
-                detail: error.Message));
+        return result.ToHttpResult();
     }
 
     private static async Task<IResult> CreateUnit(
@@ -112,13 +104,7 @@ public static class UnitEndpoints
             request.Note);
 
         var result = await sender.Send(command, ct);
-
-        return result.Match(
-            success => Results.Created($"/api/v1/units/{success}", new { publicId = success }),
-            error => Results.Problem(
-                statusCode: GetStatusCode(error.Type),
-                title: error.Code,
-                detail: error.Message));
+        return result.ToCreatedResult(id => $"/api/v1/units/{id}");
     }
 
     private static async Task<IResult> UpdateUnit(
@@ -145,13 +131,7 @@ public static class UnitEndpoints
             request.Note);
 
         var result = await sender.Send(command, ct);
-
-        return result.Match(
-            () => Results.NoContent(),
-            error => Results.Problem(
-                statusCode: GetStatusCode(error.Type),
-                title: error.Code,
-                detail: error.Message));
+        return result.ToHttpResult();
     }
 
     private static async Task<IResult> DeleteUnit(
@@ -160,22 +140,6 @@ public static class UnitEndpoints
         CancellationToken ct)
     {
         var result = await sender.Send(new DeleteUnitCommand(publicId), ct);
-
-        return result.Match(
-            () => Results.NoContent(),
-            error => Results.Problem(
-                statusCode: GetStatusCode(error.Type),
-                title: error.Code,
-                detail: error.Message));
+        return result.ToHttpResult();
     }
-
-    private static int GetStatusCode(Application.Common.Models.ErrorType errorType) => errorType switch
-    {
-        Application.Common.Models.ErrorType.NotFound => StatusCodes.Status404NotFound,
-        Application.Common.Models.ErrorType.Validation => StatusCodes.Status400BadRequest,
-        Application.Common.Models.ErrorType.Conflict => StatusCodes.Status409Conflict,
-        Application.Common.Models.ErrorType.Unauthorized => StatusCodes.Status401Unauthorized,
-        Application.Common.Models.ErrorType.Forbidden => StatusCodes.Status403Forbidden,
-        _ => StatusCodes.Status500InternalServerError
-    };
 }

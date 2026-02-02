@@ -1,4 +1,5 @@
 using MediatR;
+using Propentro.Api.Extensions;
 using Propentro.Application.Leases.Commands.CreateLease;
 using Propentro.Application.Leases.Commands.UpdateLease;
 using Propentro.Application.Leases.Commands.DeleteLease;
@@ -21,6 +22,7 @@ public static class LeaseEndpoints
             .WithName("GetLeases")
             .WithSummary("Get all leases")
             .WithMetadata(new RequirePermissionAttribute("leases:read"))
+            .Produces<PagedResult<LeaseDto>>()
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
 
@@ -28,6 +30,7 @@ public static class LeaseEndpoints
             .WithName("GetLeaseById")
             .WithSummary("Get a lease by public ID")
             .WithMetadata(new RequirePermissionAttribute("leases:read"))
+            .Produces<LeaseDetailDto>()
             .Produces(StatusCodes.Status404NotFound)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
@@ -36,6 +39,7 @@ public static class LeaseEndpoints
             .WithName("CreateLease")
             .WithSummary("Create a new lease")
             .WithMetadata(new RequirePermissionAttribute("leases:create"))
+            .Produces<string>(StatusCodes.Status201Created)
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
@@ -66,13 +70,7 @@ public static class LeaseEndpoints
         CancellationToken ct)
     {
         var result = await sender.Send(query, ct);
-
-        return result.Match(
-            success => Results.Ok(success),
-            error => Results.Problem(
-                statusCode: GetStatusCode(error.Type),
-                title: error.Code,
-                detail: error.Message));
+        return result.ToHttpResult();
     }
 
     private static async Task<IResult> GetLeaseById(
@@ -81,13 +79,7 @@ public static class LeaseEndpoints
         CancellationToken ct)
     {
         var result = await sender.Send(new GetLeaseByIdQuery(publicId), ct);
-
-        return result.Match(
-            success => Results.Ok(success),
-            error => Results.Problem(
-                statusCode: GetStatusCode(error.Type),
-                title: error.Code,
-                detail: error.Message));
+        return result.ToHttpResult();
     }
 
     private static async Task<IResult> CreateLease(
@@ -109,13 +101,7 @@ public static class LeaseEndpoints
             request.Note);
 
         var result = await sender.Send(command, ct);
-
-        return result.Match(
-            success => Results.Created($"/api/v1/leases/{success}", new { publicId = success }),
-            error => Results.Problem(
-                statusCode: GetStatusCode(error.Type),
-                title: error.Code,
-                detail: error.Message));
+        return result.ToCreatedResult(id => $"/api/v1/leases/{id}");
     }
 
     private static async Task<IResult> UpdateLease(
@@ -137,13 +123,7 @@ public static class LeaseEndpoints
             request.Note);
 
         var result = await sender.Send(command, ct);
-
-        return result.Match(
-            () => Results.NoContent(),
-            error => Results.Problem(
-                statusCode: GetStatusCode(error.Type),
-                title: error.Code,
-                detail: error.Message));
+        return result.ToHttpResult();
     }
 
     private static async Task<IResult> DeleteLease(
@@ -152,22 +132,6 @@ public static class LeaseEndpoints
         CancellationToken ct)
     {
         var result = await sender.Send(new DeleteLeaseCommand(publicId), ct);
-
-        return result.Match(
-            () => Results.NoContent(),
-            error => Results.Problem(
-                statusCode: GetStatusCode(error.Type),
-                title: error.Code,
-                detail: error.Message));
+        return result.ToHttpResult();
     }
-
-    private static int GetStatusCode(Application.Common.Models.ErrorType errorType) => errorType switch
-    {
-        Application.Common.Models.ErrorType.NotFound => StatusCodes.Status404NotFound,
-        Application.Common.Models.ErrorType.Validation => StatusCodes.Status400BadRequest,
-        Application.Common.Models.ErrorType.Conflict => StatusCodes.Status409Conflict,
-        Application.Common.Models.ErrorType.Unauthorized => StatusCodes.Status401Unauthorized,
-        Application.Common.Models.ErrorType.Forbidden => StatusCodes.Status403Forbidden,
-        _ => StatusCodes.Status500InternalServerError
-    };
 }
