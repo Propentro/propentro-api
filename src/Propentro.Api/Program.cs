@@ -26,9 +26,6 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    // Add Aspire ServiceDefaults (OpenTelemetry, Health Checks, Service Discovery)
-    builder.AddServiceDefaults();
-
     builder.Host.UseSerilog();
 
     // Layer registrations
@@ -41,9 +38,6 @@ try
     builder.Services.AddOpenApi();
 
     var app = builder.Build();
-
-    // Map Aspire default endpoints (/health, /alive)
-    app.MapDefaultEndpoints();
 
     // Middleware pipeline (order matters!)
     app.UseExceptionHandler();

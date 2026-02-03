@@ -1,8 +1,4 @@
 <Solution>
-  <Folder Name="/aspire/">
-    <Project Path="aspire/Propentro.AppHost/Propentro.AppHost.csproj" />
-    <Project Path="aspire/Propentro.ServiceDefaults/Propentro.ServiceDefaults.csproj" />
-  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Propentro.Api/Propentro.Api.csproj" />
     <Project Path="src/Propentro.Application/Propentro.Application.csproj" />

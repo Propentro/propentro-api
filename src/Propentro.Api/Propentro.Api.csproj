@@ -8,7 +8,6 @@
     <ProjectReference Include="..\Propentro.Application\Propentro.Application.csproj" />
     <ProjectReference Include="..\Propentro.Infrastructure\Propentro.Infrastructure.csproj" />
     <ProjectReference Include="..\Propentro.Contracts\Propentro.Contracts.csproj" />
-    <ProjectReference Include="..\..\aspire\Propentro.ServiceDefaults\Propentro.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -17,8 +16,6 @@
     <PackageReference Include="Serilog.Enrichers.Process" />
     <PackageReference Include="Scalar.AspNetCore" />
     <PackageReference Include="Asp.Versioning.Http" />
-    <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
-    <PackageReference Include="Aspire.StackExchange.Redis" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
   </ItemGroup>
 

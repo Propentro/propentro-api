@@ -171,9 +171,6 @@ appsettings.*.json
 # Local tool installations
 .config/dotnet-tools.json
 
-# Aspire
-.aspire/
-
 # Docker
 .docker/
 
