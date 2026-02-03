@@ -11,7 +11,7 @@ public sealed class GetLeasesHandler(
 {
     public async Task<Result<PagedResult<LeaseDto>>> Handle(
         GetLeasesQuery request,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
         using var connection = db.CreateConnection();
 

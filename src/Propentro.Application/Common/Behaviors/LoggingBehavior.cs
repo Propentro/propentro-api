@@ -12,7 +12,7 @@ public sealed class LoggingBehavior<TRequest, TResponse>(
     public async Task<TResponse> Handle(
         TRequest request,
         RequestHandlerDelegate<TResponse> next,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
         var requestName = typeof(TRequest).Name;
 
@@ -21,7 +21,7 @@ public sealed class LoggingBehavior<TRequest, TResponse>(
             requestName, currentUser.UserId, currentUser.OrganizationId);
 
         var stopwatch = Stopwatch.StartNew();
-        var response = await next();
+        var response = await next(cancellationToken);
         stopwatch.Stop();
 
         Log.Information(

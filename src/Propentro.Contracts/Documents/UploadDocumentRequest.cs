@@ -8,5 +8,5 @@ public record UploadDocumentRequest(
 
 public record UploadDocumentResponse(
     string PublicId,
-    string UploadUrl,
+    Uri UploadUrl,
     DateTime ExpiresAt);

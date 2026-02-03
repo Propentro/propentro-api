@@ -11,7 +11,7 @@ public sealed class GetPartyByIdHandler(
 {
     public async Task<Result<PartyDetailDto>> Handle(
         GetPartyByIdQuery request,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
         using var connection = db.CreateConnection();
 

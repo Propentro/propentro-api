@@ -7,7 +7,7 @@ namespace Propentro.Application.Leases.Commands.CreateLease;
 public sealed class CreateLeaseHandler(
     IAppDbContext db) : ICommandHandler<CreateLeaseCommand, string>
 {
-    public async Task<Result<string>> Handle(CreateLeaseCommand request, CancellationToken ct)
+    public async Task<Result<string>> Handle(CreateLeaseCommand request, CancellationToken cancellationToken)
     {
         if (request.EndDate.HasValue && request.EndDate < request.StartDate)
         {
@@ -30,7 +30,7 @@ public sealed class CreateLeaseHandler(
         };
 
         db.Leases.Add(lease);
-        await db.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(cancellationToken);
 
         return lease.PublicId;
     }

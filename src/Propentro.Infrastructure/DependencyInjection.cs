@@ -46,7 +46,7 @@ public static class DependencyInjection
                 options.Authority = configuration["Clerk:Authority"];
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    ValidateAudience = false,
+                    ValidateAudience = true,
                     NameClaimType = ClaimTypes.NameIdentifier
                 };
             });

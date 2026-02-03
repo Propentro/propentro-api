@@ -8,10 +8,10 @@ namespace Propentro.Application.Units.Commands.CreateUnit;
 public sealed class CreateUnitHandler(
     IAppDbContext db) : ICommandHandler<CreateUnitCommand, string>
 {
-    public async Task<Result<string>> Handle(CreateUnitCommand request, CancellationToken ct)
+    public async Task<Result<string>> Handle(CreateUnitCommand request, CancellationToken cancellationToken)
     {
         var propertyExists = await db.Properties
-            .AnyAsync(p => p.Id == request.PropertyId, ct);
+            .AnyAsync(p => p.Id == request.PropertyId, cancellationToken);
 
         if (!propertyExists)
         {
@@ -37,7 +37,7 @@ public sealed class CreateUnitHandler(
         };
 
         db.Units.Add(unit);
-        await db.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(cancellationToken);
 
         return unit.PublicId;
     }

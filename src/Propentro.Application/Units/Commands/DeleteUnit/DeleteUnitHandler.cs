@@ -7,10 +7,10 @@ namespace Propentro.Application.Units.Commands.DeleteUnit;
 public sealed class DeleteUnitHandler(
     IAppDbContext db) : ICommandHandler<DeleteUnitCommand>
 {
-    public async Task<Result> Handle(DeleteUnitCommand request, CancellationToken ct)
+    public async Task<Result> Handle(DeleteUnitCommand request, CancellationToken cancellationToken)
     {
         var unit = await db.Units
-            .FirstOrDefaultAsync(u => u.PublicId == request.PublicId, ct);
+            .FirstOrDefaultAsync(u => u.PublicId == request.PublicId, cancellationToken);
 
         if (unit is null)
         {
@@ -18,7 +18,7 @@ public sealed class DeleteUnitHandler(
         }
 
         unit.IsActive = false;
-        await db.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

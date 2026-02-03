@@ -5,13 +5,12 @@ using Propentro.Application.Common.Models;
 namespace Propentro.Application.Properties.Commands.DeleteProperty;
 
 public sealed class DeletePropertyHandler(
-    IAppDbContext db,
-    ICurrentUser currentUser) : ICommandHandler<DeletePropertyCommand>
+    IAppDbContext db) : ICommandHandler<DeletePropertyCommand>
 {
-    public async Task<Result> Handle(DeletePropertyCommand request, CancellationToken ct)
+    public async Task<Result> Handle(DeletePropertyCommand request, CancellationToken cancellationToken)
     {
         var property = await db.Properties
-            .FirstOrDefaultAsync(p => p.PublicId == request.PublicId, ct);
+            .FirstOrDefaultAsync(p => p.PublicId == request.PublicId, cancellationToken);
 
         if (property is null)
         {
@@ -20,7 +19,7 @@ public sealed class DeletePropertyHandler(
 
         // Soft delete
         property.IsActive = false;
-        await db.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

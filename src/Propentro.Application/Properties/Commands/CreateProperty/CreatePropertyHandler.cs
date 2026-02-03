@@ -6,16 +6,15 @@ using Propentro.Domain.Entities;
 namespace Propentro.Application.Properties.Commands.CreateProperty;
 
 public sealed class CreatePropertyHandler(
-    IAppDbContext db,
-    ICurrentUser currentUser) : ICommandHandler<CreatePropertyCommand, Guid>
+    IAppDbContext db) : ICommandHandler<CreatePropertyCommand, Guid>
 {
-    public async Task<Result<Guid>> Handle(CreatePropertyCommand request, CancellationToken ct)
+    public async Task<Result<Guid>> Handle(CreatePropertyCommand request, CancellationToken cancellationToken)
     {
         // Parent property validation
         if (request.ParentPropertyId.HasValue)
         {
             var parentExists = await db.Properties
-                .AnyAsync(p => p.Id == request.ParentPropertyId.Value, ct);
+                .AnyAsync(p => p.Id == request.ParentPropertyId.Value, cancellationToken);
 
             if (!parentExists)
             {
@@ -27,7 +26,7 @@ public sealed class CreatePropertyHandler(
         if (!string.IsNullOrEmpty(request.ReferenceCode))
         {
             var refExists = await db.Properties
-                .AnyAsync(p => p.ReferenceCode == request.ReferenceCode, ct);
+                .AnyAsync(p => p.ReferenceCode == request.ReferenceCode, cancellationToken);
 
             if (refExists)
             {
@@ -49,7 +48,7 @@ public sealed class CreatePropertyHandler(
         };
 
         db.Properties.Add(property);
-        await db.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(cancellationToken);
 
         return property.Id;
     }

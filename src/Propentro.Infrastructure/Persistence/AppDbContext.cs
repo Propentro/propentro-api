@@ -38,10 +38,10 @@ public sealed class AppDbContext(
     public DbSet<OrganizationUserRole> OrganizationUserRoles => Set<OrganizationUserRole>();
     public DbSet<Notification> Notifications => Set<Notification>();
 
-    protected override void OnModelCreating(ModelBuilder builder)
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        builder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
-        ApplyGlobalFilters(builder);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+        ApplyGlobalFilters(modelBuilder);
     }
 
     private void ApplyGlobalFilters(ModelBuilder builder)
@@ -64,7 +64,7 @@ public sealed class AppDbContext(
         }
     }
 
-    public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var now = dateTime.UtcNow;
         var userId = Guid.TryParse(currentUser.UserId, out var id) ? id : (Guid?)null;
@@ -99,12 +99,12 @@ public sealed class AppDbContext(
             .SelectMany(e => e.Entity.DomainEvents)
             .ToList();
 
-        var result = await base.SaveChangesAsync(ct);
+        var result = await base.SaveChangesAsync(cancellationToken);
 
         // Publish events after successful save
         foreach (var @event in domainEvents)
         {
-            await publisher.Publish(@event, ct);
+            await publisher.Publish(@event, cancellationToken);
         }
 
         // Clear events from all aggregates

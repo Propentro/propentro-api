@@ -11,15 +11,15 @@ public sealed class QueryCachingBehavior<TRequest, TResponse>(
     public async Task<Result<TResponse>> Handle(
         TRequest request,
         RequestHandlerDelegate<Result<TResponse>> next,
-        CancellationToken ct)
+        CancellationToken cancellationToken)
     {
-        var cached = await cache.GetAsync<TResponse>(request.CacheKey, ct);
+        var cached = await cache.GetAsync<TResponse>(request.CacheKey, cancellationToken);
         if (cached is not null)
         {
             return cached;
         }
 
-        var result = await next();
+        var result = await next(cancellationToken);
 
         if (result.IsSuccess && result.Value is not null)
         {
@@ -27,7 +27,7 @@ public sealed class QueryCachingBehavior<TRequest, TResponse>(
                 request.CacheKey,
                 result.Value,
                 request.Expiration ?? TimeSpan.FromMinutes(5),
-                ct);
+                cancellationToken);
         }
 
         return result;

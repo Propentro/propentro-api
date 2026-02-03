@@ -6,15 +6,14 @@ using Propentro.Domain.Entities;
 namespace Propentro.Application.Parties.Commands.CreateParty;
 
 public sealed class CreatePartyHandler(
-    IAppDbContext db,
-    ICurrentUser currentUser) : ICommandHandler<CreatePartyCommand, string>
+    IAppDbContext db) : ICommandHandler<CreatePartyCommand, string>
 {
-    public async Task<Result<string>> Handle(CreatePartyCommand request, CancellationToken ct)
+    public async Task<Result<string>> Handle(CreatePartyCommand request, CancellationToken cancellationToken)
     {
         if (!string.IsNullOrEmpty(request.Email))
         {
             var emailExists = await db.Parties
-                .AnyAsync(p => p.Email == request.Email, ct);
+                .AnyAsync(p => p.Email == request.Email, cancellationToken);
 
             if (emailExists)
             {
@@ -38,7 +37,7 @@ public sealed class CreatePartyHandler(
         };
 
         db.Parties.Add(party);
-        await db.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(cancellationToken);
 
         return party.PublicId;
     }

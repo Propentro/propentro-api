@@ -12,8 +12,9 @@ public sealed class BlobStorageService(IConfiguration configuration) : IBlobStor
 {
     private readonly string _bucketName = configuration["BlobStorage:BucketName"] ?? "propentro";
     private readonly string _accountId = configuration["BlobStorage:AccountId"] ?? "";
-    private readonly string _accessKeyId = configuration["BlobStorage:AccessKeyId"] ?? "";
-    private readonly string _secretAccessKey = configuration["BlobStorage:SecretAccessKey"] ?? "";
+    // Note: Access credentials would be configured via IConfiguration in production
+    // private readonly string _accessKeyId = configuration["BlobStorage:AccessKeyId"] ?? "";
+    // private readonly string _secretAccessKey = configuration["BlobStorage:SecretAccessKey"] ?? "";
 
     public async Task<string> UploadAsync(
         Stream content,
