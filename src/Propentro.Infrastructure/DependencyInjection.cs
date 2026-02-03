@@ -31,6 +31,7 @@ public static class DependencyInjection
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddSingleton<ICacheService, MemoryCacheService>();
+        services.AddSingleton<IBlobStorageService, BlobStorageService>();
 
         // Memory cache
         services.AddMemoryCache();

@@ -8,6 +8,9 @@ public static class EndpointExtensions
         app.MapUnitEndpoints();
         app.MapLeaseEndpoints();
         app.MapPartyEndpoints();
+        app.MapAddressEndpoints();
+        app.MapDocumentEndpoints();
+        app.MapOrganizationEndpoints();
 
         return app;
     }
