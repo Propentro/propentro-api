@@ -7,7 +7,6 @@ public enum UnitStatus
 {
     Available,
     Occupied,
-    Reserved,
     Maintenance,
     Unavailable
 }
