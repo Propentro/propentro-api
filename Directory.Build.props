@@ -15,5 +15,6 @@
 
   <ItemGroup>
     <Using Include="System.Diagnostics" />
+    <Using Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 </Project>

@@ -2,12 +2,11 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace Propentro.Api.Middleware;
 
-public sealed class GlobalExceptionHandler(
-    ILogger<GlobalExceptionHandler> logger,
-    IWebHostEnvironment env) : IExceptionHandler
+public sealed class GlobalExceptionHandler(IWebHostEnvironment env) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
         HttpContext context,
@@ -124,10 +123,17 @@ public sealed class GlobalExceptionHandler(
         return (500, problem);
     }
 
-    private void LogException(Exception ex, int statusCode, string traceId)
+    private static void LogException(Exception ex, int statusCode, string traceId)
     {
-        var level = statusCode >= 500 ? LogLevel.Error : LogLevel.Warning;
-        logger.Log(level, ex, "[{TraceId}] HTTP {StatusCode} - {ExceptionType}: {Message}",
-            traceId, statusCode, ex.GetType().Name, ex.Message);
+        if (statusCode >= 500)
+        {
+            Log.Error(ex, "[{TraceId}] HTTP {StatusCode} - {ExceptionType}: {Message}",
+                traceId, statusCode, ex.GetType().Name, ex.Message);
+        }
+        else
+        {
+            Log.Warning(ex, "[{TraceId}] HTTP {StatusCode} - {ExceptionType}: {Message}",
+                traceId, statusCode, ex.GetType().Name, ex.Message);
+        }
     }
 }
