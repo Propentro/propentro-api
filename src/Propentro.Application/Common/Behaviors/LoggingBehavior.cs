@@ -1,12 +1,11 @@
 using System.Diagnostics;
 using MediatR;
-using Microsoft.Extensions.Logging;
 using Propentro.Application.Common.Interfaces;
+using Serilog;
 
 namespace Propentro.Application.Common.Behaviors;
 
 public sealed class LoggingBehavior<TRequest, TResponse>(
-    ILogger<LoggingBehavior<TRequest, TResponse>> logger,
     ICurrentUser currentUser) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
@@ -17,7 +16,7 @@ public sealed class LoggingBehavior<TRequest, TResponse>(
     {
         var requestName = typeof(TRequest).Name;
 
-        logger.LogInformation(
+        Log.Information(
             "[START] {RequestName} | User: {UserId} | Org: {OrgId}",
             requestName, currentUser.UserId, currentUser.OrganizationId);
 
@@ -25,7 +24,7 @@ public sealed class LoggingBehavior<TRequest, TResponse>(
         var response = await next();
         stopwatch.Stop();
 
-        logger.LogInformation(
+        Log.Information(
             "[END] {RequestName} | Duration: {Duration}ms",
             requestName, stopwatch.ElapsedMilliseconds);
 

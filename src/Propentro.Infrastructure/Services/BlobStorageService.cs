@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Propentro.Application.Common.Interfaces;
+using Serilog;
 
 namespace Propentro.Infrastructure.Services;
 
@@ -8,9 +8,7 @@ namespace Propentro.Infrastructure.Services;
 /// Blob storage service for Cloudflare R2 (S3-compatible API).
 /// Configure R2 credentials in appsettings.json under "BlobStorage" section.
 /// </summary>
-public sealed class BlobStorageService(
-    IConfiguration configuration,
-    ILogger<BlobStorageService> logger) : IBlobStorageService
+public sealed class BlobStorageService(IConfiguration configuration) : IBlobStorageService
 {
     private readonly string _bucketName = configuration["BlobStorage:BucketName"] ?? "propentro";
     private readonly string _accountId = configuration["BlobStorage:AccountId"] ?? "";
@@ -25,7 +23,7 @@ public sealed class BlobStorageService(
     {
         var blobName = $"{Guid.NewGuid():N}/{fileName}";
 
-        logger.LogInformation(
+        Log.Information(
             "Uploading blob {BlobName} to bucket {BucketName}",
             blobName,
             _bucketName);
@@ -41,7 +39,7 @@ public sealed class BlobStorageService(
         string blobName,
         CancellationToken ct = default)
     {
-        logger.LogInformation(
+        Log.Information(
             "Downloading blob {BlobName} from bucket {BucketName}",
             blobName,
             _bucketName);
@@ -56,7 +54,7 @@ public sealed class BlobStorageService(
         string blobName,
         CancellationToken ct = default)
     {
-        logger.LogInformation(
+        Log.Information(
             "Deleting blob {BlobName} from bucket {BucketName}",
             blobName,
             _bucketName);
@@ -72,7 +70,7 @@ public sealed class BlobStorageService(
         TimeSpan expiry,
         CancellationToken ct = default)
     {
-        logger.LogInformation(
+        Log.Information(
             "Generating presigned URL for blob {BlobName} with expiry {Expiry}",
             blobName,
             expiry);

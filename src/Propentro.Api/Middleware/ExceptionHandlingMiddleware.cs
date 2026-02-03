@@ -1,11 +1,10 @@
 using System.Text.Json;
 using Propentro.Application.Common.Models;
+using Serilog;
 
 namespace Propentro.Api.Middleware;
 
-public sealed class ExceptionHandlingMiddleware(
-    RequestDelegate next,
-    ILogger<ExceptionHandlingMiddleware> logger)
+public sealed class ExceptionHandlingMiddleware(RequestDelegate next)
 {
     public async Task InvokeAsync(HttpContext context)
     {
@@ -15,7 +14,7 @@ public sealed class ExceptionHandlingMiddleware(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unhandled exception occurred: {Message}", ex.Message);
+            Log.Error(ex, "Unhandled exception occurred: {Message}", ex.Message);
             await HandleExceptionAsync(context, ex);
         }
     }
