@@ -33,6 +33,7 @@ try
     builder.Services.AddInfrastructureServices(builder.Configuration);
 
     // API services
+    builder.Services.AddHttpContextAccessor();
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
     builder.Services.AddProblemDetails();
     builder.Services.AddOpenApi();
