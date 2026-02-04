@@ -12,23 +12,12 @@ namespace Propentro.Infrastructure.Persistence;
 /// Entity Framework Core database context with automatic organization scoping,
 /// soft delete filtering, audit field management, and domain event publishing.
 /// </summary>
-public sealed class AppDbContext : DbContext, IAppDbContext
+public sealed class AppDbContext(
+    DbContextOptions<AppDbContext> options,
+    ICurrentUser currentUser,
+    IDateTimeProvider dateTime,
+    IPublisher publisher) : DbContext(options), IAppDbContext
 {
-    private readonly ICurrentUser _currentUser;
-    private readonly IDateTimeProvider _dateTime;
-    private readonly IPublisher _publisher;
-
-    public AppDbContext(
-        DbContextOptions<AppDbContext> options,
-        ICurrentUser currentUser,
-        IDateTimeProvider dateTime,
-        IPublisher publisher) : base(options)
-    {
-        _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
-        _dateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
-        _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
-    }
-
     // Organization & User Management
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<User> Users => Set<User>();
@@ -79,36 +68,24 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     {
         foreach (var entityType in builder.Model.GetEntityTypes())
         {
-            // Organization scope filter
             if (typeof(IOrganizationScoped).IsAssignableFrom(entityType.ClrType))
-            {
-                builder.Entity(entityType.ClrType)
-                    .AddOrganizationFilter(_currentUser);
-            }
+                builder.Entity(entityType.ClrType).AddOrganizationFilter(currentUser);
 
-            // Soft delete filter
             if (typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType))
-            {
-                builder.Entity(entityType.ClrType)
-                    .AddSoftDeleteFilter();
-            }
+                builder.Entity(entityType.ClrType).AddSoftDeleteFilter();
         }
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        var now = _dateTime.UtcNow;
-        var userId = _currentUser.UserId;
+        var now = dateTime.UtcNow;
+        var userId = currentUser.UserId;
 
         foreach (var entry in ChangeTracker.Entries())
         {
-            // Auto-set OrganizationId for new entities
             if (entry is { Entity: IOrganizationScoped scoped, State: EntityState.Added })
-            {
-                scoped.OrganizationId = _currentUser.OrganizationId;
-            }
+                scoped.OrganizationId = currentUser.OrganizationId;
 
-            // Auto-set audit fields
             if (entry.Entity is IAuditableEntity auditable)
             {
                 if (entry.State == EntityState.Added)
@@ -125,24 +102,17 @@ public sealed class AppDbContext : DbContext, IAppDbContext
             }
         }
 
-        // Collect domain events before save
         var domainEvents = ChangeTracker.Entries<AggregateRoot>()
             .SelectMany(e => e.Entity.DomainEvents)
             .ToList();
 
         var result = await base.SaveChangesAsync(cancellationToken);
 
-        // Publish events after successful save
         foreach (var @event in domainEvents)
-        {
-            await _publisher.Publish(@event, cancellationToken);
-        }
+            await publisher.Publish(@event, cancellationToken);
 
-        // Clear events from all aggregates
         foreach (var entry in ChangeTracker.Entries<AggregateRoot>())
-        {
             entry.Entity.ClearDomainEvents();
-        }
 
         return result;
     }

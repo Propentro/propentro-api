@@ -9,25 +9,20 @@ namespace Propentro.Infrastructure.Caching;
 /// In-memory cache implementation using Microsoft.Extensions.Caching.Memory.
 /// Thread-safe and suitable for single-instance deployments.
 /// </summary>
-public sealed class MemoryCacheService : ICacheService, IDisposable
+public sealed class MemoryCacheService(
+    IMemoryCache cache,
+    IOptions<CacheOptions> options) : ICacheService, IDisposable
 {
-    private readonly IMemoryCache _cache;
-    private readonly CacheOptions _options;
+    private readonly CacheOptions _options = options.Value;
     private readonly ConcurrentDictionary<string, byte> _keys = new();
     private bool _disposed;
-
-    public MemoryCacheService(IMemoryCache cache, IOptions<CacheOptions> options)
-    {
-        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
-        _options = options?.Value ?? new CacheOptions();
-    }
 
     public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
         var prefixedKey = GetPrefixedKey(key);
-        var value = _cache.TryGetValue(prefixedKey, out T? result) ? result : default;
+        var value = cache.TryGetValue(prefixedKey, out T? result) ? result : default;
 
         return Task.FromResult(value);
     }
@@ -40,10 +35,7 @@ public sealed class MemoryCacheService : ICacheService, IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
-        if (value is null)
-        {
-            return Task.CompletedTask;
-        }
+        if (value is null) return Task.CompletedTask;
 
         var prefixedKey = GetPrefixedKey(key);
         var actualExpiration = expiration ?? _options.DefaultExpiration;
@@ -53,7 +45,7 @@ public sealed class MemoryCacheService : ICacheService, IDisposable
             .SetSize(1)
             .RegisterPostEvictionCallback(OnCacheEntryEvicted);
 
-        _cache.Set(prefixedKey, value, cacheEntryOptions);
+        cache.Set(prefixedKey, value, cacheEntryOptions);
         _keys.TryAdd(prefixedKey, 0);
 
         return Task.CompletedTask;
@@ -64,7 +56,7 @@ public sealed class MemoryCacheService : ICacheService, IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
         var prefixedKey = GetPrefixedKey(key);
-        _cache.Remove(prefixedKey);
+        cache.Remove(prefixedKey);
         _keys.TryRemove(prefixedKey, out _);
 
         return Task.CompletedTask;
@@ -77,13 +69,11 @@ public sealed class MemoryCacheService : ICacheService, IDisposable
         var prefixedPattern = GetPrefixedKey(pattern);
         var regex = WildcardToRegex(prefixedPattern);
 
-        var keysToRemove = _keys.Keys
-            .Where(k => regex.IsMatch(k))
-            .ToList();
+        var keysToRemove = _keys.Keys.Where(k => regex.IsMatch(k)).ToList();
 
         foreach (var key in keysToRemove)
         {
-            _cache.Remove(key);
+            cache.Remove(key);
             _keys.TryRemove(key, out _);
         }
 
@@ -100,10 +90,7 @@ public sealed class MemoryCacheService : ICacheService, IDisposable
         ArgumentNullException.ThrowIfNull(factory);
 
         var existing = await GetAsync<T>(key, cancellationToken);
-        if (existing is not null)
-        {
-            return existing;
-        }
+        if (existing is not null) return existing;
 
         var value = await factory(cancellationToken);
         if (value is not null)
@@ -119,24 +106,16 @@ public sealed class MemoryCacheService : ICacheService, IDisposable
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
         var prefixedKey = GetPrefixedKey(key);
-        var exists = _cache.TryGetValue(prefixedKey, out _);
-
-        return Task.FromResult(exists);
+        return Task.FromResult(cache.TryGetValue(prefixedKey, out _));
     }
 
-    private string GetPrefixedKey(string key)
-    {
-        return string.IsNullOrEmpty(_options.KeyPrefix)
-            ? key
-            : $"{_options.KeyPrefix}{key}";
-    }
+    private string GetPrefixedKey(string key) =>
+        string.IsNullOrEmpty(_options.KeyPrefix) ? key : $"{_options.KeyPrefix}{key}";
 
     private void OnCacheEntryEvicted(object key, object? value, EvictionReason reason, object? state)
     {
         if (key is string keyString)
-        {
             _keys.TryRemove(keyString, out _);
-        }
     }
 
     private static Regex WildcardToRegex(string pattern)
@@ -150,11 +129,7 @@ public sealed class MemoryCacheService : ICacheService, IDisposable
 
     public void Dispose()
     {
-        if (_disposed)
-        {
-            return;
-        }
-
+        if (_disposed) return;
         _keys.Clear();
         _disposed = true;
     }
