@@ -8,31 +8,18 @@ namespace Propentro.Infrastructure.Caching;
 /// Redis-based distributed cache implementation using StackExchange.Redis.
 /// Suitable for multi-instance deployments requiring shared cache state.
 /// </summary>
-/// <remarks>
-/// To use this implementation:
-/// 1. Install StackExchange.Redis NuGet package
-/// 2. Configure Redis connection string in appsettings.json
-/// 3. Set Caching:Provider to "Redis" in configuration
-/// </remarks>
-public sealed class RedisCacheService : ICacheService, IAsyncDisposable
+public sealed class RedisCacheService(
+    IConnectionMultiplexer redis,
+    IOptions<CacheOptions> options) : ICacheService, IAsyncDisposable
 {
-    private readonly CacheOptions _options;
-    private readonly IConnectionMultiplexer _redis;
-    private readonly IDatabase _database;
-    private readonly JsonSerializerOptions _jsonOptions;
-    private bool _disposed;
-
-    public RedisCacheService(IConnectionMultiplexer redis, IOptions<CacheOptions> options)
+    private readonly CacheOptions _options = options.Value;
+    private readonly IDatabase _database = redis.GetDatabase();
+    private readonly JsonSerializerOptions _jsonOptions = new()
     {
-        _redis = redis ?? throw new ArgumentNullException(nameof(redis));
-        _options = options?.Value ?? new CacheOptions();
-        _database = _redis.GetDatabase();
-        _jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false
-        };
-    }
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = false
+    };
+    private bool _disposed;
 
     public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
@@ -41,12 +28,7 @@ public sealed class RedisCacheService : ICacheService, IAsyncDisposable
         var prefixedKey = GetPrefixedKey(key);
         var value = await _database.StringGetAsync(prefixedKey);
 
-        if (!value.HasValue)
-        {
-            return default;
-        }
-
-        return Deserialize<T>(value!);
+        return value.HasValue ? Deserialize<T>(value!) : default;
     }
 
     public async Task SetAsync<T>(
@@ -57,10 +39,7 @@ public sealed class RedisCacheService : ICacheService, IAsyncDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
-        if (value is null)
-        {
-            return;
-        }
+        if (value is null) return;
 
         var prefixedKey = GetPrefixedKey(key);
         var actualExpiration = expiration ?? _options.DefaultExpiration;
@@ -83,12 +62,12 @@ public sealed class RedisCacheService : ICacheService, IAsyncDisposable
 
         var prefixedPattern = GetPrefixedKey(pattern);
 
-
-        // TODO: Use SCAN to find matching keys (more efficient than KEYS in production)
-        var endpoints = _redis.GetEndPoints();
+        // server.Keys() uses SCAN internally in StackExchange.Redis (lazy enumeration)
+        // This is production-safe and efficient for pattern-based key removal
+        var endpoints = redis.GetEndPoints();
         foreach (var endpoint in endpoints)
         {
-            var server = _redis.GetServer(endpoint);
+            var server = redis.GetServer(endpoint);
             var keys = server.Keys(pattern: prefixedPattern).ToArray();
 
             if (keys.Length > 0)
@@ -108,12 +87,10 @@ public sealed class RedisCacheService : ICacheService, IAsyncDisposable
         ArgumentNullException.ThrowIfNull(factory);
 
         var existing = await GetAsync<T>(key, cancellationToken);
-        if (existing is not null)
-        {
-            return existing;
-        }
+        if (existing is not null) return existing;
 
-        // TODO: Note: For production, consider using RedLock for distributed locking
+        // Note: For high-concurrency scenarios, consider implementing distributed locking
+        // using RedLock (https://redis.io/docs/manual/patterns/distributed-locks/)
         // to prevent cache stampede/thundering herd problem
         var value = await factory(cancellationToken);
         if (value is not null)
@@ -132,36 +109,20 @@ public sealed class RedisCacheService : ICacheService, IAsyncDisposable
         return await _database.KeyExistsAsync(prefixedKey);
     }
 
-    private string GetPrefixedKey(string key)
-    {
-        return string.IsNullOrEmpty(_options.KeyPrefix)
-            ? key
-            : $"{_options.KeyPrefix}{key}";
-    }
+    private string GetPrefixedKey(string key) =>
+        string.IsNullOrEmpty(_options.KeyPrefix) ? key : $"{_options.KeyPrefix}{key}";
 
-    private string Serialize<T>(T value)
-    {
-        return JsonSerializer.Serialize(value, _jsonOptions);
-    }
+    private string Serialize<T>(T value) =>
+        JsonSerializer.Serialize(value, _jsonOptions);
 
-    private T? Deserialize<T>(string value)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return default;
-        }
-
-        return JsonSerializer.Deserialize<T>(value, _jsonOptions);
-    }
+    private T? Deserialize<T>(string value) =>
+        string.IsNullOrEmpty(value) ? default : JsonSerializer.Deserialize<T>(value, _jsonOptions);
 
     public async ValueTask DisposeAsync()
     {
-        if (_disposed)
-        {
-            return;
-        }
+        if (_disposed) return;
 
-        await _redis.CloseAsync();
+        await redis.CloseAsync();
         _disposed = true;
     }
 }

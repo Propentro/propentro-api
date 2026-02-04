@@ -57,7 +57,7 @@ public static class DependencyInjection
             options.ExpirationScanFrequency = cacheOptions.MemoryCacheExpirationScanFrequency;
         });
 
-        if (cacheOptions.Provider.Equals("Redis", StringComparison.OrdinalIgnoreCase)
+        if (cacheOptions.Provider == CacheProvider.Redis
             && !string.IsNullOrEmpty(cacheOptions.RedisConnectionString))
         {
             // TODO: Uncomment when StackExchange.Redis package is added

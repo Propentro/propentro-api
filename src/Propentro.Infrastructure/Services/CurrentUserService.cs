@@ -41,24 +41,15 @@ public sealed class CurrentUserService(
         var externalUserId = ExternalUserId;
         var externalOrgId = User?.FindFirstValue("org_id");
 
-        // Resolve IDs in parallel for better performance
-        var userIdTask = !string.IsNullOrEmpty(externalUserId)
-            ? idResolver.ResolveUserIdAsync(externalUserId, cancellationToken)
-            : Task.FromResult(Guid.Empty);
+        // Single call resolves all IDs efficiently with one connection
+        var identity = await idResolver.ResolveIdentityAsync(
+            externalUserId,
+            externalOrgId,
+            cancellationToken);
 
-        var publicUserIdTask = !string.IsNullOrEmpty(externalUserId)
-            ? idResolver.ResolvePublicUserIdAsync(externalUserId, cancellationToken)
-            : Task.FromResult(string.Empty);
-
-        var orgIdTask = !string.IsNullOrEmpty(externalOrgId)
-            ? idResolver.ResolveOrganizationIdAsync(externalOrgId, cancellationToken)
-            : Task.FromResult(Guid.Empty);
-
-        await Task.WhenAll(userIdTask, publicUserIdTask, orgIdTask);
-
-        _userId = await userIdTask;
-        _publicUserId = await publicUserIdTask;
-        _organizationId = await orgIdTask;
+        _userId = identity.UserId;
+        _publicUserId = identity.PublicUserId;
+        _organizationId = identity.OrganizationId;
         _isInitialized = true;
     }
 }
