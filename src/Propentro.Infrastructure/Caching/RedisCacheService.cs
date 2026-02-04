@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Microsoft.Extensions.Options;
-using Propentro.Application.Common.Interfaces.Caching;
 using StackExchange.Redis;
 
 namespace Propentro.Infrastructure.Caching;
@@ -84,7 +83,8 @@ public sealed class RedisCacheService : ICacheService, IAsyncDisposable
 
         var prefixedPattern = GetPrefixedKey(pattern);
 
-        // Use SCAN to find matching keys (more efficient than KEYS in production)
+
+        // TODO: Use SCAN to find matching keys (more efficient than KEYS in production)
         var endpoints = _redis.GetEndPoints();
         foreach (var endpoint in endpoints)
         {
@@ -113,7 +113,7 @@ public sealed class RedisCacheService : ICacheService, IAsyncDisposable
             return existing;
         }
 
-        // Note: For production, consider using RedLock for distributed locking
+        // TODO: Note: For production, consider using RedLock for distributed locking
         // to prevent cache stampede/thundering herd problem
         var value = await factory(cancellationToken);
         if (value is not null)

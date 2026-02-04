@@ -8,15 +8,8 @@ namespace Propentro.Api.Middleware;
 /// 1. External auth provider IDs are resolved to internal database IDs (async)
 /// 2. Every log entry is tagged with tenant context for tracing
 /// </summary>
-public sealed class UserContextMiddleware
+public sealed class UserContextMiddleware(RequestDelegate next)
 {
-    private readonly RequestDelegate _next;
-
-    public UserContextMiddleware(RequestDelegate next)
-    {
-        _next = next;
-    }
-
     public async Task InvokeAsync(HttpContext context, ICurrentUser currentUser)
     {
         // Initialize user context (resolves external IDs to internal IDs)
@@ -36,7 +29,7 @@ public sealed class UserContextMiddleware
         using (LogContext.PushProperty("OrganizationId", organizationId))
         using (LogContext.PushProperty("ExternalUserId", externalUserId))
         {
-            await _next(context);
+            await next(context);
         }
     }
 }
