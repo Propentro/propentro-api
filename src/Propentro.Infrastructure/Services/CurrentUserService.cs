@@ -4,20 +4,65 @@ using Propentro.Application.Common.Interfaces;
 
 namespace Propentro.Infrastructure.Services;
 
-public sealed class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICurrentUser
+public sealed class CurrentUserService(IHttpContextAccessor httpContextAccessor, IClerkIdResolver clerkIdResolver) : ICurrentUser
 {
-    public string? UserId => httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    private Guid? _cachedUserId;
+    private Guid? _cachedOrgId;
+
+    private ClaimsPrincipal? User => httpContextAccessor.HttpContext?.User;
+
+    public string? ExternalUserId => User?.FindFirstValue(ClaimTypes.NameIdentifier)
+                                     ?? User?.FindFirstValue("sub");
+
+    public string? Email => User?.FindFirstValue("email");
+
+    public bool IsAuthenticated => User?.Identity?.IsAuthenticated ?? false;
 
     public Guid OrganizationId
     {
         get
         {
-            var orgClaim = httpContextAccessor.HttpContext?.User.FindFirstValue("org_id");
-            return Guid.TryParse(orgClaim, out var orgId) ? orgId : Guid.Empty;
+            if (_cachedOrgId.HasValue)
+            {
+                return _cachedOrgId.Value;
+            }
+
+            string? clerkOrgId = User?.FindFirstValue("org_id");
+
+            if (string.IsNullOrEmpty(clerkOrgId))
+            {
+                return Guid.Empty;
+            }
+
+            _cachedOrgId = clerkIdResolver
+                .ResolveOrganizationIdAsync(clerkOrgId)
+                .GetAwaiter().GetResult();
+
+            return _cachedOrgId.Value;
         }
     }
 
-    public string? Email => httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.Email);
+    public Guid UserId
+    {
+        get
+        {
+            if (_cachedUserId.HasValue)
+            {
+                return _cachedUserId.Value;
+            }
 
-    public bool IsAuthenticated => httpContextAccessor.HttpContext?.User.Identity?.IsAuthenticated ?? false;
+            string? clerkUserId = ExternalUserId;
+
+            if (string.IsNullOrEmpty(clerkUserId))
+            {
+                return Guid.Empty;
+            }
+
+            _cachedUserId = clerkIdResolver
+                .ResolveUserIdAsync(clerkUserId)
+                .GetAwaiter().GetResult();
+
+            return _cachedUserId.Value;
+        }
+    }
 }

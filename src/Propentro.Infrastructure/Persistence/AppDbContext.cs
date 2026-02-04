@@ -67,7 +67,7 @@ public sealed class AppDbContext(
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var now = dateTime.UtcNow;
-        var userId = Guid.TryParse(currentUser.UserId, out var id) ? id : (Guid?)null;
+        var userId = currentUser.UserId;
 
         foreach (var entry in ChangeTracker.Entries())
         {

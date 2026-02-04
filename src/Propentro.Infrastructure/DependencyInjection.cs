@@ -28,6 +28,7 @@ public static class DependencyInjection
 
         // Services
         services.AddScoped<ICurrentUser, CurrentUserService>();
+        services.AddScoped<IClerkIdResolver, ClerkIdResolver>();
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddSingleton<ICacheService, MemoryCacheService>();
@@ -40,13 +41,18 @@ public static class DependencyInjection
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
         // Authentication (Clerk JWT)
+        var clerkAuthority = configuration["Clerk:Authority"]
+                             ?? throw new InvalidOperationException("Clerk:Authority not configured");
+
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
-                options.Authority = configuration["Clerk:Authority"];
+                options.Authority = clerkAuthority;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateAudience = true,
+                    ValidateIssuer = true,
+                    ValidIssuer = clerkAuthority,
                     NameClaimType = ClaimTypes.NameIdentifier
                 };
             });
