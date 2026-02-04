@@ -19,6 +19,12 @@ public interface ICurrentUser
     string PublicOrganizationId { get; }
 
     /// <summary>
+    /// External Organization ID from the auth provider (e.g., "org_xxx" from Clerk JWT).
+    /// Returns null if not authenticated or no organization context.
+    /// </summary>
+    string? ExternalOrganizationId { get; }
+
+    /// <summary>
     /// Internal User ID from the database (Guid).
     /// Returns Guid.Empty if not authenticated or user not resolved.
     /// </summary>

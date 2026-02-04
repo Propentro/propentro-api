@@ -22,6 +22,8 @@ public sealed class CurrentUserService(
     public string? ExternalUserId => User?.FindFirstValue(ClaimTypes.NameIdentifier)
                                      ?? User?.FindFirstValue("sub");
 
+    public string? ExternalOrganizationId => User?.FindFirstValue("org_id");
+
     public Guid UserId => _userId;
     public string PublicUserId => _publicUserId;
     public string? Email => User?.FindFirstValue("email");
@@ -40,13 +42,10 @@ public sealed class CurrentUserService(
             return;
         }
 
-        var externalUserId = ExternalUserId;
-        var externalOrgId = User?.FindFirstValue("org_id");
-
         // Single call resolves all IDs efficiently with one connection
         var identity = await idResolver.ResolveIdentityAsync(
-            externalUserId,
-            externalOrgId,
+            ExternalUserId,
+            ExternalOrganizationId,
             cancellationToken);
 
         _userId = identity.UserId;
