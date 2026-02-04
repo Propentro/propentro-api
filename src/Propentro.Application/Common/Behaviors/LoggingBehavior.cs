@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using MediatR;
 using Serilog;
 

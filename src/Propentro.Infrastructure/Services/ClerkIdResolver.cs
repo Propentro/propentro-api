@@ -1,6 +1,5 @@
 using Dapper;
 using Microsoft.Extensions.Caching.Memory;
-using Propentro.Application.Common.Interfaces.Identity;
 
 namespace Propentro.Infrastructure.Services;
 

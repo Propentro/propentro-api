@@ -1,4 +1,3 @@
-using Propentro.Domain.Common;
 using Propentro.Domain.Common.Interfaces;
 
 namespace Propentro.Domain.Entities;
