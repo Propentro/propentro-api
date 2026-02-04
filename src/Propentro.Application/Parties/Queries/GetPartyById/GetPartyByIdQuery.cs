@@ -1,4 +1,3 @@
-using Propentro.Application.Common.Interfaces;
 using Propentro.Contracts.Parties;
 
 namespace Propentro.Application.Parties.Queries.GetPartyById;

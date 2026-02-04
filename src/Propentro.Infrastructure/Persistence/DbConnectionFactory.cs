@@ -1,13 +1,16 @@
+using System.Data.Common;
 using Microsoft.Extensions.Configuration;
 using Npgsql;
-using Propentro.Application.Common.Interfaces;
 
 namespace Propentro.Infrastructure.Persistence;
 
+/// <summary>
+/// Creates PostgreSQL database connections for Dapper queries.
+/// </summary>
 public sealed class DbConnectionFactory(IConfiguration configuration) : IDbConnectionFactory
 {
     private readonly string _connectionString = configuration.GetConnectionString("Database")
         ?? throw new InvalidOperationException("Database connection string not configured");
 
-    public NpgsqlConnection CreateConnection() => new(_connectionString);
+    public DbConnection CreateConnection() => new NpgsqlConnection(_connectionString);
 }

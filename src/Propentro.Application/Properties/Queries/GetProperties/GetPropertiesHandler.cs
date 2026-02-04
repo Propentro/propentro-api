@@ -1,6 +1,4 @@
-using System.Data;
 using Dapper;
-using Propentro.Application.Common.Interfaces;
 using Propentro.Application.Common.Models;
 using Propentro.Contracts.Properties;
 

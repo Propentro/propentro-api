@@ -1,101 +1,141 @@
 using Dapper;
 using Microsoft.Extensions.Caching.Memory;
-using Propentro.Application.Common.Interfaces;
 
 namespace Propentro.Infrastructure.Services;
 
-public sealed class ClerkIdResolver(IDbConnectionFactory db, IMemoryCache cache) : IClerkIdResolver
+/// <summary>
+/// Resolves Clerk authentication provider IDs to internal database IDs.
+/// Uses IMemoryCache intentionally for identity resolution caching - this data
+/// should remain local to each instance and not be shared across distributed cache.
+/// </summary>
+public sealed class ClerkIdResolver(IDbConnectionFactory db, IMemoryCache cache) : IExternalIdResolver
 {
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(30);
 
-    public async Task<Guid> ResolveOrganizationIdAsync(string clerkOrgId, CancellationToken ct = default)
+    private const string OrgCachePrefix = "identity:org:";
+    private const string UserCachePrefix = "identity:user:";
+
+    public async Task<ResolvedIdentity> ResolveIdentityAsync(
+        string? externalUserId,
+        string? externalOrgId,
+        CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(clerkOrgId))
+        // Check cache first for all values
+        var (cachedUserId, cachedPublicUserId, userCacheHit) = TryGetUserFromCache(externalUserId);
+        var (cachedOrgId, cachedPublicOrgId, orgCacheHit) = TryGetOrgFromCache(externalOrgId);
+
+        // If all values are cached, return immediately
+        if (userCacheHit && orgCacheHit)
         {
-            return Guid.Empty;
+            return new ResolvedIdentity(cachedUserId, cachedPublicUserId, cachedOrgId, cachedPublicOrgId);
         }
 
-        string cacheKey = $"clerk:org:{clerkOrgId}";
-
-        if (cache.TryGetValue<Guid>(cacheKey, out var cached))
-        {
-            return cached;
-        }
-
+        // Open single connection for all uncached queries
         await using var connection = db.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
 
-        var id = await connection.QueryFirstOrDefaultAsync<Guid?>(
-            "SELECT id FROM organizations WHERE external_id = @ClerkId AND auth_provider = @AuthProvider AND is_active = true",
-            new { ClerkId = clerkOrgId, AuthProvider = "clerk" });
+        // Run queries in parallel for uncached values
+        var userTask = userCacheHit
+            ? Task.FromResult((cachedUserId, cachedPublicUserId))
+            : ResolveUserAsync(connection, externalUserId);
 
-        if (!id.HasValue)
-        {
-            return Guid.Empty;
-        }
+        var orgTask = orgCacheHit
+            ? Task.FromResult((cachedOrgId, cachedPublicOrgId))
+            : ResolveOrgAsync(connection, externalOrgId);
 
-        cache.Set(cacheKey, id.Value, CacheDuration);
-        return id.Value;
+        await Task.WhenAll(userTask, orgTask);
 
+        var (userId, publicUserId) = await userTask;
+        var (orgId, publicOrgId) = await orgTask;
+
+        return new ResolvedIdentity(userId, publicUserId, orgId, publicOrgId);
     }
 
-    public async Task<Guid> ResolveUserIdAsync(string clerkUserId, CancellationToken ct = default)
+    private (Guid UserId, string PublicUserId, bool CacheHit) TryGetUserFromCache(string? externalUserId)
     {
-        if (string.IsNullOrEmpty(clerkUserId))
-        {
-            return Guid.Empty;
-        }
+        if (string.IsNullOrWhiteSpace(externalUserId))
+            return (Guid.Empty, string.Empty, true);
 
-        string cacheKey = $"clerk:user:{clerkUserId}";
+        var cacheKey = $"{UserCachePrefix}{externalUserId}";
 
-        if (cache.TryGetValue<Guid>(cacheKey, out var cached))
-        {
-            return cached;
-        }
+        if (cache.TryGetValue<(Guid, string)>(cacheKey, out var cached))
+            return (cached.Item1, cached.Item2, true);
 
-        using var connection = db.CreateConnection();
-
-        var id = await connection.QueryFirstOrDefaultAsync<Guid?>(
-            "SELECT id FROM users WHERE external_id = @ClerkId AND auth_provider = @AuthProvider AND is_active = true",
-            new { ClerkId = clerkUserId, AuthProvider = "clerk" });
-
-        if (!id.HasValue)
-        {
-            return Guid.Empty;
-        }
-
-        cache.Set(cacheKey, id.Value, CacheDuration);
-        return id.Value;
-
+        return (Guid.Empty, string.Empty, false);
     }
 
-    public Task<string> ResolvePublicUserIdAsync(string clerkUserId, CancellationToken cancellationToken = default)
+    private (Guid OrgId, string PublicOrgId, bool CacheHit) TryGetOrgFromCache(string? externalOrgId)
     {
-        if (string.IsNullOrEmpty(clerkUserId))
-        {
-            return string.Empty;
-        }
+        if (string.IsNullOrWhiteSpace(externalOrgId))
+            return (Guid.Empty, string.Empty, true);
 
-        string cacheKey = $"clerk:user:{clerkUserId}";
+        var cacheKey = $"{OrgCachePrefix}{externalOrgId}";
 
-        if (cache.TryGetValue<string>(cacheKey, out var cached))
-        {
-            return cached;
-        }
+        if (cache.TryGetValue<(Guid, string)>(cacheKey, out var cached))
+            return (cached.Item1, cached.Item2, true);
 
-        using var connection = db.CreateConnection();
-
-        var id = await connection.QueryFirstOrDefaultAsync<Guid?>(
-            "SELECT public_id FROM users WHERE external_id = @ClerkId AND auth_provider = @AuthProvider AND is_active = true",
-            new { ClerkId = clerkUserId, AuthProvider = "clerk" });
-
-        if (!id.HasValue)
-        {
-            return string.Empty;
-        }
-
-        cache.Set(cacheKey, id.Value, CacheDuration);
-        return id;
-
+        return (Guid.Empty, string.Empty, false);
     }
 
+    private async Task<(Guid UserId, string PublicUserId)> ResolveUserAsync(
+        System.Data.Common.DbConnection connection,
+        string? externalUserId)
+    {
+        if (string.IsNullOrWhiteSpace(externalUserId))
+            return (Guid.Empty, string.Empty);
+
+        const string sql = """
+            SELECT id, public_id
+            FROM users
+            WHERE external_id = @ExternalId
+              AND auth_provider = @AuthProvider
+              AND is_active = true
+            """;
+
+        var result = await connection.QueryFirstOrDefaultAsync<IdResult>(
+            sql, new { ExternalId = externalUserId, AuthProvider = "clerk" });
+
+        if (result is null)
+            return (Guid.Empty, string.Empty);
+
+        // Cache the combined result
+        var cacheKey = $"{UserCachePrefix}{externalUserId}";
+        cache.Set(cacheKey, (result.Id, result.PublicId), new MemoryCacheEntryOptions()
+            .SetAbsoluteExpiration(CacheDuration)
+            .SetSize(1));
+
+        return (result.Id, result.PublicId);
+    }
+
+    private async Task<(Guid OrgId, string PublicOrgId)> ResolveOrgAsync(
+        System.Data.Common.DbConnection connection,
+        string? externalOrgId)
+    {
+        if (string.IsNullOrWhiteSpace(externalOrgId))
+            return (Guid.Empty, string.Empty);
+
+        const string sql = """
+            SELECT id, public_id
+            FROM organizations
+            WHERE external_id = @ExternalId
+              AND auth_provider = @AuthProvider
+              AND is_active = true
+            """;
+
+        var result = await connection.QueryFirstOrDefaultAsync<IdResult>(
+            sql, new { ExternalId = externalOrgId, AuthProvider = "clerk" });
+
+        if (result is null)
+            return (Guid.Empty, string.Empty);
+
+        // Cache the combined result
+        var cacheKey = $"{OrgCachePrefix}{externalOrgId}";
+        cache.Set(cacheKey, (result.Id, result.PublicId), new MemoryCacheEntryOptions()
+            .SetAbsoluteExpiration(CacheDuration)
+            .SetSize(1));
+
+        return (result.Id, result.PublicId);
+    }
+
+    private sealed record IdResult(Guid Id, string PublicId);
 }

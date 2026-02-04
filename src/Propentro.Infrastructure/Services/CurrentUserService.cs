@@ -1,93 +1,57 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
-using Propentro.Application.Common.Interfaces;
 
 namespace Propentro.Infrastructure.Services;
 
-public sealed class CurrentUserService(IHttpContextAccessor httpContextAccessor, IClerkIdResolver clerkIdResolver) : ICurrentUser
+/// <summary>
+/// Provides access to the current authenticated user's context.
+/// Implements ICurrentUserInitializer for async initialization via middleware.
+/// </summary>
+public sealed class CurrentUserService(
+    IHttpContextAccessor httpContextAccessor,
+    IExternalIdResolver idResolver) : ICurrentUser, ICurrentUserInitializer
 {
-    private Guid?   _cachedUserId;
-    private string? _cachedPublicUserId;
-    private Guid?   _cachedOrgId;
+    private Guid _userId = Guid.Empty;
+    private Guid _organizationId = Guid.Empty;
+    private string _publicUserId = string.Empty;
+    private string _publicOrganizationId = string.Empty;
+    private bool _isInitialized;
 
     private ClaimsPrincipal? User => httpContextAccessor.HttpContext?.User;
 
     public string? ExternalUserId => User?.FindFirstValue(ClaimTypes.NameIdentifier)
                                      ?? User?.FindFirstValue("sub");
 
-    public Guid UserId
-    {
-        get
-        {
-            if (_cachedUserId.HasValue)
-            {
-                return _cachedUserId.Value;
-            }
+    public string? ExternalOrganizationId => User?.FindFirstValue("org_id");
 
-            string? clerkUserId = ExternalUserId;
-
-            if (string.IsNullOrEmpty(clerkUserId))
-            {
-                return Guid.Empty;
-            }
-
-            _cachedUserId = clerkIdResolver
-                .ResolveUserIdAsync(clerkUserId)
-                .GetAwaiter().GetResult();
-
-            return _cachedUserId.Value;
-        }
-    }
-
-    public string PublicUserId
-    {
-        get
-        {
-            if (string.IsNullOrEmpty(_cachedPublicUserId))
-            {
-                return _cachedPublicUserId;
-            }
-
-            string? clerkUserId = ExternalUserId;
-
-            if (string.IsNullOrEmpty(clerkUserId))
-            {
-                return string.Empty;
-            }
-
-            _cachedPublicUserId = clerkIdResolver
-                .ResolvePublicUserIdAsync(clerkUserId)
-                .GetAwaiter().GetResult();
-
-            return _cachedPublicUserId;
-        }
-    }
-
-    public string? Email => User.FindFirstValue("email");
-
+    public Guid UserId => _userId;
+    public string PublicUserId => _publicUserId;
+    public string? Email => User?.FindFirstValue("email");
     public bool IsAuthenticated => User?.Identity?.IsAuthenticated ?? false;
+    public Guid OrganizationId => _organizationId;
+    public string PublicOrganizationId => _publicOrganizationId;
+    public bool IsInitialized => _isInitialized;
 
-    public Guid OrganizationId
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        get
+        if (_isInitialized) return;
+
+        if (!IsAuthenticated)
         {
-            if (_cachedOrgId.HasValue)
-            {
-                return _cachedOrgId.Value;
-            }
-
-            string? clerkOrgId = User?.FindFirstValue("org_id");
-
-            if (string.IsNullOrEmpty(clerkOrgId))
-            {
-                return Guid.Empty;
-            }
-
-            _cachedOrgId = clerkIdResolver
-                .ResolveOrganizationIdAsync(clerkOrgId)
-                .GetAwaiter().GetResult();
-
-            return _cachedOrgId.Value;
+            _isInitialized = true;
+            return;
         }
+
+        // Single call resolves all IDs efficiently with one connection
+        var identity = await idResolver.ResolveIdentityAsync(
+            ExternalUserId,
+            ExternalOrganizationId,
+            cancellationToken);
+
+        _userId = identity.UserId;
+        _publicUserId = identity.PublicUserId;
+        _organizationId = identity.OrganizationId;
+        _publicOrganizationId = identity.PublicOrganizationId;
+        _isInitialized = true;
     }
 }

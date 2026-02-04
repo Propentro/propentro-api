@@ -1,4 +1,3 @@
-using Propentro.Application.Common.Interfaces;
 
 namespace Propentro.Application.Units.Commands.UpdateUnit;
 
