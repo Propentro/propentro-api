@@ -3,9 +3,9 @@ namespace Propentro.Application.Common.Interfaces;
 public interface ICurrentUser
 {
     /// <summary>
-    /// Clerk User ID (external): "user_xxx"
+    /// Internal Organization ID (DB): Guid
     /// </summary>
-    string? ExternalUserId { get; }
+    Guid OrganizationId { get; }    
 
     /// <summary>
     /// Internal User ID (DB): Guid
@@ -13,14 +13,19 @@ public interface ICurrentUser
     Guid UserId { get; }
 
     /// <summary>
-    /// Internal Organization ID (DB): Guid
+    /// Internal Public ID (DB): String
     /// </summary>
-    Guid OrganizationId { get; }
+    string PublicUserId { get; }
+
+    /// <summary>
+    /// Clerk User ID (external): "user_xxx"
+    /// </summary>
+    string? ExternalUserId { get; }
 
     /// <summary>
     /// User email from JWT
     /// </summary>
-    string? Email { get; }
+    string Email { get; }
 
     bool IsAuthenticated { get; }
 }

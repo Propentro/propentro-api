@@ -67,4 +67,35 @@ public sealed class ClerkIdResolver(IDbConnectionFactory db, IMemoryCache cache)
         return id.Value;
 
     }
+
+    public Task<string> ResolvePublicUserIdAsync(string clerkUserId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(clerkUserId))
+        {
+            return string.Empty;
+        }
+
+        string cacheKey = $"clerk:user:{clerkUserId}";
+
+        if (cache.TryGetValue<string>(cacheKey, out var cached))
+        {
+            return cached;
+        }
+
+        using var connection = db.CreateConnection();
+
+        var id = await connection.QueryFirstOrDefaultAsync<Guid?>(
+            "SELECT public_id FROM users WHERE external_id = @ClerkId AND auth_provider = @AuthProvider AND is_active = true",
+            new { ClerkId = clerkUserId, AuthProvider = "clerk" });
+
+        if (!id.HasValue)
+        {
+            return string.Empty;
+        }
+
+        cache.Set(cacheKey, id.Value, CacheDuration);
+        return id;
+
+    }
+
 }
