@@ -13,6 +13,12 @@ public interface ICurrentUser
     Guid OrganizationId { get; }
 
     /// <summary>
+    /// Organization's public identifier (user-facing ID string).
+    /// Returns empty string if not authenticated or organization not resolved.
+    /// </summary>
+    string PublicOrganizationId { get; }
+
+    /// <summary>
     /// Internal User ID from the database (Guid).
     /// Returns Guid.Empty if not authenticated or user not resolved.
     /// </summary>

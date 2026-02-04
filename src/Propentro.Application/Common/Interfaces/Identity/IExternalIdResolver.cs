@@ -6,10 +6,12 @@ namespace Propentro.Application.Common.Interfaces.Identity;
 /// <param name="UserId">Internal user ID, or Guid.Empty if not found.</param>
 /// <param name="PublicUserId">User's public ID, or empty string if not found.</param>
 /// <param name="OrganizationId">Internal organization ID, or Guid.Empty if not found.</param>
+/// <param name="PublicOrganizationId">Organization's public ID, or empty string if not found.</param>
 public readonly record struct ResolvedIdentity(
     Guid UserId,
     string PublicUserId,
-    Guid OrganizationId);
+    Guid OrganizationId,
+    string PublicOrganizationId);
 
 /// <summary>
 /// Resolves external authentication provider IDs to internal database IDs.

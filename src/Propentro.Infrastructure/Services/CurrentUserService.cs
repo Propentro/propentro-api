@@ -14,6 +14,7 @@ public sealed class CurrentUserService(
     private Guid _userId = Guid.Empty;
     private Guid _organizationId = Guid.Empty;
     private string _publicUserId = string.Empty;
+    private string _publicOrganizationId = string.Empty;
     private bool _isInitialized;
 
     private ClaimsPrincipal? User => httpContextAccessor.HttpContext?.User;
@@ -26,6 +27,7 @@ public sealed class CurrentUserService(
     public string? Email => User?.FindFirstValue("email");
     public bool IsAuthenticated => User?.Identity?.IsAuthenticated ?? false;
     public Guid OrganizationId => _organizationId;
+    public string PublicOrganizationId => _publicOrganizationId;
     public bool IsInitialized => _isInitialized;
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
@@ -50,6 +52,7 @@ public sealed class CurrentUserService(
         _userId = identity.UserId;
         _publicUserId = identity.PublicUserId;
         _organizationId = identity.OrganizationId;
+        _publicOrganizationId = identity.PublicOrganizationId;
         _isInitialized = true;
     }
 }
