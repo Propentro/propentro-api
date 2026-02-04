@@ -1,26 +1,52 @@
 using Dapper;
 using Propentro.Application.Common.Interfaces;
+using Propentro.Application.Common.Interfaces.Caching;
+using Propentro.Application.Common.Interfaces.Identity;
+using Propentro.Application.Common.Interfaces.Persistence;
+using ILegacyCacheService = Propentro.Application.Common.Interfaces.ICacheService;
+using ILegacyDbConnectionFactory = Propentro.Application.Common.Interfaces.IDbConnectionFactory;
 
 namespace Propentro.Infrastructure.Services;
 
-public sealed class PermissionService(
-    IDbConnectionFactory db,
-    ICacheService cache) : IPermissionService
+/// <summary>
+/// Provides permission lookup for authorization purposes.
+/// Permissions are cached for performance and can be invalidated when role assignments change.
+/// </summary>
+public sealed class PermissionService : IPermissionService, Application.Common.Interfaces.IPermissionService
 {
+    private readonly IDbConnectionFactory _db;
+    private readonly ICacheService _cache;
+
+    private const string CacheKeyPrefix = "permissions:";
+    private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(5);
+
+    public PermissionService(IDbConnectionFactory db, ICacheService cache)
+    {
+        _db = db ?? throw new ArgumentNullException(nameof(db));
+        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+    }
+
+    /// <inheritdoc />
     public async Task<HashSet<string>> GetUserPermissionsAsync(
         Guid userId,
         Guid organizationId,
-        CancellationToken ct = default)
+        CancellationToken cancellationToken = default)
     {
-        var cacheKey = $"permissions:{organizationId}:{userId}";
+        if (userId == Guid.Empty || organizationId == Guid.Empty)
+        {
+            return [];
+        }
 
-        var cached = await cache.GetAsync<HashSet<string>>(cacheKey, ct);
+        var cacheKey = GetCacheKey(userId, organizationId);
+
+        var cached = await _cache.GetAsync<HashSet<string>>(cacheKey, cancellationToken);
         if (cached is not null)
         {
             return cached;
         }
 
-        using var connection = db.CreateConnection();
+        using var connection = _db.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
 
         const string sql = """
             SELECT DISTINCT p.code
@@ -31,6 +57,7 @@ public sealed class PermissionService(
             WHERE our.user_id = @UserId
               AND our.organization_id = @OrganizationId
               AND r.is_active = TRUE
+              AND p.is_active = TRUE
             """;
 
         var permissions = await connection.QueryAsync<string>(
@@ -39,8 +66,39 @@ public sealed class PermissionService(
 
         var result = permissions.ToHashSet();
 
-        await cache.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5), ct);
+        await _cache.SetAsync(cacheKey, result, CacheExpiration, cancellationToken);
 
         return result;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> HasPermissionAsync(
+        Guid userId,
+        Guid organizationId,
+        string permissionCode,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(permissionCode))
+        {
+            return false;
+        }
+
+        var permissions = await GetUserPermissionsAsync(userId, organizationId, cancellationToken);
+        return permissions.Contains(permissionCode);
+    }
+
+    /// <inheritdoc />
+    public async Task InvalidatePermissionsCacheAsync(
+        Guid userId,
+        Guid organizationId,
+        CancellationToken cancellationToken = default)
+    {
+        var cacheKey = GetCacheKey(userId, organizationId);
+        await _cache.RemoveAsync(cacheKey, cancellationToken);
+    }
+
+    private static string GetCacheKey(Guid userId, Guid organizationId)
+    {
+        return $"{CacheKeyPrefix}{organizationId}:{userId}";
     }
 }

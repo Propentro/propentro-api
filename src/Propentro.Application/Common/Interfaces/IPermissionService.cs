@@ -1,6 +1,7 @@
+// This file is maintained for backward compatibility.
+// New code should use: Propentro.Application.Common.Interfaces.Identity.IPermissionService
+
 namespace Propentro.Application.Common.Interfaces;
 
-public interface IPermissionService
-{
-    Task<HashSet<string>> GetUserPermissionsAsync(Guid userId, Guid organizationId, CancellationToken ct = default);
-}
+/// <inheritdoc cref="Identity.IPermissionService"/>
+public interface IPermissionService : Identity.IPermissionService;

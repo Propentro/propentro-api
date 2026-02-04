@@ -1,7 +1,7 @@
+// This file is maintained for backward compatibility.
+// New code should use: Propentro.Application.Common.Interfaces.Time.IDateTimeProvider
+
 namespace Propentro.Application.Common.Interfaces;
 
-public interface IDateTimeProvider
-{
-    DateTime UtcNow { get; }
-    DateOnly Today { get; }
-}
+/// <inheritdoc cref="Time.IDateTimeProvider"/>
+public interface IDateTimeProvider : Time.IDateTimeProvider;

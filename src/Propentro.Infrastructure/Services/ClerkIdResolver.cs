@@ -1,101 +1,155 @@
 using Dapper;
 using Microsoft.Extensions.Caching.Memory;
 using Propentro.Application.Common.Interfaces;
+using Propentro.Application.Common.Interfaces.Identity;
 
 namespace Propentro.Infrastructure.Services;
 
-public sealed class ClerkIdResolver(IDbConnectionFactory db, IMemoryCache cache) : IClerkIdResolver
+/// <summary>
+/// Resolves Clerk authentication provider IDs to internal database IDs.
+/// Uses IMemoryCache for caching to avoid repeated database lookups.
+/// </summary>
+public sealed class ClerkIdResolver : IClerkIdResolver, IExternalIdResolver
 {
+    private readonly IDbConnectionFactory _db;
+    private readonly IMemoryCache _cache;
+
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(30);
 
-    public async Task<Guid> ResolveOrganizationIdAsync(string clerkOrgId, CancellationToken ct = default)
+    // Cache key prefixes for different ID types
+    private const string OrgIdCachePrefix = "identity:org:id:";
+    private const string UserIdCachePrefix = "identity:user:id:";
+    private const string UserPublicIdCachePrefix = "identity:user:public:";
+
+    public ClerkIdResolver(IDbConnectionFactory db, IMemoryCache cache)
     {
-        if (string.IsNullOrEmpty(clerkOrgId))
+        _db = db ?? throw new ArgumentNullException(nameof(db));
+        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+    }
+
+    public async Task<Guid> ResolveOrganizationIdAsync(string externalOrgId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(externalOrgId))
         {
             return Guid.Empty;
         }
 
-        string cacheKey = $"clerk:org:{clerkOrgId}";
+        var cacheKey = $"{OrgIdCachePrefix}{externalOrgId}";
 
-        if (cache.TryGetValue<Guid>(cacheKey, out var cached))
+        if (_cache.TryGetValue<Guid>(cacheKey, out var cached))
         {
             return cached;
         }
 
-        await using var connection = db.CreateConnection();
+        using var connection = _db.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+
+        const string sql = """
+            SELECT id
+            FROM organizations
+            WHERE external_id = @ExternalId
+              AND auth_provider = @AuthProvider
+              AND is_active = true
+            """;
 
         var id = await connection.QueryFirstOrDefaultAsync<Guid?>(
-            "SELECT id FROM organizations WHERE external_id = @ClerkId AND auth_provider = @AuthProvider AND is_active = true",
-            new { ClerkId = clerkOrgId, AuthProvider = "clerk" });
+            sql,
+            new { ExternalId = externalOrgId, AuthProvider = "clerk" });
 
         if (!id.HasValue)
         {
             return Guid.Empty;
         }
 
-        cache.Set(cacheKey, id.Value, CacheDuration);
-        return id.Value;
+        var cacheOptions = new MemoryCacheEntryOptions()
+            .SetAbsoluteExpiration(CacheDuration)
+            .SetSize(1);
 
+        _cache.Set(cacheKey, id.Value, cacheOptions);
+        return id.Value;
     }
 
-    public async Task<Guid> ResolveUserIdAsync(string clerkUserId, CancellationToken ct = default)
+    public async Task<Guid> ResolveUserIdAsync(string externalUserId, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(clerkUserId))
+        if (string.IsNullOrWhiteSpace(externalUserId))
         {
             return Guid.Empty;
         }
 
-        string cacheKey = $"clerk:user:{clerkUserId}";
+        var cacheKey = $"{UserIdCachePrefix}{externalUserId}";
 
-        if (cache.TryGetValue<Guid>(cacheKey, out var cached))
+        if (_cache.TryGetValue<Guid>(cacheKey, out var cached))
         {
             return cached;
         }
 
-        using var connection = db.CreateConnection();
+        using var connection = _db.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+
+        const string sql = """
+            SELECT id
+            FROM users
+            WHERE external_id = @ExternalId
+              AND auth_provider = @AuthProvider
+              AND is_active = true
+            """;
 
         var id = await connection.QueryFirstOrDefaultAsync<Guid?>(
-            "SELECT id FROM users WHERE external_id = @ClerkId AND auth_provider = @AuthProvider AND is_active = true",
-            new { ClerkId = clerkUserId, AuthProvider = "clerk" });
+            sql,
+            new { ExternalId = externalUserId, AuthProvider = "clerk" });
 
         if (!id.HasValue)
         {
             return Guid.Empty;
         }
 
-        cache.Set(cacheKey, id.Value, CacheDuration);
-        return id.Value;
+        var cacheOptions = new MemoryCacheEntryOptions()
+            .SetAbsoluteExpiration(CacheDuration)
+            .SetSize(1);
 
+        _cache.Set(cacheKey, id.Value, cacheOptions);
+        return id.Value;
     }
 
-    public Task<string> ResolvePublicUserIdAsync(string clerkUserId, CancellationToken cancellationToken = default)
+    public async Task<string> ResolvePublicUserIdAsync(string externalUserId, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(clerkUserId))
+        if (string.IsNullOrWhiteSpace(externalUserId))
         {
             return string.Empty;
         }
 
-        string cacheKey = $"clerk:user:{clerkUserId}";
+        var cacheKey = $"{UserPublicIdCachePrefix}{externalUserId}";
 
-        if (cache.TryGetValue<string>(cacheKey, out var cached))
+        if (_cache.TryGetValue<string>(cacheKey, out var cached) && !string.IsNullOrEmpty(cached))
         {
             return cached;
         }
 
-        using var connection = db.CreateConnection();
+        using var connection = _db.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
 
-        var id = await connection.QueryFirstOrDefaultAsync<Guid?>(
-            "SELECT public_id FROM users WHERE external_id = @ClerkId AND auth_provider = @AuthProvider AND is_active = true",
-            new { ClerkId = clerkUserId, AuthProvider = "clerk" });
+        const string sql = """
+            SELECT public_id
+            FROM users
+            WHERE external_id = @ExternalId
+              AND auth_provider = @AuthProvider
+              AND is_active = true
+            """;
 
-        if (!id.HasValue)
+        var publicId = await connection.QueryFirstOrDefaultAsync<string?>(
+            sql,
+            new { ExternalId = externalUserId, AuthProvider = "clerk" });
+
+        if (string.IsNullOrEmpty(publicId))
         {
             return string.Empty;
         }
 
-        cache.Set(cacheKey, id.Value, CacheDuration);
-        return id;
+        var cacheOptions = new MemoryCacheEntryOptions()
+            .SetAbsoluteExpiration(CacheDuration)
+            .SetSize(1);
 
+        _cache.Set(cacheKey, publicId, cacheOptions);
+        return publicId;
     }
-
 }

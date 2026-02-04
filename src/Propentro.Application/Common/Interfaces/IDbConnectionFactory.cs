@@ -1,8 +1,9 @@
-using Npgsql;
+// This file is maintained for backward compatibility.
+// New code should use: Propentro.Application.Common.Interfaces.Persistence.IDbConnectionFactory
+
+using System.Data.Common;
 
 namespace Propentro.Application.Common.Interfaces;
 
-public interface IDbConnectionFactory
-{
-    NpgsqlConnection CreateConnection();
-}
+/// <inheritdoc cref="Persistence.IDbConnectionFactory"/>
+public interface IDbConnectionFactory : Persistence.IDbConnectionFactory;
