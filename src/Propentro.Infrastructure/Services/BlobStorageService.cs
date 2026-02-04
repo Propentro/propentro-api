@@ -1,7 +1,5 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Propentro.Application.Common.Interfaces;
-using Propentro.Application.Common.Interfaces.Storage;
 
 namespace Propentro.Infrastructure.Services;
 
@@ -13,7 +11,7 @@ namespace Propentro.Infrastructure.Services;
 /// TODO: Implement actual R2/S3 operations using AWS SDK for .NET.
 /// Current implementation is a stub that returns placeholder values.
 /// </remarks>
-public sealed class BlobStorageService : IBlobStorageService, Application.Common.Interfaces.IBlobStorageService
+public sealed class BlobStorageService : IBlobStorageService
 {
     private readonly ILogger<BlobStorageService> _logger;
     private readonly string _bucketName;

@@ -1,7 +1,5 @@
 using Dapper;
 using Microsoft.Extensions.Caching.Memory;
-using Propentro.Application.Common.Interfaces;
-using Propentro.Application.Common.Interfaces.Identity;
 
 namespace Propentro.Infrastructure.Services;
 
@@ -9,7 +7,7 @@ namespace Propentro.Infrastructure.Services;
 /// Resolves Clerk authentication provider IDs to internal database IDs.
 /// Uses IMemoryCache for caching to avoid repeated database lookups.
 /// </summary>
-public sealed class ClerkIdResolver : IClerkIdResolver, IExternalIdResolver
+public sealed class ClerkIdResolver : IExternalIdResolver
 {
     private readonly IDbConnectionFactory _db;
     private readonly IMemoryCache _cache;

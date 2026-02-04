@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using MediatR;
-using Propentro.Application.Common.Interfaces;
 using Serilog;
 
 namespace Propentro.Application.Common.Behaviors;

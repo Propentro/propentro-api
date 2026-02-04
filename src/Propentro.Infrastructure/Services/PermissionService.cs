@@ -1,10 +1,4 @@
 using Dapper;
-using Propentro.Application.Common.Interfaces;
-using Propentro.Application.Common.Interfaces.Caching;
-using Propentro.Application.Common.Interfaces.Identity;
-using Propentro.Application.Common.Interfaces.Persistence;
-using ILegacyCacheService = Propentro.Application.Common.Interfaces.ICacheService;
-using ILegacyDbConnectionFactory = Propentro.Application.Common.Interfaces.IDbConnectionFactory;
 
 namespace Propentro.Infrastructure.Services;
 
@@ -12,7 +6,7 @@ namespace Propentro.Infrastructure.Services;
 /// Provides permission lookup for authorization purposes.
 /// Permissions are cached for performance and can be invalidated when role assignments change.
 /// </summary>
-public sealed class PermissionService : IPermissionService, Application.Common.Interfaces.IPermissionService
+public sealed class PermissionService : IPermissionService
 {
     private readonly IDbConnectionFactory _db;
     private readonly ICacheService _cache;

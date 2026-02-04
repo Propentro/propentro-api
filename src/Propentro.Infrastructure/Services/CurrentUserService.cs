@@ -1,7 +1,5 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
-using Propentro.Application.Common.Interfaces;
-using Propentro.Application.Common.Interfaces.Identity;
 
 namespace Propentro.Infrastructure.Services;
 

@@ -1,13 +1,10 @@
-using Propentro.Application.Common.Interfaces;
-using Propentro.Application.Common.Interfaces.Time;
-
 namespace Propentro.Infrastructure.Services;
 
 /// <summary>
 /// Provides the current UTC date and time.
 /// This implementation uses system time; tests can use a mock implementation.
 /// </summary>
-public sealed class DateTimeProvider : IDateTimeProvider, Application.Common.Interfaces.IDateTimeProvider
+public sealed class DateTimeProvider : IDateTimeProvider
 {
     /// <inheritdoc />
     public DateTime UtcNow => DateTime.UtcNow;

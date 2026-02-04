@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Propentro.Application.Common.Interfaces;
 using Propentro.Application.Common.Models;
 
 namespace Propentro.Application.Properties.Commands.UpdateProperty;

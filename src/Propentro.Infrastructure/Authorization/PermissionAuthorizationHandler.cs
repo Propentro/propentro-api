@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
-using Propentro.Application.Common.Interfaces;
 
 namespace Propentro.Infrastructure.Authorization;
 

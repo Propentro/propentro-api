@@ -1,5 +1,3 @@
-using Propentro.Application.Common.Interfaces;
-using Propentro.Application.Common.Interfaces.Identity;
 using Serilog.Context;
 
 namespace Propentro.Api.Middleware;

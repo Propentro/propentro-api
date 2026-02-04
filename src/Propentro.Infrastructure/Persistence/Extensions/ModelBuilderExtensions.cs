@@ -1,6 +1,5 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Propentro.Application.Common.Interfaces;
 using Propentro.Domain.Common.Interfaces;
 
 namespace Propentro.Infrastructure.Persistence.Extensions;

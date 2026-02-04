@@ -1,7 +1,5 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Propentro.Application.Common.Interfaces;
-using Propentro.Application.Common.Interfaces.Persistence;
 using Propentro.Domain.Common;
 using Propentro.Domain.Common.Interfaces;
 using Propentro.Domain.Entities;
@@ -14,7 +12,7 @@ namespace Propentro.Infrastructure.Persistence;
 /// Entity Framework Core database context with automatic organization scoping,
 /// soft delete filtering, audit field management, and domain event publishing.
 /// </summary>
-public sealed class AppDbContext : DbContext, IAppDbContext, Application.Common.Interfaces.IAppDbContext
+public sealed class AppDbContext : DbContext, IAppDbContext
 {
     private readonly ICurrentUser _currentUser;
     private readonly IDateTimeProvider _dateTime;

@@ -1,4 +1,3 @@
-using Propentro.Application.Common.Interfaces;
 using Propentro.Contracts.Properties;
 
 namespace Propentro.Application.Properties.Queries.GetPropertyById;

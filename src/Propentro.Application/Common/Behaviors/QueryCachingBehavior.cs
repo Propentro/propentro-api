@@ -1,6 +1,4 @@
 using MediatR;
-using Propentro.Application.Common.Interfaces;
-using Propentro.Application.Common.Interfaces.Caching;
 using Propentro.Application.Common.Models;
 
 namespace Propentro.Application.Common.Behaviors;
@@ -13,9 +11,9 @@ namespace Propentro.Application.Common.Behaviors;
 public sealed class QueryCachingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, Result<TResponse>>
     where TRequest : ICachedQuery<TResponse>
 {
-    private readonly Caching.ICacheService _cache;
+    private readonly ICacheService _cache;
 
-    public QueryCachingBehavior(Caching.ICacheService cache)
+    public QueryCachingBehavior(ICacheService cache)
     {
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
     }

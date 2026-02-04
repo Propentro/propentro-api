@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
-using Propentro.Application.Common.Interfaces.Caching;
 
 namespace Propentro.Infrastructure.Caching;
 
