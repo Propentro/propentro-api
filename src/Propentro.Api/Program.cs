@@ -44,10 +44,6 @@ try
     app.UseExceptionHandler();
     app.UseSerilogRequestLogging();
 
-    // Push OrganizationId and UserId into Serilog LogContext for every request
-    // This ensures all logs (including DB exceptions) are tagged with tenant context
-    app.UseMiddleware<UserContextMiddleware>();
-
     if (app.Environment.IsDevelopment())
     {
         app.MapOpenApi();
@@ -58,8 +54,15 @@ try
         });
     }
 
+    // Authentication MUST run before UserContextMiddleware
+    // so that User claims are populated from the JWT
     app.UseAuthentication();
     app.UseAuthorization();
+
+    // Push OrganizationId and UserId into Serilog LogContext for every request
+    // This ensures all logs (including DB exceptions) are tagged with tenant context
+    // NOTE: Runs after auth so User.Identity.IsAuthenticated is properly set
+    app.UseMiddleware<UserContextMiddleware>();
 
     // Endpoints
     app.MapApiEndpoints();
