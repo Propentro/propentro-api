@@ -8,8 +8,8 @@ namespace Propentro.Application.Common.Behaviors;
 
 /// <summary>
 /// MediatR pipeline behavior that wraps command execution in a database transaction.
-/// Automatically commits on success and rolls back on failure.
-/// Only applies to commands (ICommand), not queries.
+/// Commits on success, rolls back on failure.
+/// Note: Handlers are responsible for calling SaveChangesAsync.
 /// </summary>
 public sealed class UnitOfWorkBehavior<TRequest, TResponse>(
     IAppDbContext dbContext) : IPipelineBehavior<TRequest, TResponse>
@@ -20,42 +20,36 @@ public sealed class UnitOfWorkBehavior<TRequest, TResponse>(
         RequestHandlerDelegate<TResponse> next,
         CancellationToken cancellationToken)
     {
-        // Only apply to commands, skip queries
         if (!IsCommand())
         {
             return await next(cancellationToken);
         }
-
-        var requestName = typeof(TRequest).Name;
 
         await using var transaction = await dbContext.Database
             .BeginTransactionAsync(cancellationToken);
 
         try
         {
-            Log.Debug("Beginning transaction for {RequestName}", requestName);
+            Log.Debug("Transaction started for {RequestName}", typeof(TRequest).Name);
 
             var response = await next(cancellationToken);
 
-            // Check if the result indicates failure
             if (IsFailureResult(response))
             {
-                Log.Debug("Rolling back transaction for {RequestName} due to failure result", requestName);
                 await transaction.RollbackAsync(cancellationToken);
+                Log.Debug("Transaction rolled back for {RequestName} - failure result", typeof(TRequest).Name);
                 return response;
             }
 
-            await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-
-            Log.Debug("Committed transaction for {RequestName}", requestName);
+            Log.Debug("Transaction committed for {RequestName}", typeof(TRequest).Name);
 
             return response;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Rolling back transaction for {RequestName} due to exception", requestName);
             await transaction.RollbackAsync(cancellationToken);
+            Log.Error(ex, "Transaction rolled back for {RequestName} - exception", typeof(TRequest).Name);
             throw;
         }
     }
@@ -69,10 +63,6 @@ public sealed class UnitOfWorkBehavior<TRequest, TResponse>(
 
     private static bool IsFailureResult(TResponse response)
     {
-        return response switch
-        {
-            Result { IsFailure: true } => true,
-            _ => false
-        };
+        return response is Result { IsFailure: true };
     }
 }
