@@ -27,8 +27,6 @@ public sealed class UpdatePartyHandler(
         if (request.TaxCountry is not null) { party.TaxCountry = request.TaxCountry; }
         if (request.Note is not null) { party.Note = request.Note; }
 
-        await db.SaveChangesAsync(cancellationToken);
-
         return Result.Success();
     }
 }

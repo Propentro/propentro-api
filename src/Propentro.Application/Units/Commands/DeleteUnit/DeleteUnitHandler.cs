@@ -17,7 +17,6 @@ public sealed class DeleteUnitHandler(
         }
 
         unit.IsActive = false;
-        await db.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

@@ -31,8 +31,6 @@ public sealed class UpdateUnitHandler(
         if (request.DefaultCurrency is not null) { unit.DefaultCurrency = request.DefaultCurrency; }
         if (request.Note is not null) { unit.Note = request.Note; }
 
-        await db.SaveChangesAsync(cancellationToken);
-
         return Result.Success();
     }
 }

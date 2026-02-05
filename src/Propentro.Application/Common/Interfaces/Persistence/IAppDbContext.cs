@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Propentro.Domain.Entities;
 
 namespace Propentro.Application.Common.Interfaces.Persistence;
@@ -48,6 +49,12 @@ public interface IAppDbContext
 
     // Notifications
     DbSet<Notification> Notifications { get; }
+
+    /// <summary>
+    /// Provides access to database-related information and operations.
+    /// Used for transaction management in UnitOfWork pattern.
+    /// </summary>
+    DatabaseFacade Database { get; }
 
     /// <summary>
     /// Saves all changes made in this context to the database.

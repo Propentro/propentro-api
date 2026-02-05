@@ -18,7 +18,6 @@ public sealed class DeletePropertyHandler(
 
         // Soft delete
         property.IsActive = false;
-        await db.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }
