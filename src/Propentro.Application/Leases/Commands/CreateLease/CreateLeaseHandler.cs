@@ -29,7 +29,6 @@ public sealed class CreateLeaseHandler(
         };
 
         db.Leases.Add(lease);
-        await db.SaveChangesAsync(cancellationToken);
 
         return lease.PublicId;
     }

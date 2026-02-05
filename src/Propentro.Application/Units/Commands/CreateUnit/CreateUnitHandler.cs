@@ -36,7 +36,6 @@ public sealed class CreateUnitHandler(
         };
 
         db.Units.Add(unit);
-        await db.SaveChangesAsync(cancellationToken);
 
         return unit.PublicId;
     }

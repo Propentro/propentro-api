@@ -17,7 +17,6 @@ public sealed class DeletePartyHandler(
         }
 
         party.IsActive = false;
-        await db.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

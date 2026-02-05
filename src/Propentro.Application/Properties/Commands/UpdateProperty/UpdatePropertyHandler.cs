@@ -25,8 +25,6 @@ public sealed class UpdatePropertyHandler(
         if (request.ReferenceCode is not null) { property.ReferenceCode = request.ReferenceCode; }
         if (request.Note is not null) { property.Note = request.Note; }
 
-        await db.SaveChangesAsync(cancellationToken);
-
         return Result.Success();
     }
 }

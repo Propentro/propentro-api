@@ -36,7 +36,6 @@ public sealed class CreatePartyHandler(
         };
 
         db.Parties.Add(party);
-        await db.SaveChangesAsync(cancellationToken);
 
         return party.PublicId;
     }

@@ -17,7 +17,6 @@ public sealed class DeleteLeaseHandler(
         }
 
         lease.IsActive = false;
-        await db.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

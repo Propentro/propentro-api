@@ -47,7 +47,6 @@ public sealed class CreatePropertyHandler(
         };
 
         db.Properties.Add(property);
-        await db.SaveChangesAsync(cancellationToken);
 
         return property.Id;
     }

@@ -26,8 +26,6 @@ public sealed class UpdateLeaseHandler(
         if (request.NoticePeriodDays.HasValue) { lease.NoticePeriodDays = request.NoticePeriodDays; }
         if (request.Note is not null) { lease.Note = request.Note; }
 
-        await db.SaveChangesAsync(cancellationToken);
-
         return Result.Success();
     }
 }
