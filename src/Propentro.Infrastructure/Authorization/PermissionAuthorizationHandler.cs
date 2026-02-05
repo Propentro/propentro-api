@@ -1,22 +1,27 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Serilog;
 
 namespace Propentro.Infrastructure.Authorization;
 
+/// <summary>
+/// Authorization handler that validates user permissions using the initialized ICurrentUser context.
+/// This handler depends on UserContextMiddleware having already resolved external IDs to internal IDs.
+/// </summary>
 public sealed class PermissionAuthorizationHandler(
     IPermissionService permissionService) : IAuthorizationHandler
 {
     public async Task HandleAsync(AuthorizationHandlerContext context)
     {
-        var endpoint = (context.Resource as HttpContext)?.GetEndpoint();
+        var httpContext = context.Resource as HttpContext;
+        var endpoint = httpContext?.GetEndpoint();
         var permissionAttributes = endpoint?.Metadata
             .GetOrderedMetadata<RequirePermissionAttribute>()
             .ToList();
 
+        // No permission requirements - succeed all pending requirements
         if (permissionAttributes is null || permissionAttributes.Count == 0)
         {
-            // No permission requirements, succeed all pending requirements
             foreach (var requirement in context.PendingRequirements)
             {
                 context.Succeed(requirement);
@@ -24,23 +29,63 @@ public sealed class PermissionAuthorizationHandler(
             return;
         }
 
-        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var organizationId = context.User.FindFirstValue("org_id");
-
-        if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(organizationId))
+        // Get ICurrentUser from DI - must be already initialized by UserContextMiddleware
+        var currentUser = httpContext?.RequestServices.GetService<ICurrentUser>();
+        if (currentUser is null)
         {
-            context.Fail(new AuthorizationFailureReason(this, "Missing authentication context"));
+            Log.Warning("ICurrentUser service not available in authorization handler");
+            context.Fail(new AuthorizationFailureReason(this, "Authorization service unavailable"));
             return;
         }
 
-        if (!Guid.TryParse(userId, out var userGuid) || !Guid.TryParse(organizationId, out var orgGuid))
+        // Ensure user context is initialized (defensive check)
+        if (currentUser is ICurrentUserInitializer { IsInitialized: false } initializer)
         {
-            context.Fail(new AuthorizationFailureReason(this, "Invalid user or organization ID"));
+            try
+            {
+                await initializer.InitializeAsync(httpContext!.RequestAborted);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to initialize user context in authorization handler");
+                context.Fail(new AuthorizationFailureReason(this, "Failed to initialize user context"));
+                return;
+            }
+        }
+
+        // User must be authenticated
+        if (!currentUser.IsAuthenticated)
+        {
+            context.Fail(new AuthorizationFailureReason(this, "User is not authenticated"));
             return;
         }
 
-        var userPermissions = await permissionService.GetUserPermissionsAsync(userGuid, orgGuid);
+        // Internal IDs must be resolved (not Guid.Empty)
+        if (currentUser.UserId == Guid.Empty)
+        {
+            Log.Warning(
+                "User ID not resolved. ExternalUserId: {ExternalUserId}",
+                currentUser.ExternalUserId);
+            context.Fail(new AuthorizationFailureReason(this, "User not found in system"));
+            return;
+        }
 
+        if (currentUser.OrganizationId == Guid.Empty)
+        {
+            Log.Warning(
+                "Organization ID not resolved. ExternalOrgId: {ExternalOrgId}",
+                currentUser.ExternalOrganizationId);
+            context.Fail(new AuthorizationFailureReason(this, "Organization context not available"));
+            return;
+        }
+
+        // Get user's permissions from cache/database
+        var userPermissions = await permissionService.GetUserPermissionsAsync(
+            currentUser.UserId,
+            currentUser.OrganizationId,
+            httpContext!.RequestAborted);
+
+        // Check each required permission
         foreach (var attr in permissionAttributes)
         {
             var hasPermission = attr.Logic switch
@@ -52,12 +97,19 @@ public sealed class PermissionAuthorizationHandler(
 
             if (!hasPermission)
             {
+                Log.Debug(
+                    "Permission denied for user {UserId}. Required: {RequiredPermissions}, Has: {UserPermissions}",
+                    currentUser.UserId,
+                    attr.Permissions,
+                    userPermissions);
+
                 context.Fail(new AuthorizationFailureReason(this,
                     $"Missing permission(s): {string.Join(", ", attr.Permissions)}"));
                 return;
             }
         }
 
+        // All permission checks passed
         foreach (var requirement in context.PendingRequirements)
         {
             context.Succeed(requirement);

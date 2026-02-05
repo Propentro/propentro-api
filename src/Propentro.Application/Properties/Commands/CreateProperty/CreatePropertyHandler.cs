@@ -4,12 +4,16 @@ using Propentro.Domain.Entities;
 
 namespace Propentro.Application.Properties.Commands.CreateProperty;
 
+/// <summary>
+/// Handler for creating a new property.
+/// Returns the PublicId of the created property for use in API responses.
+/// </summary>
 public sealed class CreatePropertyHandler(
-    IAppDbContext db) : ICommandHandler<CreatePropertyCommand, Guid>
+    IAppDbContext db) : ICommandHandler<CreatePropertyCommand, string>
 {
-    public async Task<Result<Guid>> Handle(CreatePropertyCommand request, CancellationToken cancellationToken)
+    public async Task<Result<string>> Handle(CreatePropertyCommand request, CancellationToken cancellationToken)
     {
-        // Parent property validation
+        // Parent property validation - ensure it exists and belongs to same organization
         if (request.ParentPropertyId.HasValue)
         {
             var parentExists = await db.Properties
@@ -21,7 +25,7 @@ public sealed class CreatePropertyHandler(
             }
         }
 
-        // Duplicate reference code check
+        // Duplicate reference code check within organization
         if (!string.IsNullOrEmpty(request.ReferenceCode))
         {
             var refExists = await db.Properties
@@ -33,6 +37,7 @@ public sealed class CreatePropertyHandler(
             }
         }
 
+        // Create the property entity - Id and PublicId are auto-generated in constructor
         var property = new Property
         {
             Name = request.Name,
@@ -48,6 +53,7 @@ public sealed class CreatePropertyHandler(
 
         db.Properties.Add(property);
 
-        return property.Id;
+        // Return PublicId for API consumers (not internal Guid)
+        return property.PublicId;
     }
 }

@@ -115,16 +115,51 @@ public static class DependencyInjection
         var clerkAuthority = configuration["Clerk:Authority"]
                              ?? throw new InvalidOperationException("Clerk:Authority not configured");
 
+        // Audience is typically the Clerk publishable key or the frontend application URL
+        // If not configured, audience validation is disabled (common for Clerk)
+        var clerkAudience = configuration["Clerk:Audience"];
+        var validateAudience = !string.IsNullOrEmpty(clerkAudience);
+
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
                 options.Authority = clerkAuthority;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    ValidateAudience = true,
+                    // Audience validation - Clerk JWTs may not have an audience claim
+                    ValidateAudience = validateAudience,
+                    ValidAudience = clerkAudience,
+
+                    // Issuer validation - Clerk's JWKS URL
                     ValidateIssuer = true,
                     ValidIssuer = clerkAuthority,
+
+                    // Lifetime validation
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.FromMinutes(1),
+
+                    // Map the Clerk user ID claim
                     NameClaimType = ClaimTypes.NameIdentifier
+                };
+
+                // Events for debugging authentication issues
+                options.Events = new JwtBearerEvents
+                {
+                    OnAuthenticationFailed = context =>
+                    {
+                        Serilog.Log.Warning(
+                            context.Exception,
+                            "JWT authentication failed: {ErrorMessage}",
+                            context.Exception.Message);
+                        return Task.CompletedTask;
+                    },
+                    OnTokenValidated = context =>
+                    {
+                        Serilog.Log.Debug(
+                            "JWT token validated for user: {UserId}",
+                            context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+                        return Task.CompletedTask;
+                    }
                 };
             });
 
