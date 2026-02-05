@@ -1,6 +1,9 @@
-
 namespace Propentro.Application.Properties.Commands.CreateProperty;
 
+/// <summary>
+/// Command to create a new property.
+/// Returns the public identifier (PublicId) of the created property.
+/// </summary>
 public sealed record CreatePropertyCommand(
     string Name,
     string PropertyKind,
@@ -11,4 +14,4 @@ public sealed record CreatePropertyCommand(
     int? TotalFloors,
     string? ReferenceCode,
     string? Note
-) : ICommand<Guid>;
+) : ICommand<string>;

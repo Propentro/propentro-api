@@ -1,5 +1,6 @@
 using MediatR;
 using Propentro.Application.Common.Models;
+using Serilog;
 
 namespace Propentro.Application.Common.Behaviors;
 
@@ -17,7 +18,10 @@ public sealed class QueryCachingBehavior<TRequest, TResponse>(
     {
         var cached = await cache.GetAsync<TResponse>(request.CacheKey, cancellationToken);
         if (cached is not null)
+        {
+            Log.Debug("Cache hit: {CacheKey}", request.CacheKey);
             return cached;
+        }
 
         var result = await next(cancellationToken);
 
@@ -25,6 +29,7 @@ public sealed class QueryCachingBehavior<TRequest, TResponse>(
         {
             var expiration = request.Expiration ?? TimeSpan.FromMinutes(5);
             await cache.SetAsync(request.CacheKey, result.Value, expiration, cancellationToken);
+            Log.Debug("Cached: {CacheKey}, Expiration: {Expiration}", request.CacheKey, expiration);
         }
 
         return result;

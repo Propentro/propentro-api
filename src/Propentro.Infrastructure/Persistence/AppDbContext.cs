@@ -68,11 +68,18 @@ public sealed class AppDbContext(
     {
         foreach (var entityType in builder.Model.GetEntityTypes())
         {
-            if (typeof(IOrganizationScoped).IsAssignableFrom(entityType.ClrType))
-                builder.Entity(entityType.ClrType).AddOrganizationFilter(currentUser);
+            var isOrganizationScoped = typeof(IOrganizationScoped).IsAssignableFrom(entityType.ClrType);
+            var isSoftDeletable = typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType);
 
-            if (typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType))
-                builder.Entity(entityType.ClrType).AddSoftDeleteFilter();
+            // Use the combined filter method to avoid filter override issues
+            // EF Core only allows one HasQueryFilter per entity - multiple calls override previous ones
+            if (isOrganizationScoped || isSoftDeletable)
+            {
+                builder.Entity(entityType.ClrType).AddGlobalFilters(
+                    currentUser,
+                    isOrganizationScoped,
+                    isSoftDeletable);
+            }
         }
     }
 

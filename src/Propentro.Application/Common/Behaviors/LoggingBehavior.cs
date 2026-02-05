@@ -3,6 +3,9 @@ using Serilog;
 
 namespace Propentro.Application.Common.Behaviors;
 
+/// <summary>
+/// MediatR pipeline behavior that logs request execution with timing.
+/// </summary>
 public sealed class LoggingBehavior<TRequest, TResponse>(
     ICurrentUser currentUser) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
@@ -16,7 +19,9 @@ public sealed class LoggingBehavior<TRequest, TResponse>(
 
         Log.Information(
             "[START] {RequestName} | User: {UserId} | Org: {OrgId}",
-            requestName, currentUser.UserId, currentUser.OrganizationId);
+            requestName,
+            currentUser.UserId,
+            currentUser.OrganizationId);
 
         var stopwatch = Stopwatch.StartNew();
         var response = await next(cancellationToken);
@@ -24,7 +29,8 @@ public sealed class LoggingBehavior<TRequest, TResponse>(
 
         Log.Information(
             "[END] {RequestName} | Duration: {Duration}ms",
-            requestName, stopwatch.ElapsedMilliseconds);
+            requestName,
+            stopwatch.ElapsedMilliseconds);
 
         return response;
     }

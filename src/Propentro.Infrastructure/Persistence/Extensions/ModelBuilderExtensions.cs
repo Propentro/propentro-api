@@ -4,28 +4,47 @@ using Propentro.Domain.Common.Interfaces;
 
 namespace Propentro.Infrastructure.Persistence.Extensions;
 
+/// <summary>
+/// Extension methods for configuring global query filters on entity types.
+/// </summary>
 public static class ModelBuilderExtensions
 {
-    public static void AddOrganizationFilter(this EntityTypeBuilder builder, ICurrentUser currentUser)
+    /// <summary>
+    /// Adds a combined filter for organization scoping and soft delete.
+    /// Combines both filters into a single expression to avoid EF Core override issue.
+    /// </summary>
+    public static void AddGlobalFilters(
+        this EntityTypeBuilder builder,
+        ICurrentUser currentUser,
+        bool isOrganizationScoped,
+        bool isSoftDeletable)
     {
         var parameter = Expression.Parameter(builder.Metadata.ClrType, "e");
-        var property = Expression.Property(parameter, nameof(IOrganizationScoped.OrganizationId));
-        var tenantId = Expression.Property(
-            Expression.Constant(currentUser),
-            nameof(ICurrentUser.OrganizationId));
+        Expression? combinedFilter = null;
 
-        var filter = Expression.Lambda(Expression.Equal(property, tenantId), parameter);
-        builder.HasQueryFilter(filter);
-    }
+        if (isOrganizationScoped)
+        {
+            var orgProperty = Expression.Property(parameter, nameof(IOrganizationScoped.OrganizationId));
+            var organizationId = Expression.Property(
+                Expression.Constant(currentUser),
+                nameof(ICurrentUser.OrganizationId));
 
-    public static void AddSoftDeleteFilter(this EntityTypeBuilder builder)
-    {
-        var parameter = Expression.Parameter(builder.Metadata.ClrType, "e");
-        var property = Expression.Property(parameter, nameof(ISoftDeletable.IsActive));
-        var filter = Expression.Lambda(
-            Expression.Equal(property, Expression.Constant(true)),
-            parameter);
+            combinedFilter = Expression.Equal(orgProperty, organizationId);
+        }
 
-        builder.HasQueryFilter(filter);
+        if (isSoftDeletable)
+        {
+            var isActiveProperty = Expression.Property(parameter, nameof(ISoftDeletable.IsActive));
+            var softDeleteFilter = Expression.Equal(isActiveProperty, Expression.Constant(true));
+
+            combinedFilter = combinedFilter is not null
+                ? Expression.AndAlso(combinedFilter, softDeleteFilter)
+                : softDeleteFilter;
+        }
+
+        if (combinedFilter is not null)
+        {
+            builder.HasQueryFilter(Expression.Lambda(combinedFilter, parameter));
+        }
     }
 }
