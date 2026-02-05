@@ -12,7 +12,7 @@ Propentro is a property management API built with **.NET 10.0** following **Clea
 |----------|-------------|
 | Framework | .NET 10.0, ASP.NET Core |
 | Database | PostgreSQL, EF Core 10.0.2, Dapper |
-| Patterns | CQRS, MediatR 14.0, Result Pattern, DDD |
+| Patterns | CQRS, MediatR 14.0, Result Pattern, DDD, UnitOfWork |
 | Validation | FluentValidation 12.1 |
 | Auth | Clerk JWT (Bearer tokens) |
 | Logging | Serilog with OpenTelemetry |
@@ -180,7 +180,7 @@ public class CreateUnitHandler(
         var unit = new Unit(property.Id, request.UnitNumber, request.Type);
 
         dbContext.Units.Add(unit);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        // Note: SaveChangesAsync is handled by UnitOfWorkBehavior
 
         return unit.PublicId;
     }
@@ -402,6 +402,90 @@ public static class UnitEndpoints
 | DTO | `{Entity}Dto` / `{Entity}DetailDto` | `UnitDto`, `UnitDetailDto` |
 | Request | `{Verb}{Entity}Request` | `CreateUnitRequest` |
 | Error class | `{Entity}Errors` | `UnitErrors` |
+
+### Logging Conventions
+
+This project uses **Serilog's static `Log` class** instead of injected `ILogger`:
+
+```csharp
+// ✅ CORRECT - Use static Log class
+using Serilog;
+
+public class MyHandler(IAppDbContext db) : ICommandHandler<MyCommand>
+{
+    public async Task<Result> Handle(MyCommand request, CancellationToken ct)
+    {
+        Log.Information("Processing {RequestName}", nameof(MyCommand));
+        Log.Debug("Request details: {@Request}", request);
+
+        try
+        {
+            // ... logic
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to process {RequestName}", nameof(MyCommand));
+            throw;
+        }
+    }
+}
+
+// ❌ WRONG - Don't inject ILogger
+public class MyHandler(IAppDbContext db, ILogger<MyHandler> logger)  // NO!
+```
+
+**Log Levels:**
+- `Log.Debug()` - Detailed diagnostic info (transactions, queries)
+- `Log.Information()` - General operational events
+- `Log.Warning()` - Unexpected but handled situations
+- `Log.Error()` - Errors and exceptions
+
+**Structured Logging:**
+- Use `{PropertyName}` placeholders, not string interpolation
+- Use `@` for complex object serialization: `{@Request}`
+
+### Transaction Management (UnitOfWork)
+
+Commands are automatically wrapped in database transactions via `UnitOfWorkBehavior`:
+
+```
+Request → Logging → Validation → UnitOfWork → Handler
+                                     ↓
+                          BeginTransaction
+                                     ↓
+                              Handler runs
+                                     ↓
+                    ┌─ Success → SaveChanges + Commit
+                    ├─ Failure → Rollback
+                    └─ Exception → Rollback + throw
+```
+
+**Important:**
+- **DO NOT** call `SaveChangesAsync` in command handlers - it's automatic
+- **DO NOT** manage transactions manually in handlers
+- Return `Result.Failure()` for business errors - triggers rollback
+- Throw exceptions for unexpected errors - triggers rollback
+
+```csharp
+// ✅ CORRECT - No SaveChangesAsync needed
+public async Task<Result<string>> Handle(CreateUnitCommand request, CancellationToken ct)
+{
+    var unit = new Unit(request.PropertyId, request.UnitNumber);
+    db.Units.Add(unit);
+
+    return unit.PublicId;  // UnitOfWorkBehavior handles SaveChanges + Commit
+}
+
+// ❌ WRONG - Don't call SaveChangesAsync manually
+public async Task<Result<string>> Handle(CreateUnitCommand request, CancellationToken ct)
+{
+    var unit = new Unit(request.PropertyId, request.UnitNumber);
+    db.Units.Add(unit);
+    await db.SaveChangesAsync(ct);  // NO! This is handled by behavior
+
+    return unit.PublicId;
+}
+```
 
 ### Database Conventions
 

@@ -1,8 +1,8 @@
 using MediatR;
-using Microsoft.Extensions.Logging;
 using Propentro.Application.Common.Interfaces.Messaging;
 using Propentro.Application.Common.Interfaces.Persistence;
 using Propentro.Application.Common.Models;
+using Serilog;
 
 namespace Propentro.Application.Common.Behaviors;
 
@@ -12,8 +12,7 @@ namespace Propentro.Application.Common.Behaviors;
 /// Only applies to commands (ICommand), not queries.
 /// </summary>
 public sealed class UnitOfWorkBehavior<TRequest, TResponse>(
-    IAppDbContext dbContext,
-    ILogger<UnitOfWorkBehavior<TRequest, TResponse>> logger) : IPipelineBehavior<TRequest, TResponse>
+    IAppDbContext dbContext) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
     public async Task<TResponse> Handle(
@@ -34,14 +33,14 @@ public sealed class UnitOfWorkBehavior<TRequest, TResponse>(
 
         try
         {
-            logger.LogDebug("Beginning transaction for {RequestName}", requestName);
+            Log.Debug("Beginning transaction for {RequestName}", requestName);
 
             var response = await next(cancellationToken);
 
             // Check if the result indicates failure
             if (IsFailureResult(response))
             {
-                logger.LogDebug("Rolling back transaction for {RequestName} due to failure result", requestName);
+                Log.Debug("Rolling back transaction for {RequestName} due to failure result", requestName);
                 await transaction.RollbackAsync(cancellationToken);
                 return response;
             }
@@ -49,13 +48,13 @@ public sealed class UnitOfWorkBehavior<TRequest, TResponse>(
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
 
-            logger.LogDebug("Committed transaction for {RequestName}", requestName);
+            Log.Debug("Committed transaction for {RequestName}", requestName);
 
             return response;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Rolling back transaction for {RequestName} due to exception", requestName);
+            Log.Error(ex, "Rolling back transaction for {RequestName} due to exception", requestName);
             await transaction.RollbackAsync(cancellationToken);
             throw;
         }
