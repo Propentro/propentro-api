@@ -387,6 +387,7 @@ The following CA rules are suppressed in `.editorconfig` to avoid false positive
 | `CA1848` | "Use LoggerMessage delegates" - project uses Serilog static `Log` |
 | `CA2007` | "ConfigureAwait" - not needed in ASP.NET Core |
 | `CA1034` | "Nested types not visible" - common for DTOs/result types |
+| `CA1716` | "Identifiers match keywords" - `Me` is VB.NET keyword, irrelevant for C# |
 | `CA1724` | "Type names match namespaces" - false positives with domain names |
 | `CA1054/55/56` | "URI as strings" - simpler for API DTOs |
 | `IDE0058` | "Expression value unused" - noisy with fluent APIs |
