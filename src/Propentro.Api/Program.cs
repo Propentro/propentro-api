@@ -4,6 +4,7 @@ using Propentro.Api.Middleware;
 using Propentro.Application;
 using Propentro.Infrastructure;
 using Scalar.AspNetCore;
+using System.Globalization;
 using Serilog;
 using Serilog.Events;
 
@@ -17,8 +18,9 @@ Log.Logger = new LoggerConfiguration()
     .Enrich.FromLogContext()
     .Enrich.WithMachineName()
     .Enrich.WithProperty("Application", "Propentro.Api")
-    .WriteTo.Console(outputTemplate:
-        "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+        formatProvider: CultureInfo.InvariantCulture)
     .CreateLogger();
 
 try
