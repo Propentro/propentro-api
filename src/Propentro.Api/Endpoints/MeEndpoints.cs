@@ -15,9 +15,10 @@ public static class MeEndpoints
 
         group.MapGet("/", GetMe)
             .WithName("GetMe")
-            .WithSummary("Get current authenticated user profile")
+            .WithSummary("Get current authenticated user profile, roles, and permissions")
             .Produces<MeDto>()
-            .Produces(StatusCodes.Status401Unauthorized);
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
     private static async Task<IResult> GetMe(

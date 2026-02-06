@@ -269,6 +269,7 @@ Never throw exceptions for business errors:
 
 ```csharp
 // Error definitions (per feature)
+// Code format: "Entity.ErrorName" (dotted, PascalCase)
 public static class UnitErrors
 {
     public static readonly Error NotFound = new(
@@ -605,6 +606,49 @@ public class UnitIntegrationTests : IAsyncLifetime
 | `Domain/Common/PublicIdGenerator.cs` | Client-side prefixed PublicId generation |
 | `Api/Program.cs` | Application bootstrap and middleware pipeline |
 | `Api/Endpoints/EndpointExtensions.cs` | Central endpoint registration |
+
+## Reference Implementation: /me Endpoint
+
+The `/me` endpoint is the reference implementation. All future endpoints should follow the same patterns.
+
+### Response Shape
+
+```json
+{
+  "userId": "usr_a3f9c12d8e4b",
+  "email": "john@example.com",
+  "firstName": "John",
+  "lastName": "Doe",
+  "organization": {
+    "organizationId": "org_9bc21f0a7d33",
+    "name": "Acme Corp",
+    "slug": "acme-corp",
+    "currencyCode": "EUR",
+    "timezone": "Europe/Istanbul"
+  },
+  "roles": ["admin"],
+  "permissions": ["properties:read", "properties:write", "units:read"]
+}
+```
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `Api/Endpoints/MeEndpoints.cs` | Endpoint definition with metadata |
+| `Application/Me/Queries/GetMe/GetMeQuery.cs` | Query record |
+| `Application/Me/Queries/GetMe/GetMeHandler.cs` | Dapper handler with roles + permissions |
+| `Application/Me/MeErrors.cs` | Error definitions |
+| `Contracts/Me/MeDto.cs` | Response DTOs |
+
+### Key Patterns Demonstrated
+
+- **No `RequirePermission`** on `/me` - every authenticated user can view their own profile
+- **Dapper query** with `await using` + `OpenAsync` + sequential queries on same connection
+- **Error codes** follow `Entity.ErrorName` format (e.g., `Me.NotAuthenticated`)
+- **DTO** uses positional records, nullable fields where data may not exist
+- **Handler** checks `ICurrentUser.IsAuthenticated` before any DB access
+- **Endpoint** uses `ProducesProblem()` for error responses, `Produces<T>()` for success
 
 ## Troubleshooting
 

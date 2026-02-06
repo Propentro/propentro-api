@@ -5,12 +5,12 @@ namespace Propentro.Application.Me;
 public static class MeErrors
 {
     public static readonly Error NotAuthenticated = new(
-        "ME_NOT_AUTHENTICATED",
+        "Me.NotAuthenticated",
         "User is not authenticated.",
         ErrorType.Unauthorized);
 
     public static readonly Error UserNotFound = new(
-        "ME_USER_NOT_FOUND",
+        "Me.UserNotFound",
         "Authenticated user was not found in the system.",
         ErrorType.NotFound);
 }
