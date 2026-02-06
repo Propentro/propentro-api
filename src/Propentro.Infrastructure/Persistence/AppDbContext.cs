@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Propentro.Domain.Common;
 using Propentro.Domain.Common.Interfaces;
 using Propentro.Domain.Entities;
-using Propentro.Infrastructure.Persistence.Extensions;
 using Unit = Propentro.Domain.Entities.Unit;
 
 namespace Propentro.Infrastructure.Persistence;
@@ -58,6 +57,12 @@ public sealed class AppDbContext(
     // Notifications
     public DbSet<Notification> Notifications => Set<Notification>();
 
+    /// <summary>
+    /// Current organization ID for global query filter.
+    /// EF Core rebinds this per query since it's a DbContext member access.
+    /// </summary>
+    internal Guid CurrentOrganizationId => currentUser.OrganizationId;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
@@ -66,21 +71,27 @@ public sealed class AppDbContext(
 
     private void ApplyGlobalFilters(ModelBuilder builder)
     {
-        foreach (var entityType in builder.Model.GetEntityTypes())
-        {
-            var isOrganizationScoped = typeof(IOrganizationScoped).IsAssignableFrom(entityType.ClrType);
-            var isSoftDeletable = typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType);
+        // Organization-scoped + soft-delete
+        builder.Entity<Property>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+        builder.Entity<Unit>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+        builder.Entity<Lease>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+        builder.Entity<Party>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+        builder.Entity<Address>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+        builder.Entity<Document>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+        builder.Entity<PropertyCompliance>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+        builder.Entity<UnitCompliance>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+        builder.Entity<LeaseCompliance>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
 
-            // Use the combined filter method to avoid filter override issues
-            // EF Core only allows one HasQueryFilter per entity - multiple calls override previous ones
-            if (isOrganizationScoped || isSoftDeletable)
-            {
-                builder.Entity(entityType.ClrType).AddGlobalFilters(
-                    currentUser,
-                    isOrganizationScoped,
-                    isSoftDeletable);
-            }
-        }
+        // Organization-scoped only
+        builder.Entity<Notification>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
+        builder.Entity<PropertyPartyRole>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
+        builder.Entity<UnitPartyRole>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
+
+        // Soft-delete only
+        builder.Entity<User>().HasQueryFilter(e => e.IsActive);
+        builder.Entity<Organization>().HasQueryFilter(e => e.IsActive);
+        builder.Entity<Role>().HasQueryFilter(e => e.IsActive);
+        builder.Entity<SystemAdministrator>().HasQueryFilter(e => e.IsActive);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

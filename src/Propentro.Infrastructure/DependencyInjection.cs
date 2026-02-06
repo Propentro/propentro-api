@@ -57,20 +57,7 @@ public static class DependencyInjection
             options.ExpirationScanFrequency = cacheOptions.MemoryCacheExpirationScanFrequency;
         });
 
-        if (cacheOptions.Provider == CacheProvider.Redis
-            && !string.IsNullOrEmpty(cacheOptions.RedisConnectionString))
-        {
-            // TODO: Uncomment when StackExchange.Redis package is added
-            // services.AddSingleton<IConnectionMultiplexer>(sp =>
-            //     ConnectionMultiplexer.Connect(cacheOptions.RedisConnectionString));
-            // services.AddSingleton<ICacheService, RedisCacheService>();
-
-            services.AddSingleton<ICacheService, MemoryCacheService>();
-        }
-        else
-        {
-            services.AddSingleton<ICacheService, MemoryCacheService>();
-        }
+        services.AddSingleton<ICacheService, MemoryCacheService>();
 
         return services;
     }

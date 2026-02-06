@@ -8,8 +8,8 @@ namespace Propentro.Application.Common.Behaviors;
 
 /// <summary>
 /// MediatR pipeline behavior that wraps command execution in a database transaction.
-/// Commits on success, rolls back on failure.
-/// Note: Handlers are responsible for calling SaveChangesAsync.
+/// Automatically calls SaveChangesAsync and commits on success, rolls back on failure.
+/// Handlers should NOT call SaveChangesAsync — this behavior handles persistence.
 /// </summary>
 public sealed class UnitOfWorkBehavior<TRequest, TResponse>(
     IAppDbContext dbContext) : IPipelineBehavior<TRequest, TResponse>
@@ -41,6 +41,7 @@ public sealed class UnitOfWorkBehavior<TRequest, TResponse>(
                 return response;
             }
 
+            await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             Log.Debug("Transaction committed for {RequestName}", typeof(TRequest).Name);
 

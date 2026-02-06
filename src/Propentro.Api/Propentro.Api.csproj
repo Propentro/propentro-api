@@ -15,7 +15,6 @@
     <PackageReference Include="Serilog.Enrichers.Environment" />
     <PackageReference Include="Serilog.Enrichers.Process" />
     <PackageReference Include="Scalar.AspNetCore" />
-    <PackageReference Include="Asp.Versioning.Http" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
   </ItemGroup>
 
