@@ -1,3 +1,4 @@
+using System.Threading.RateLimiting;
 using Propentro.Api.Endpoints;
 using Propentro.Api.Middleware;
 using Propentro.Application;
@@ -38,6 +39,37 @@ try
     builder.Services.AddProblemDetails();
     builder.Services.AddOpenApi();
 
+    // CORS
+    builder.Services.AddCors(options =>
+    {
+        options.AddDefaultPolicy(policy =>
+        {
+            var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+
+            if (origins is { Length: > 0 })
+                policy.WithOrigins(origins).AllowCredentials();
+            else
+                policy.AllowAnyOrigin();
+
+            policy.AllowAnyMethod().AllowAnyHeader();
+        });
+    });
+
+    // Health Checks
+    builder.Services.AddHealthChecks();
+
+    // Rate Limiting
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        options.AddFixedWindowLimiter("fixed", config =>
+        {
+            config.PermitLimit = 100;
+            config.Window = TimeSpan.FromMinutes(1);
+            config.QueueLimit = 0;
+        });
+    });
+
     var app = builder.Build();
 
     // Middleware pipeline (order matters!)
@@ -54,6 +86,9 @@ try
         });
     }
 
+    app.UseCors();
+    app.UseRateLimiter();
+
     // Authentication MUST run before UserContextMiddleware
     // so that User claims are populated from the JWT
     app.UseAuthentication();
@@ -64,7 +99,10 @@ try
     // NOTE: Runs after auth so User.Identity.IsAuthenticated is properly set
     app.UseMiddleware<UserContextMiddleware>();
 
-    // Endpoints
+    // Health check endpoint (no auth required)
+    app.MapHealthChecks("/health").AllowAnonymous();
+
+    // API Endpoints
     app.MapApiEndpoints();
 
     await app.RunAsync();

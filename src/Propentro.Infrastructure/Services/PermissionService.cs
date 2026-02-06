@@ -29,7 +29,7 @@ public sealed class PermissionService(IDbConnectionFactory db, ICacheService cac
             return cached;
         }
 
-        using var connection = db.CreateConnection();
+        await using var connection = db.CreateConnection();
         await connection.OpenAsync(cancellationToken);
 
         const string sql = """
@@ -41,7 +41,6 @@ public sealed class PermissionService(IDbConnectionFactory db, ICacheService cac
             WHERE our.user_id = @UserId
               AND our.organization_id = @OrganizationId
               AND r.is_active = TRUE
-              AND p.is_active = TRUE
             """;
 
         var permissions = await connection.QueryAsync<string>(

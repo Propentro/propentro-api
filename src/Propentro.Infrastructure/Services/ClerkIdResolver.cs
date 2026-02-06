@@ -34,19 +34,14 @@ public sealed class ClerkIdResolver(IDbConnectionFactory db, IMemoryCache cache)
         await using var connection = db.CreateConnection();
         await connection.OpenAsync(cancellationToken);
 
-        // Run queries in parallel for uncached values
-        var userTask = userCacheHit
-            ? Task.FromResult((cachedUserId, cachedPublicUserId))
-            : ResolveUserAsync(connection, externalUserId);
+        // Run queries sequentially — Npgsql does not support concurrent commands on a single connection
+        var (userId, publicUserId) = userCacheHit
+            ? (cachedUserId, cachedPublicUserId)
+            : await ResolveUserAsync(connection, externalUserId);
 
-        var orgTask = orgCacheHit
-            ? Task.FromResult((cachedOrgId, cachedPublicOrgId))
-            : ResolveOrgAsync(connection, externalOrgId);
-
-        await Task.WhenAll(userTask, orgTask);
-
-        var (userId, publicUserId) = await userTask;
-        var (orgId, publicOrgId) = await orgTask;
+        var (orgId, publicOrgId) = orgCacheHit
+            ? (cachedOrgId, cachedPublicOrgId)
+            : await ResolveOrgAsync(connection, externalOrgId);
 
         return new ResolvedIdentity(userId, publicUserId, orgId, publicOrgId);
     }

@@ -1,9 +1,10 @@
+using System.Linq.Expressions;
+using System.Reflection;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Propentro.Domain.Common;
 using Propentro.Domain.Common.Interfaces;
 using Propentro.Domain.Entities;
-using Propentro.Infrastructure.Persistence.Extensions;
 using Unit = Propentro.Domain.Entities.Unit;
 
 namespace Propentro.Infrastructure.Persistence;
@@ -58,6 +59,12 @@ public sealed class AppDbContext(
     // Notifications
     public DbSet<Notification> Notifications => Set<Notification>();
 
+    /// <summary>
+    /// Current organization ID for global query filter.
+    /// EF Core rebinds this per query since it's a DbContext member access.
+    /// </summary>
+    internal Guid CurrentOrganizationId => currentUser.OrganizationId;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
@@ -66,22 +73,37 @@ public sealed class AppDbContext(
 
     private void ApplyGlobalFilters(ModelBuilder builder)
     {
+        var orgSoftDeleteMethod = GetType().GetMethod(
+            nameof(SetOrgAndSoftDeleteFilter), BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var orgOnlyMethod = GetType().GetMethod(
+            nameof(SetOrgOnlyFilter), BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var softDeleteMethod = GetType().GetMethod(
+            nameof(SetSoftDeleteOnlyFilter), BindingFlags.NonPublic | BindingFlags.Instance)!;
+
         foreach (var entityType in builder.Model.GetEntityTypes())
         {
-            var isOrganizationScoped = typeof(IOrganizationScoped).IsAssignableFrom(entityType.ClrType);
-            var isSoftDeletable = typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType);
+            var clrType = entityType.ClrType;
+            var isOrgScoped = typeof(IOrganizationScoped).IsAssignableFrom(clrType);
+            var isSoftDeletable = typeof(ISoftDeletable).IsAssignableFrom(clrType);
 
-            // Use the combined filter method to avoid filter override issues
-            // EF Core only allows one HasQueryFilter per entity - multiple calls override previous ones
-            if (isOrganizationScoped || isSoftDeletable)
-            {
-                builder.Entity(entityType.ClrType).AddGlobalFilters(
-                    currentUser,
-                    isOrganizationScoped,
-                    isSoftDeletable);
-            }
+            if (isOrgScoped && isSoftDeletable)
+                orgSoftDeleteMethod.MakeGenericMethod(clrType).Invoke(this, [builder]);
+            else if (isOrgScoped)
+                orgOnlyMethod.MakeGenericMethod(clrType).Invoke(this, [builder]);
+            else if (isSoftDeletable)
+                softDeleteMethod.MakeGenericMethod(clrType).Invoke(this, [builder]);
         }
     }
+
+    // Lambda closures reference this.CurrentOrganizationId — EF Core rebinds per query
+    private void SetOrgAndSoftDeleteFilter<T>(ModelBuilder b) where T : class, IOrganizationScoped, ISoftDeletable
+        => b.Entity<T>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+
+    private void SetOrgOnlyFilter<T>(ModelBuilder b) where T : class, IOrganizationScoped
+        => b.Entity<T>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
+
+    private void SetSoftDeleteOnlyFilter<T>(ModelBuilder b) where T : class, ISoftDeletable
+        => b.Entity<T>().HasQueryFilter(e => e.IsActive);
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
