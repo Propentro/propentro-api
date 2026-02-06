@@ -1,4 +1,4 @@
-using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Propentro.Api.Endpoints;
 using Propentro.Api.Middleware;
 using Propentro.Application;
@@ -118,4 +118,4 @@ finally
 }
 
 // For integration testing
-public partial class Program { }
+internal partial class Program { }

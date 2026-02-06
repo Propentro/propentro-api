@@ -5,7 +5,7 @@ using Propentro.Contracts.Me;
 
 namespace Propentro.Api.Endpoints;
 
-public static class MeEndpoints
+internal static class MeEndpoints
 {
     public static void MapMeEndpoints(this IEndpointRouteBuilder app)
     {
@@ -13,7 +13,7 @@ public static class MeEndpoints
             .WithTags("Me")
             .RequireAuthorization();
 
-        group.MapGet("/", GetMe)
+        group.MapGet("/", GetMeAsync)
             .WithName("GetMe")
             .WithSummary("Get current authenticated user profile, roles, and permissions")
             .Produces<MeDto>()
@@ -21,7 +21,7 @@ public static class MeEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
-    private static async Task<IResult> GetMe(
+    private static async Task<IResult> GetMeAsync(
         ISender sender,
         CancellationToken ct)
     {

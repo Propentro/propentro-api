@@ -5,14 +5,14 @@ using Serilog;
 
 namespace Propentro.Api.Middleware;
 
-public sealed class GlobalExceptionHandler(IWebHostEnvironment env) : IExceptionHandler
+internal sealed class GlobalExceptionHandler(IWebHostEnvironment env) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
-        HttpContext context,
+        HttpContext httpContext,
         Exception exception,
         CancellationToken ct)
     {
-        var traceId = Activity.Current?.Id ?? context.TraceIdentifier;
+        var traceId = Activity.Current?.Id ?? httpContext.TraceIdentifier;
 
         var (statusCode, problemDetails) = exception switch
         {
@@ -24,9 +24,9 @@ public sealed class GlobalExceptionHandler(IWebHostEnvironment env) : IException
 
         LogException(exception, statusCode, traceId);
 
-        context.Response.StatusCode = statusCode;
-        context.Response.ContentType = "application/problem+json";
-        await context.Response.WriteAsJsonAsync(problemDetails, ct);
+        httpContext.Response.StatusCode = statusCode;
+        httpContext.Response.ContentType = "application/problem+json";
+        await httpContext.Response.WriteAsJsonAsync(problemDetails, ct);
 
         return true;
     }

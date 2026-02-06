@@ -1,7 +1,4 @@
 using Dapper;
-using Propentro.Application.Common.Interfaces.Identity;
-using Propentro.Application.Common.Interfaces.Messaging;
-using Propentro.Application.Common.Interfaces.Persistence;
 using Propentro.Application.Common.Models;
 using Propentro.Contracts.Me;
 

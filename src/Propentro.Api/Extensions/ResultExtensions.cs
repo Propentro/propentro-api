@@ -2,7 +2,7 @@ using Propentro.Application.Common.Models;
 
 namespace Propentro.Api.Extensions;
 
-public static class ResultExtensions
+internal static class ResultExtensions
 {
     public static IResult ToHttpResult<T>(this Result<T> result) =>
         result.IsSuccess

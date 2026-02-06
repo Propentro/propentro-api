@@ -14,7 +14,5 @@ global using Propentro.Application.Common.Interfaces.Identity;
 global using Propentro.Application.Common.Interfaces.Caching;
 
 // Storage
-global using Propentro.Application.Common.Interfaces.Storage;
 
 // Time
-global using Propentro.Application.Common.Interfaces.Time;
