@@ -367,13 +367,29 @@ public static class UnitEndpoints
 - **Indentation**: 4 spaces
 - **Line endings**: LF
 - **Namespaces**: File-scoped (`namespace Propentro.Domain.Entities;`)
-- **Braces**: Required (`csharp_prefer_braces = true`)
+- **Braces**: Required for multi-line blocks, optional for single-line (`csharp_prefer_braces = when_multiline`)
 - **var usage**: Use when type is apparent, explicit types for built-ins
 - **Private fields**: `_camelCase` prefix
 - **Async methods**: Must end with `Async` suffix
 - **Interfaces**: Must start with `I` prefix
 - **Primary constructors**: Preferred for simple DI
 - **Warnings as errors**: Enabled globally - all warnings must be resolved
+- **Analysis level**: `latest-recommended` (not `latest-all`) - aggressive rules suppressed in `.editorconfig`
+
+### Suppressed Analyzer Rules
+
+The following CA rules are suppressed in `.editorconfig` to avoid false positives:
+
+| Rule | Reason |
+|------|--------|
+| `CA1515` | "Make public types internal" - impractical for DI-heavy projects |
+| `CA1062` | "Validate public method args" - redundant with nullable reference types |
+| `CA1848` | "Use LoggerMessage delegates" - project uses Serilog static `Log` |
+| `CA2007` | "ConfigureAwait" - not needed in ASP.NET Core |
+| `CA1034` | "Nested types not visible" - common for DTOs/result types |
+| `CA1724` | "Type names match namespaces" - false positives with domain names |
+| `CA1054/55/56` | "URI as strings" - simpler for API DTOs |
+| `IDE0058` | "Expression value unused" - noisy with fluent APIs |
 
 ### File Organization
 
@@ -596,7 +612,7 @@ public class UnitIntegrationTests : IAsyncLifetime
 
 | File | Purpose |
 |------|---------|
-| `Directory.Build.props` | Global build settings, TFM, nullable, TreatWarningsAsErrors |
+| `Directory.Build.props` | Global build settings, TFM, nullable, TreatWarningsAsErrors, AnalysisLevel |
 | `Directory.Packages.props` | Centralized NuGet package versions |
 | `global.json` | .NET SDK version pinning (10.0.102) |
 | `.editorconfig` | Code style rules and naming conventions |
@@ -660,6 +676,7 @@ The `/me` endpoint is the reference implementation. All future endpoints should 
 4. **Validation not running**: Ensure validator is in same assembly as command
 5. **Permission denied**: Check user has required permission and cache hasn't expired
 6. **Build fails with warnings**: `TreatWarningsAsErrors` is enabled - fix all warnings
+7. **Analyzer forces public→internal**: Check if `CA1515` is suppressed in `.editorconfig`; if a new aggressive CA rule appears, suppress it there
 
 ### Debug Tips
 

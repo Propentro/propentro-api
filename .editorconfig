@@ -36,7 +36,7 @@ csharp_preferred_modifier_order = public,private,protected,internal,static,exter
 # Expression-level preferences
 dotnet_style_object_initializer = true:suggestion
 dotnet_style_collection_initializer = true:suggestion
-dotnet_style_prefer_auto_properties = true:warning
+dotnet_style_prefer_auto_properties = true:suggestion
 dotnet_style_prefer_conditional_expression_over_assignment = true:suggestion
 
 # Null-checking preferences
@@ -63,7 +63,7 @@ csharp_style_pattern_matching_over_as_with_null_check = true:suggestion
 csharp_style_prefer_switch_expression = true:suggestion
 
 # Code block preferences
-csharp_prefer_braces = true:warning
+csharp_prefer_braces = when_multiline:suggestion
 csharp_prefer_simple_using_statement = true:suggestion
 
 # File-scoped namespaces
@@ -129,3 +129,76 @@ dotnet_naming_symbols.async_methods.required_modifiers = async
 
 dotnet_naming_style.async_suffix.required_suffix = Async
 dotnet_naming_style.async_suffix.capitalization = pascal_case
+
+# ============================================================================
+# Analyzer diagnostic suppressions
+# Suppress overly aggressive rules from AnalysisLevel=latest-recommended
+# ============================================================================
+
+# CA1515: Public types in non-public API assemblies - disabled
+# Forces public classes to internal; impractical for DI-heavy projects
+dotnet_diagnostic.CA1515.severity = none
+
+# CA1062: Validate arguments of public methods - disabled
+# Redundant when nullable reference types are enabled (<Nullable>enable</Nullable>)
+dotnet_diagnostic.CA1062.severity = none
+
+# CA1848: Use LoggerMessage delegates for performance - disabled
+# Project uses Serilog static Log class, not ILogger
+dotnet_diagnostic.CA1848.severity = none
+
+# CA1849: Call async methods when in an async method - keep as suggestion
+# Useful but sometimes sync calls are intentional
+dotnet_diagnostic.CA1849.severity = suggestion
+
+# CA2007: Consider calling ConfigureAwait - disabled
+# Not needed in ASP.NET Core (no SynchronizationContext)
+dotnet_diagnostic.CA2007.severity = none
+
+# CA1034: Nested types should not be visible - disabled
+# Common pattern for request/response DTOs and result types
+dotnet_diagnostic.CA1034.severity = none
+
+# CA1724: Type names should not match namespaces - disabled
+# Causes false positives with common domain names (e.g., Property, Unit)
+dotnet_diagnostic.CA1724.severity = none
+
+# CA1819: Properties should not return arrays - suggestion only
+# Sometimes arrays are appropriate for DTOs and simple models
+dotnet_diagnostic.CA1819.severity = suggestion
+
+# CA1002: Do not expose generic lists - suggestion only
+# Pragmatic for DTOs and simple data transfer
+dotnet_diagnostic.CA1002.severity = suggestion
+
+# CA1056/CA1054/CA1055: URI properties/params/returns should not be strings - disabled
+# String URIs are simpler for API DTOs
+dotnet_diagnostic.CA1054.severity = none
+dotnet_diagnostic.CA1055.severity = none
+dotnet_diagnostic.CA1056.severity = none
+
+# CA1822: Mark members as static - suggestion only
+# Too aggressive; breaks DI patterns and handler conventions
+dotnet_diagnostic.CA1822.severity = suggestion
+
+# CA1859: Use concrete types when possible for improved performance - suggestion only
+# Interface usage is preferred for testability
+dotnet_diagnostic.CA1859.severity = suggestion
+
+# IDE0005: Remove unnecessary usings - keep as warning (important for clean code)
+dotnet_diagnostic.IDE0005.severity = warning
+
+# IDE0058: Expression value is never used - disabled
+# Too noisy with fluent APIs and builder patterns
+dotnet_diagnostic.IDE0058.severity = none
+
+# IDE0046: Convert to conditional expression - suggestion only
+# Can reduce readability for complex conditions
+dotnet_diagnostic.IDE0046.severity = suggestion
+
+# IDE0010: Add missing cases to switch - suggestion only
+# Useful hint but shouldn't block compilation
+dotnet_diagnostic.IDE0010.severity = suggestion
+
+# IDE0072: Add missing cases to switch expression - suggestion only
+dotnet_diagnostic.IDE0072.severity = suggestion
