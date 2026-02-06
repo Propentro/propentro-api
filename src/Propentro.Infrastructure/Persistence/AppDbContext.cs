@@ -1,5 +1,3 @@
-using System.Linq.Expressions;
-using System.Reflection;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Propentro.Domain.Common;
@@ -73,37 +71,28 @@ public sealed class AppDbContext(
 
     private void ApplyGlobalFilters(ModelBuilder builder)
     {
-        var orgSoftDeleteMethod = GetType().GetMethod(
-            nameof(SetOrgAndSoftDeleteFilter), BindingFlags.NonPublic | BindingFlags.Instance)!;
-        var orgOnlyMethod = GetType().GetMethod(
-            nameof(SetOrgOnlyFilter), BindingFlags.NonPublic | BindingFlags.Instance)!;
-        var softDeleteMethod = GetType().GetMethod(
-            nameof(SetSoftDeleteOnlyFilter), BindingFlags.NonPublic | BindingFlags.Instance)!;
+        // Organization-scoped + soft-delete
+        builder.Entity<Property>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+        builder.Entity<Unit>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+        builder.Entity<Lease>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+        builder.Entity<Party>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+        builder.Entity<Address>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+        builder.Entity<Document>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+        builder.Entity<PropertyCompliance>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+        builder.Entity<UnitCompliance>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+        builder.Entity<LeaseCompliance>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
 
-        foreach (var entityType in builder.Model.GetEntityTypes())
-        {
-            var clrType = entityType.ClrType;
-            var isOrgScoped = typeof(IOrganizationScoped).IsAssignableFrom(clrType);
-            var isSoftDeletable = typeof(ISoftDeletable).IsAssignableFrom(clrType);
+        // Organization-scoped only
+        builder.Entity<Notification>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
+        builder.Entity<PropertyPartyRole>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
+        builder.Entity<UnitPartyRole>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
 
-            if (isOrgScoped && isSoftDeletable)
-                orgSoftDeleteMethod.MakeGenericMethod(clrType).Invoke(this, [builder]);
-            else if (isOrgScoped)
-                orgOnlyMethod.MakeGenericMethod(clrType).Invoke(this, [builder]);
-            else if (isSoftDeletable)
-                softDeleteMethod.MakeGenericMethod(clrType).Invoke(this, [builder]);
-        }
+        // Soft-delete only
+        builder.Entity<User>().HasQueryFilter(e => e.IsActive);
+        builder.Entity<Organization>().HasQueryFilter(e => e.IsActive);
+        builder.Entity<Role>().HasQueryFilter(e => e.IsActive);
+        builder.Entity<SystemAdministrator>().HasQueryFilter(e => e.IsActive);
     }
-
-    // Lambda closures reference this.CurrentOrganizationId — EF Core rebinds per query
-    private void SetOrgAndSoftDeleteFilter<T>(ModelBuilder b) where T : class, IOrganizationScoped, ISoftDeletable
-        => b.Entity<T>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
-
-    private void SetOrgOnlyFilter<T>(ModelBuilder b) where T : class, IOrganizationScoped
-        => b.Entity<T>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
-
-    private void SetSoftDeleteOnlyFilter<T>(ModelBuilder b) where T : class, ISoftDeletable
-        => b.Entity<T>().HasQueryFilter(e => e.IsActive);
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

@@ -10,4 +10,8 @@ public abstract class AggregateRoot : OrganizationEntity
 
     protected void RaiseDomainEvent(IDomainEvent @event) => _domainEvents.Add(@event);
     public void ClearDomainEvents() => _domainEvents.Clear();
+
+    protected AggregateRoot() { }
+
+    protected AggregateRoot(string prefix) : base(prefix) { }
 }

@@ -72,7 +72,7 @@ src/
 │   └── DependencyInjection.cs
 │
 ├── Propentro.Domain/              # Domain entities and logic
-│   ├── Common/                    # Entity, AggregateRoot, ValueObject, DomainClock, PublicIdGenerator
+│   ├── Common/                    # Entity, AggregateRoot, ValueObject, PublicIdGenerator
 │   ├── Entities/                  # Domain entities (Property, Unit, Lease, etc.)
 │   ├── ValueObjects/              # Money, DateRange
 │   ├── Enums/                     # LeaseStatus, UnitType, etc.
@@ -294,33 +294,31 @@ return unit.PublicId;  // Implicit conversion
 ### Domain Entity Pattern
 
 ```csharp
-public class Unit : OrganizationAggregateRoot
+public class Unit : AggregateRoot
 {
-    public Guid PropertyId { get; private set; }
-    public string UnitNumber { get; private set; } = string.Empty;
-    public UnitType Type { get; private set; }
-    public UnitStatus Status { get; private set; }
+    public Guid PropertyId { get; set; }
+    public string Name { get; set; } = default!;
+    public string UnitType { get; set; } = default!;
+    public string Status { get; set; } = "available";
 
     private Unit() { }  // EF Core
 
-    public Unit(Guid propertyId, string unitNumber, UnitType type)
+    public Unit(Guid propertyId, string name, string unitType) : base("unt")
     {
-        // Id (Guid v7) and PublicId (20-char alphanumeric) are set by Entity base class
+        // Id (Guid v7) and PublicId (unt_a3f9c12d8e4b) set by Entity base class
         PropertyId = propertyId;
-        UnitNumber = unitNumber;
-        Type = type;
-        Status = UnitStatus.Vacant;
-
-        RaiseDomainEvent(new UnitCreatedEvent(Id, unitNumber));
+        Name = name;
+        UnitType = unitType;
     }
 }
 ```
 
 **Key domain conventions:**
-- `Id` (Guid v7) - internal identifier, auto-generated in `Entity` constructor
-- `PublicId` (20-char lowercase alphanumeric) - user-facing, generated client-side by `PublicIdGenerator`
-- Both IDs are available immediately after `new Entity()` - no need to wait for database
-- Domain events use `DomainClock.UtcNow` for testability (not `DateTime.UtcNow`)
+- `Id` (Guid v7) - internal identifier, auto-generated in `Entity(prefix)` constructor
+- `PublicId` (prefixed hex: `prp_a3f9c12d8e4b`) - user-facing, generated client-side by `PublicIdGenerator`
+- Both IDs are available immediately after construction - no need to wait for database
+- Each entity defines its prefix via `base("prefix")`: `prp`, `unt`, `lse`, `pty`, `adr`, `doc`, `usr`, `org`, `rol`
+- Parameterless constructor is for EF Core only (no ID generation)
 
 ### API Endpoint Pattern
 
@@ -464,7 +462,7 @@ public async Task<Result<string>> Handle(CreateUnitCommand request, Cancellation
 
 - Table names: `snake_case` plural (`units`, `properties`)
 - Column names: `snake_case` (`unit_number`, `property_id`)
-- All entities have `public_id` (user-facing, 20-char alphanumeric) and `id` (internal Guid v7)
+- All entities have `public_id` (user-facing, prefixed hex e.g. `prp_a3f9c12d8e4b`) and `id` (internal Guid v7)
 - Organization-scoped entities have `organization_id`
 - Soft delete via `is_active` boolean
 - Audit fields: `created_at`, `created_by_id`, `updated_at`, `updated_by_id`
@@ -510,7 +508,7 @@ const string sql = """
     """;
 ```
 
-**How global filters work:** `AppDbContext` exposes `CurrentOrganizationId` which delegates to `ICurrentUser.OrganizationId`. Generic filter methods (`SetOrgAndSoftDeleteFilter<T>`, etc.) create lambda closures that reference `CurrentOrganizationId`. EF Core rebinds this property per query, ensuring correct tenant isolation.
+**How global filters work:** `AppDbContext` exposes `CurrentOrganizationId` which delegates to `ICurrentUser.OrganizationId`. Each entity has an explicit `HasQueryFilter` call in `ApplyGlobalFilters()` that references `CurrentOrganizationId`. EF Core rebinds this DbContext property per query, ensuring correct tenant isolation. When adding a new entity, add the corresponding `HasQueryFilter` line in `AppDbContext.ApplyGlobalFilters()`.
 
 ## Testing Guidelines
 
@@ -546,20 +544,6 @@ public class CreateUnitHandlerTests
 }
 ```
 
-### Testing with DomainClock
-
-```csharp
-[Fact]
-public void DomainEvent_ShouldUseOverriddenClock()
-{
-    var fixedTime = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-    using var _ = DomainClock.Override(() => fixedTime);
-
-    var evt = new PropertyCreatedEvent(Guid.NewGuid(), Guid.NewGuid());
-    evt.OccurredAt.Should().Be(fixedTime);
-}
-```
-
 ### Integration Tests
 
 ```csharp
@@ -581,14 +565,16 @@ public class UnitIntegrationTests : IAsyncLifetime
 
 ### Adding a New Entity
 
-1. Create entity in `Domain/Entities/` extending `OrganizationAggregateRoot` (or `AggregateRoot`)
-2. Add `DbSet` in `AppDbContext`
-3. Create configuration in `Infrastructure/Persistence/Configurations/`
-4. Create DTOs in `Contracts/[Feature]/`
-5. Create Commands/Queries in `Application/[Feature]/`
-6. Create Endpoints in `Api/Endpoints/`
-7. Register endpoints in `EndpointExtensions.MapApiEndpoints()`
-8. Add migration: `dotnet ef migrations add Add{Entity}`
+1. Create entity in `Domain/Entities/` extending `AggregateRoot` (or `OrganizationEntity`)
+2. Add constructor with prefix: `public MyEntity(...) : base("mye") { ... }`
+3. Add `DbSet` in `AppDbContext`
+4. Add `HasQueryFilter` in `AppDbContext.ApplyGlobalFilters()`
+5. Create configuration in `Infrastructure/Persistence/Configurations/`
+6. Create DTOs in `Contracts/[Feature]/`
+7. Create Commands/Queries in `Application/[Feature]/`
+8. Create Endpoints in `Api/Endpoints/`
+9. Register endpoints in `EndpointExtensions.MapApiEndpoints()`
+10. Add migration: `dotnet ef migrations add Add{Entity}`
 
 ### Adding a New Command
 
@@ -616,8 +602,7 @@ public class UnitIntegrationTests : IAsyncLifetime
 | `Application/DependencyInjection.cs` | MediatR and validator registration |
 | `Infrastructure/DependencyInjection.cs` | DB, auth, caching, services registration |
 | `Infrastructure/Persistence/AppDbContext.cs` | EF Core context with global filters and domain events |
-| `Domain/Common/PublicIdGenerator.cs` | Client-side PublicId generation |
-| `Domain/Common/DomainClock.cs` | Testable static clock for domain layer |
+| `Domain/Common/PublicIdGenerator.cs` | Client-side prefixed PublicId generation |
 | `Api/Program.cs` | Application bootstrap and middleware pipeline |
 | `Api/Endpoints/EndpointExtensions.cs` | Central endpoint registration |
 

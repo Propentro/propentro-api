@@ -4,16 +4,18 @@ namespace Propentro.Domain.Common;
 
 /// <summary>
 /// Base class for all domain entities.
-/// Both Id (Guid v7) and PublicId (alphanumeric) are generated client-side.
+/// Use Entity(prefix) for new entities, parameterless for EF Core.
 /// </summary>
 public abstract class Entity : IHasPublicId
 {
     public Guid Id { get; set; }
     public string PublicId { get; set; } = default!;
 
-    protected Entity()
+    protected Entity() { }
+
+    protected Entity(string prefix)
     {
         Id = Guid.CreateVersion7();
-        PublicId = PublicIdGenerator.Generate();
+        PublicId = PublicIdGenerator.Generate(prefix);
     }
 }

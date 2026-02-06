@@ -12,4 +12,8 @@ public abstract class OrganizationEntity : Entity, IOrganizationScoped, IAuditab
     public Guid? UpdatedById { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    protected OrganizationEntity() { }
+
+    protected OrganizationEntity(string prefix) : base(prefix) { }
 }
