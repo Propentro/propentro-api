@@ -6,85 +6,45 @@ using Serilog;
 namespace Propentro.Infrastructure.Authorization;
 
 /// <summary>
-/// Authorization handler that validates user permissions using the initialized ICurrentUser context.
-/// This handler depends on UserContextMiddleware having already resolved external IDs to internal IDs.
+/// Authorization handler that validates endpoint-specific permissions.
+/// Acts as a gate: can only BLOCK (Fail) requests, never succeeds requirements.
+/// Requirement success is handled by <see cref="ActiveUserAuthorizationHandler"/>.
+///
+/// Depends on UserContextMiddleware having already resolved CurrentUser
+/// and ActiveUserAuthorizationHandler having verified user/org are valid.
 /// </summary>
 public sealed class PermissionAuthorizationHandler(
     IPermissionService permissionService) : IAuthorizationHandler
 {
     public async Task HandleAsync(AuthorizationHandlerContext context)
     {
+        // If authorization has already failed (e.g., user not active), skip permission check
+        if (context.HasFailed)
+            return;
+
         var httpContext = context.Resource as HttpContext;
         var endpoint = httpContext?.GetEndpoint();
         var permissionAttributes = endpoint?.Metadata
             .GetOrderedMetadata<RequirePermissionAttribute>()
             .ToList();
 
-        // No permission requirements - succeed all pending requirements
+        // No permission requirements on this endpoint — nothing to check
         if (permissionAttributes is null || permissionAttributes.Count == 0)
-        {
-            foreach (var requirement in context.PendingRequirements)
-            {
-                context.Succeed(requirement);
-            }
             return;
-        }
 
-        // Get ICurrentUser from DI - must be already initialized by UserContextMiddleware
-        var currentUser = httpContext?.RequestServices.GetService<ICurrentUser>();
-        if (currentUser is null)
-        {
-            Log.Warning("ICurrentUser service not available in authorization handler");
-            context.Fail(new AuthorizationFailureReason(this, "Authorization service unavailable"));
+        // If we don't have an HttpContext (e.g., non-HTTP resource), skip permission check
+        if (httpContext is null)
             return;
-        }
 
-        // Ensure user context is initialized (defensive check)
-        if (currentUser is ICurrentUserInitializer { IsInitialized: false } initializer)
-        {
-            try
-            {
-                await initializer.InitializeAsync(httpContext!.RequestAborted);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to initialize user context in authorization handler");
-                context.Fail(new AuthorizationFailureReason(this, "Failed to initialize user context"));
-                return;
-            }
-        }
-
-        // User must be authenticated
-        if (!currentUser.IsAuthenticated)
-        {
-            context.Fail(new AuthorizationFailureReason(this, "User is not authenticated"));
-            return;
-        }
-
-        // Internal IDs must be resolved (not Guid.Empty)
-        if (currentUser.UserId == Guid.Empty)
-        {
-            Log.Warning(
-                "User ID not resolved. ExternalUserId: {ExternalUserId}",
-                currentUser.ExternalUserId);
-            context.Fail(new AuthorizationFailureReason(this, "User not found in system"));
-            return;
-        }
-
-        if (currentUser.OrganizationId == Guid.Empty)
-        {
-            Log.Warning(
-                "Organization ID not resolved. ExternalOrgId: {ExternalOrgId}",
-                currentUser.ExternalOrganizationId);
-            context.Fail(new AuthorizationFailureReason(this, "Organization context not available"));
-            return;
-        }
+        // At this point ActiveUserAuthorizationHandler has already verified
+        // that CurrentUser is authenticated with valid UserId and OrganizationId
+        var currentUser = httpContext.RequestServices.GetRequiredService<ICurrentUser>();
 
         // Get user's permissions from cache/database
         var userPermissions = await permissionService.GetUserPermissionsAsync(
             currentUser.UserId,
             currentUser.OrganizationId,
-            httpContext!.RequestAborted);
+            httpContext.RequestAborted);
 
         // Check each required permission
         foreach (var attr in permissionAttributes)
@@ -110,10 +70,7 @@ public sealed class PermissionAuthorizationHandler(
             }
         }
 
-        // All permission checks passed
-        foreach (var requirement in context.PendingRequirements)
-        {
-            context.Succeed(requirement);
-        }
+        // Permissions passed — no need to succeed any requirement here.
+        // ActiveUserAuthorizationHandler handles requirement success.
     }
 }

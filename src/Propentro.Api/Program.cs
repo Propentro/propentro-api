@@ -91,15 +91,18 @@ try
     app.UseCors();
     app.UseRateLimiter();
 
-    // Authentication MUST run before UserContextMiddleware
-    // so that User claims are populated from the JWT
+    // Authentication validates JWT and populates User claims
     app.UseAuthentication();
-    app.UseAuthorization();
 
-    // Push OrganizationId and UserId into Serilog LogContext for every request
-    // This ensures all logs (including DB exceptions) are tagged with tenant context
-    // NOTE: Runs after auth so User.Identity.IsAuthenticated is properly set
+    // Resolve external auth provider IDs to internal database IDs
+    // and enrich Serilog LogContext with tenant context.
+    // MUST run after Authentication (needs JWT claims) and BEFORE Authorization
+    // (so ActiveUserAuthorizationHandler sees fully initialized CurrentUser)
     app.UseMiddleware<UserContextMiddleware>();
+
+    // Authorization evaluates the default policy (ActiveUserRequirement)
+    // and endpoint-specific permissions (RequirePermissionAttribute)
+    app.UseAuthorization();
 
     // Health check endpoint (no auth required)
     app.MapHealthChecks("/health").AllowAnonymous();

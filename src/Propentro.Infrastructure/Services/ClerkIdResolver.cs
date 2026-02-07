@@ -1,5 +1,6 @@
 using Dapper;
 using Microsoft.Extensions.Caching.Memory;
+using Serilog;
 
 namespace Propentro.Infrastructure.Services;
 
@@ -14,23 +15,34 @@ public sealed class ClerkIdResolver(IDbConnectionFactory db, IMemoryCache cache)
 
     private const string OrgCachePrefix = "identity:org:";
     private const string UserCachePrefix = "identity:user:";
+    private const string MembershipCachePrefix = "identity:membership:";
 
     public async Task<ResolvedIdentity> ResolveIdentityAsync(
         string? externalUserId,
         string? externalOrgId,
         CancellationToken cancellationToken = default)
     {
-        // Check cache first for all values
+        // Phase 1: Check caches
         var (cachedUserId, cachedPublicUserId, userCacheHit) = TryGetUserFromCache(externalUserId);
         var (cachedOrgId, cachedPublicOrgId, orgCacheHit) = TryGetOrgFromCache(externalOrgId);
 
-        // If all values are cached, return immediately
+        // Fast path: user and org both cached
         if (userCacheHit && orgCacheHit)
         {
-            return new ResolvedIdentity(cachedUserId, cachedPublicUserId, cachedOrgId, cachedPublicOrgId);
+            // If either is empty, no membership check needed
+            if (cachedUserId == Guid.Empty || cachedOrgId == Guid.Empty)
+                return new ResolvedIdentity(cachedUserId, cachedPublicUserId, cachedOrgId, cachedPublicOrgId);
+
+            // Check membership cache — avoid DB connection if possible
+            if (TryGetMembershipFromCache(cachedUserId, cachedOrgId, out var isMember))
+            {
+                return isMember
+                    ? new ResolvedIdentity(cachedUserId, cachedPublicUserId, cachedOrgId, cachedPublicOrgId)
+                    : new ResolvedIdentity(cachedUserId, cachedPublicUserId, Guid.Empty, string.Empty);
+            }
         }
 
-        // Open single connection for all uncached queries
+        // Phase 2: Open single connection for all uncached queries
         await using var connection = db.CreateConnection();
         await connection.OpenAsync(cancellationToken);
 
@@ -42,6 +54,19 @@ public sealed class ClerkIdResolver(IDbConnectionFactory db, IMemoryCache cache)
         var (orgId, publicOrgId) = orgCacheHit
             ? (cachedOrgId, cachedPublicOrgId)
             : await ResolveOrgAsync(connection, externalOrgId);
+
+        // Phase 3: Verify user-org membership
+        if (userId != Guid.Empty && orgId != Guid.Empty)
+        {
+            var memberActive = await VerifyMembershipAsync(connection, userId, orgId);
+            if (!memberActive)
+            {
+                Log.Warning(
+                    "User {UserId} is not an active member of organization {OrganizationId}",
+                    userId, orgId);
+                return new ResolvedIdentity(userId, publicUserId, Guid.Empty, string.Empty);
+            }
+        }
 
         return new ResolvedIdentity(userId, publicUserId, orgId, publicOrgId);
     }
@@ -70,6 +95,12 @@ public sealed class ClerkIdResolver(IDbConnectionFactory db, IMemoryCache cache)
             return (cached.Item1, cached.Item2, true);
 
         return (Guid.Empty, string.Empty, false);
+    }
+
+    private bool TryGetMembershipFromCache(Guid userId, Guid orgId, out bool isMember)
+    {
+        var cacheKey = $"{MembershipCachePrefix}{userId}:{orgId}";
+        return cache.TryGetValue(cacheKey, out isMember);
     }
 
     private async Task<(Guid UserId, string PublicUserId)> ResolveUserAsync(
@@ -130,6 +161,36 @@ public sealed class ClerkIdResolver(IDbConnectionFactory db, IMemoryCache cache)
             .SetSize(1));
 
         return (result.Id, result.PublicId);
+    }
+
+    private async Task<bool> VerifyMembershipAsync(
+        System.Data.Common.DbConnection connection,
+        Guid userId,
+        Guid orgId)
+    {
+        var cacheKey = $"{MembershipCachePrefix}{userId}:{orgId}";
+        if (cache.TryGetValue<bool>(cacheKey, out var cached))
+            return cached;
+
+        const string sql = """
+            SELECT 1
+            FROM organization_users
+            WHERE user_id = @UserId
+              AND organization_id = @OrgId
+              AND status = 'active'
+            LIMIT 1
+            """;
+
+        var result = await connection.QueryFirstOrDefaultAsync<int?>(
+            sql, new { UserId = userId, OrgId = orgId });
+
+        var isMember = result.HasValue;
+
+        cache.Set(cacheKey, isMember, new MemoryCacheEntryOptions()
+            .SetAbsoluteExpiration(CacheDuration)
+            .SetSize(1));
+
+        return isMember;
     }
 
     private sealed record IdResult(Guid Id, string PublicId);
