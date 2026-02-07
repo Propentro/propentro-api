@@ -64,11 +64,11 @@ public static class DependencyInjection
 
     private static IServiceCollection AddIdentityServices(this IServiceCollection services)
     {
-        // ClerkIdResolver - Singleton (uses IMemoryCache internally, thread-safe)
+        // ClerkIdResolver - Singleton (stateless, pure ID resolution)
         services.AddSingleton<ClerkIdResolver>();
         services.AddSingleton<IExternalIdResolver>(sp => sp.GetRequiredService<ClerkIdResolver>());
 
-        // CurrentUserService - Scoped (per-request user context)
+        // CurrentUserService - Scoped (per-request identity orchestration + org membership check)
         services.AddScoped<CurrentUserService>();
         services.AddScoped<ICurrentUser>(sp => sp.GetRequiredService<CurrentUserService>());
         services.AddScoped<ICurrentUserInitializer>(sp => sp.GetRequiredService<CurrentUserService>());
