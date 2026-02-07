@@ -1,20 +1,12 @@
 namespace Propentro.Infrastructure.Authorization;
 
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = true)]
-public sealed class RequirePermissionAttribute : Attribute
+public sealed class RequirePermissionAttribute(PermissionLogic logic, params string[] permissions) : Attribute
 {
-    public string[] Permissions { get; }
-    public PermissionLogic Logic { get; }
+    public string[] Permissions { get; } = permissions;
+    public PermissionLogic Logic { get; } = logic;
 
-    public RequirePermissionAttribute(string permission)
+    public RequirePermissionAttribute(string permission) : this(PermissionLogic.All, [permission])
     {
-        Permissions = [permission];
-        Logic = PermissionLogic.All;
-    }
-
-    public RequirePermissionAttribute(PermissionLogic logic, params string[] permissions)
-    {
-        Permissions = permissions;
-        Logic = logic;
     }
 }
