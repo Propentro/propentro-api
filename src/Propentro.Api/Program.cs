@@ -98,10 +98,9 @@ try
     // Authentication: validates JWT, populates HttpContext.User claims
     app.UseAuthentication();
 
-    // User context: resolves external IDs → internal IDs, validates user/org exist,
-    // short-circuits with 401/403 if authenticated user is invalid.
-    // Must run BEFORE authorization so PermissionAuthorizationHandler has a fully
-    // initialized CurrentUser with resolved UserId and OrganizationId.
+    // User context: resolves external IDs → internal IDs and enriches Serilog log context.
+    // Runs BEFORE authorization so CurrentUser is already initialized when
+    // PermissionAuthorizationHandler runs — no defensive initialization needed there.
     app.UseMiddleware<UserContextMiddleware>();
 
     // Authorization: DenyAnonymous for [Authorize] endpoints, permission checks

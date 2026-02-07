@@ -6,13 +6,15 @@ using Serilog;
 namespace Propentro.Infrastructure.Authorization;
 
 /// <summary>
-/// Authorization handler that checks endpoint-level permission requirements.
-/// Depends on UserContextMiddleware having already resolved and validated user context
-/// (runs before UseAuthorization in the pipeline).
+/// Global authorization handler that runs for every authorized endpoint.
+/// Depends on UserContextMiddleware having already initialized CurrentUser
+/// (middleware runs before UseAuthorization in the pipeline).
 ///
-/// Responsibilities:
-/// - No permission attributes → return early (let default handlers evaluate DenyAnonymous etc.)
-/// - Has permission attributes → check user has required permissions, succeed or fail
+/// Flow:
+/// 1. Not authenticated → return early, let DenyAnonymousAuthorizationHandler handle it
+/// 2. Authenticated → validate user and organization exist in the database
+/// 3. If endpoint has RequirePermissionAttribute → check user has required permissions
+/// 4. All checks passed → succeed all pending requirements
 /// </summary>
 public sealed class PermissionAuthorizationHandler(
     IPermissionService permissionService) : IAuthorizationHandler
@@ -20,59 +22,76 @@ public sealed class PermissionAuthorizationHandler(
     public async Task HandleAsync(AuthorizationHandlerContext context)
     {
         var httpContext = context.Resource as HttpContext;
-        var endpoint = httpContext?.GetEndpoint();
+
+        // Not authenticated — don't interfere.
+        // DenyAnonymousAuthorizationHandler will reject if endpoint requires auth.
+        if (httpContext?.User.Identity?.IsAuthenticated != true)
+        {
+            return;
+        }
+
+        // Authenticated — validate user context is fully resolved.
+        // CurrentUser is already initialized by UserContextMiddleware (runs before authorization).
+        var currentUser = httpContext.RequestServices.GetRequiredService<ICurrentUser>();
+
+        if (currentUser.UserId == Guid.Empty)
+        {
+            Log.Warning(
+                "Authenticated user not found in database. ExternalUserId: {ExternalUserId}",
+                currentUser.ExternalUserId);
+            context.Fail(new AuthorizationFailureReason(this, "User not found in system"));
+            return;
+        }
+
+        if (currentUser.OrganizationId == Guid.Empty)
+        {
+            Log.Warning(
+                "Organization not resolved. ExternalUserId: {ExternalUserId}, ExternalOrgId: {ExternalOrgId}",
+                currentUser.ExternalUserId,
+                currentUser.ExternalOrganizationId);
+            context.Fail(new AuthorizationFailureReason(this, "Organization context not available"));
+            return;
+        }
+
+        // Check endpoint-level permission requirements (if any)
+        var endpoint = httpContext.GetEndpoint();
         var permissionAttributes = endpoint?.Metadata
             .GetOrderedMetadata<RequirePermissionAttribute>()
             .ToList();
 
-        // No permission requirements on this endpoint - let the default authorization
-        // handlers (e.g. DenyAnonymousAuthorizationHandler) evaluate their own requirements.
-        if (permissionAttributes is null || permissionAttributes.Count == 0)
+        if (permissionAttributes is { Count: > 0 })
         {
-            return;
-        }
+            var userPermissions = await permissionService.GetUserPermissionsAsync(
+                currentUser.UserId,
+                currentUser.OrganizationId,
+                httpContext.RequestAborted);
 
-        // CurrentUser is already initialized and validated by UserContextMiddleware.
-        // If we reach here, the user must be authenticated with valid IDs.
-        var currentUser = httpContext?.RequestServices.GetRequiredService<ICurrentUser>();
-        if (currentUser is null || !currentUser.IsAuthenticated
-            || currentUser.UserId == Guid.Empty || currentUser.OrganizationId == Guid.Empty)
-        {
-            context.Fail(new AuthorizationFailureReason(this, "User context not available"));
-            return;
-        }
-
-        // Get user's permissions from cache/database
-        var userPermissions = await permissionService.GetUserPermissionsAsync(
-            currentUser.UserId,
-            currentUser.OrganizationId,
-            httpContext!.RequestAborted);
-
-        // Check each required permission
-        foreach (var attr in permissionAttributes)
-        {
-            var hasPermission = attr.Logic switch
+            foreach (var attr in permissionAttributes)
             {
-                PermissionLogic.Any => attr.Permissions.Any(userPermissions.Contains),
-                PermissionLogic.All => attr.Permissions.All(userPermissions.Contains),
-                _ => false
-            };
+                var hasPermission = attr.Logic switch
+                {
+                    PermissionLogic.Any => attr.Permissions.Any(userPermissions.Contains),
+                    PermissionLogic.All => attr.Permissions.All(userPermissions.Contains),
+                    _ => false
+                };
 
-            if (!hasPermission)
-            {
-                Log.Debug(
-                    "Permission denied for user {UserId}. Required: {RequiredPermissions}, Has: {UserPermissions}",
-                    currentUser.UserId,
-                    attr.Permissions,
-                    userPermissions);
+                if (!hasPermission)
+                {
+                    Log.Debug(
+                        "Permission denied for user {UserId}. Required: {RequiredPermissions}, Has: {UserPermissions}",
+                        currentUser.UserId,
+                        attr.Permissions,
+                        userPermissions);
 
-                context.Fail(new AuthorizationFailureReason(this,
-                    $"Missing permission(s): {string.Join(", ", attr.Permissions)}"));
-                return;
+                    context.Fail(new AuthorizationFailureReason(this,
+                        $"Missing permission(s): {string.Join(", ", attr.Permissions)}"));
+                    return;
+                }
             }
         }
 
-        // All permission checks passed
+        // User is authenticated, exists in DB, has org context, and has required permissions.
+        // Safe to succeed all pending requirements (including DenyAnonymous — user IS authenticated).
         foreach (var requirement in context.PendingRequirements)
         {
             context.Succeed(requirement);
