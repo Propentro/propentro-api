@@ -89,8 +89,19 @@ public static class DependencyInjection
 
     private static IServiceCollection AddPermissionAuthorization(this IServiceCollection services)
     {
+        services.AddScoped<IAuthorizationHandler, ActiveUserAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
-        services.AddAuthorization();
+
+        services.AddAuthorization(options =>
+        {
+            // Default policy applies to ALL endpoints with .RequireAuthorization():
+            // 1. RequireAuthenticatedUser → JWT must be valid (DenyAnonymousAuthorizationRequirement)
+            // 2. ActiveUserRequirement   → User and Org must be resolved to active internal IDs
+            options.DefaultPolicy = new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .AddRequirements(new ActiveUserRequirement())
+                .Build();
+        });
 
         return services;
     }

@@ -11,10 +11,9 @@ public sealed class GetMeHandler(
 {
     public async Task<Result<MeDto>> Handle(GetMeQuery request, CancellationToken cancellationToken)
     {
-        if (!currentUser.IsAuthenticated || currentUser.UserId == Guid.Empty)
-        {
-            return MeErrors.NotAuthenticated;
-        }
+        // Authentication and user/org resolution are guaranteed by the middleware pipeline:
+        // Authentication → UserContextMiddleware → ActiveUserAuthorizationHandler
+        // No need to check IsAuthenticated or UserId here.
 
         await using var connection = db.CreateConnection();
         await connection.OpenAsync(cancellationToken);
