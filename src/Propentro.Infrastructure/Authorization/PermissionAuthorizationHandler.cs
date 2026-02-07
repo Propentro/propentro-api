@@ -32,9 +32,13 @@ public sealed class PermissionAuthorizationHandler(
         if (permissionAttributes is null || permissionAttributes.Count == 0)
             return;
 
+        // If we don't have an HttpContext (e.g., non-HTTP resource), skip permission check
+        if (httpContext is null)
+            return;
+
         // At this point ActiveUserAuthorizationHandler has already verified
         // that CurrentUser is authenticated with valid UserId and OrganizationId
-        var currentUser = httpContext!.RequestServices.GetRequiredService<ICurrentUser>();
+        var currentUser = httpContext.RequestServices.GetRequiredService<ICurrentUser>();
 
         // Get user's permissions from cache/database
         var userPermissions = await permissionService.GetUserPermissionsAsync(
