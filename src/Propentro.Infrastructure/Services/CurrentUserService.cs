@@ -1,15 +1,18 @@
 using System.Security.Claims;
+using Dapper;
 using Microsoft.AspNetCore.Http;
+using Serilog;
 
 namespace Propentro.Infrastructure.Services;
 
 /// <summary>
 /// Provides access to the current authenticated user's context.
-/// Implements ICurrentUserInitializer for async initialization via middleware.
+/// Orchestrates identity resolution and organization membership verification.
 /// </summary>
 public sealed class CurrentUserService(
     IHttpContextAccessor httpContextAccessor,
-    IExternalIdResolver idResolver) : ICurrentUser, ICurrentUserInitializer
+    IExternalIdResolver idResolver,
+    IDbConnectionFactory db) : ICurrentUser, ICurrentUserInitializer
 {
     private Guid _userId = Guid.Empty;
     private Guid _organizationId = Guid.Empty;
@@ -42,7 +45,7 @@ public sealed class CurrentUserService(
             return;
         }
 
-        // Single call resolves all IDs efficiently with one connection
+        // Step 1: Resolve external IDs to internal IDs (auth provider specific)
         var identity = await idResolver.ResolveIdentityAsync(
             ExternalUserId,
             ExternalOrganizationId,
@@ -50,8 +53,48 @@ public sealed class CurrentUserService(
 
         _userId = identity.UserId;
         _publicUserId = identity.PublicUserId;
-        _organizationId = identity.OrganizationId;
-        _publicOrganizationId = identity.PublicOrganizationId;
+
+        // Step 2: Verify user-org membership (auth provider agnostic)
+        if (identity.UserId != Guid.Empty && identity.OrganizationId != Guid.Empty)
+        {
+            var isMember = await VerifyOrganizationMembershipAsync(
+                identity.UserId, identity.OrganizationId, cancellationToken);
+
+            if (isMember)
+            {
+                _organizationId = identity.OrganizationId;
+                _publicOrganizationId = identity.PublicOrganizationId;
+            }
+            else
+            {
+                Log.Warning(
+                    "User {UserId} is not an active member of organization {OrganizationId}",
+                    identity.UserId, identity.OrganizationId);
+                // _organizationId stays Guid.Empty → ActiveUserAuthorizationHandler will reject
+            }
+        }
+
         _isInitialized = true;
+    }
+
+    private async Task<bool> VerifyOrganizationMembershipAsync(
+        Guid userId, Guid organizationId, CancellationToken cancellationToken)
+    {
+        await using var connection = db.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+
+        const string sql = """
+            SELECT 1
+            FROM organization_users
+            WHERE user_id = @UserId
+              AND organization_id = @OrganizationId
+              AND status = 'active'
+            LIMIT 1
+            """;
+
+        var result = await connection.QueryFirstOrDefaultAsync<int?>(
+            sql, new { UserId = userId, OrganizationId = organizationId });
+
+        return result.HasValue;
     }
 }
