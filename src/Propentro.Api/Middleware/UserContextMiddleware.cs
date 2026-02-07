@@ -1,12 +1,21 @@
+using System.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
+using Serilog;
 using Serilog.Context;
 
 namespace Propentro.Api.Middleware;
 
 /// <summary>
-/// Initializes the current user context and pushes user/organization IDs into Serilog LogContext.
-/// This middleware ensures that:
-/// 1. External auth provider IDs are resolved to internal database IDs (async)
-/// 2. Every log entry is tagged with tenant context for tracing
+/// Resolves authenticated users' external IDs to internal database IDs and validates
+/// that the user and organization exist. Runs BEFORE authorization so that
+/// PermissionAuthorizationHandler has a fully initialized CurrentUser context.
+///
+/// Flow:
+/// 1. Not authenticated → skip validation, continue (authorization handles DenyAnonymous)
+/// 2. Authenticated → resolve external IDs to internal IDs
+/// 3. User not found in DB → short-circuit with 401
+/// 4. Organization not resolved → short-circuit with 403
+/// 5. All good → populate CurrentUser, enrich logs, continue to authorization
 /// </summary>
 public sealed class UserContextMiddleware(RequestDelegate next)
 {
@@ -16,6 +25,42 @@ public sealed class UserContextMiddleware(RequestDelegate next)
         if (currentUser is ICurrentUserInitializer initializer && !initializer.IsInitialized)
         {
             await initializer.InitializeAsync(context.RequestAborted);
+        }
+
+        // If the user has a valid JWT but is not found in our database,
+        // reject early — no point reaching handlers or authorization checks.
+        if (currentUser.IsAuthenticated)
+        {
+            if (currentUser.UserId == Guid.Empty)
+            {
+                Log.Warning(
+                    "Authenticated user not found in database. ExternalUserId: {ExternalUserId}",
+                    currentUser.ExternalUserId);
+
+                await WriteAuthProblem(
+                    context,
+                    StatusCodes.Status401Unauthorized,
+                    "User Not Found",
+                    "Authenticated user does not exist in the system.",
+                    "AUTH_USER_NOT_FOUND");
+                return;
+            }
+
+            if (currentUser.OrganizationId == Guid.Empty)
+            {
+                Log.Warning(
+                    "Organization not resolved for authenticated user. ExternalUserId: {ExternalUserId}, ExternalOrgId: {ExternalOrgId}",
+                    currentUser.ExternalUserId,
+                    currentUser.ExternalOrganizationId);
+
+                await WriteAuthProblem(
+                    context,
+                    StatusCodes.Status403Forbidden,
+                    "Organization Not Available",
+                    "No organization context available for this user.",
+                    "AUTH_ORG_NOT_FOUND");
+                return;
+            }
         }
 
         // Push resolved IDs to log context for structured logging
@@ -31,5 +76,32 @@ public sealed class UserContextMiddleware(RequestDelegate next)
         {
             await next(context);
         }
+    }
+
+    private static async Task WriteAuthProblem(
+        HttpContext context,
+        int statusCode,
+        string title,
+        string detail,
+        string code)
+    {
+        var traceId = Activity.Current?.Id ?? context.TraceIdentifier;
+
+        context.Response.StatusCode = statusCode;
+        context.Response.ContentType = "application/problem+json";
+
+        await context.Response.WriteAsJsonAsync(new ProblemDetails
+        {
+            Type = $"https://propentro.com/errors/{code.ToLowerInvariant().Replace('_', '-')}",
+            Title = title,
+            Status = statusCode,
+            Detail = detail,
+            Instance = traceId,
+            Extensions =
+            {
+                ["code"] = code,
+                ["timestamp"] = DateTimeOffset.UtcNow
+            }
+        });
     }
 }

@@ -11,11 +11,6 @@ public sealed class GetMeHandler(
 {
     public async Task<Result<MeDto>> Handle(GetMeQuery request, CancellationToken cancellationToken)
     {
-        if (!currentUser.IsAuthenticated || currentUser.UserId == Guid.Empty)
-        {
-            return MeErrors.NotAuthenticated;
-        }
-
         await using var connection = db.CreateConnection();
         await connection.OpenAsync(cancellationToken);
 

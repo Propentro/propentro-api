@@ -6,8 +6,13 @@ using Serilog;
 namespace Propentro.Infrastructure.Authorization;
 
 /// <summary>
-/// Authorization handler that validates user permissions using the initialized ICurrentUser context.
-/// This handler depends on UserContextMiddleware having already resolved external IDs to internal IDs.
+/// Authorization handler that checks endpoint-level permission requirements.
+/// Depends on UserContextMiddleware having already resolved and validated user context
+/// (runs before UseAuthorization in the pipeline).
+///
+/// Responsibilities:
+/// - No permission attributes → return early (let default handlers evaluate DenyAnonymous etc.)
+/// - Has permission attributes → check user has required permissions, succeed or fail
 /// </summary>
 public sealed class PermissionAuthorizationHandler(
     IPermissionService permissionService) : IAuthorizationHandler
@@ -22,60 +27,18 @@ public sealed class PermissionAuthorizationHandler(
 
         // No permission requirements on this endpoint - let the default authorization
         // handlers (e.g. DenyAnonymousAuthorizationHandler) evaluate their own requirements.
-        // Previously this was succeeding ALL pending requirements, which bypassed
-        // DenyAnonymousAuthorizationRequirement and allowed unauthenticated requests through.
         if (permissionAttributes is null || permissionAttributes.Count == 0)
         {
             return;
         }
 
-        // Get ICurrentUser from DI - must be already initialized by UserContextMiddleware
-        var currentUser = httpContext?.RequestServices.GetService<ICurrentUser>();
-        if (currentUser is null)
+        // CurrentUser is already initialized and validated by UserContextMiddleware.
+        // If we reach here, the user must be authenticated with valid IDs.
+        var currentUser = httpContext?.RequestServices.GetRequiredService<ICurrentUser>();
+        if (currentUser is null || !currentUser.IsAuthenticated
+            || currentUser.UserId == Guid.Empty || currentUser.OrganizationId == Guid.Empty)
         {
-            Log.Warning("ICurrentUser service not available in authorization handler");
-            context.Fail(new AuthorizationFailureReason(this, "Authorization service unavailable"));
-            return;
-        }
-
-        // Ensure user context is initialized (defensive check)
-        if (currentUser is ICurrentUserInitializer { IsInitialized: false } initializer)
-        {
-            try
-            {
-                await initializer.InitializeAsync(httpContext!.RequestAborted);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to initialize user context in authorization handler");
-                context.Fail(new AuthorizationFailureReason(this, "Failed to initialize user context"));
-                return;
-            }
-        }
-
-        // User must be authenticated
-        if (!currentUser.IsAuthenticated)
-        {
-            context.Fail(new AuthorizationFailureReason(this, "User is not authenticated"));
-            return;
-        }
-
-        // Internal IDs must be resolved (not Guid.Empty)
-        if (currentUser.UserId == Guid.Empty)
-        {
-            Log.Warning(
-                "User ID not resolved. ExternalUserId: {ExternalUserId}",
-                currentUser.ExternalUserId);
-            context.Fail(new AuthorizationFailureReason(this, "User not found in system"));
-            return;
-        }
-
-        if (currentUser.OrganizationId == Guid.Empty)
-        {
-            Log.Warning(
-                "Organization ID not resolved. ExternalOrgId: {ExternalOrgId}",
-                currentUser.ExternalOrganizationId);
-            context.Fail(new AuthorizationFailureReason(this, "Organization context not available"));
+            context.Fail(new AuthorizationFailureReason(this, "User context not available"));
             return;
         }
 
