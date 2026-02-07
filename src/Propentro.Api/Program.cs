@@ -1,3 +1,4 @@
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Propentro.Api.Endpoints;
 using Propentro.Api.Middleware;
@@ -64,12 +65,15 @@ try
     builder.Services.AddRateLimiter(options =>
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-        options.AddFixedWindowLimiter("fixed", config =>
-        {
-            config.PermitLimit = 100;
-            config.Window = TimeSpan.FromMinutes(1);
-            config.QueueLimit = 0;
-        });
+        options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 100,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0
+                }));
     });
 
     var app = builder.Build();

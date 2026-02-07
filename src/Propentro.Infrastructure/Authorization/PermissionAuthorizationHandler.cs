@@ -20,13 +20,12 @@ public sealed class PermissionAuthorizationHandler(
             .GetOrderedMetadata<RequirePermissionAttribute>()
             .ToList();
 
-        // No permission requirements - succeed all pending requirements
+        // No permission requirements on this endpoint - let the default authorization
+        // handlers (e.g. DenyAnonymousAuthorizationHandler) evaluate their own requirements.
+        // Previously this was succeeding ALL pending requirements, which bypassed
+        // DenyAnonymousAuthorizationRequirement and allowed unauthenticated requests through.
         if (permissionAttributes is null || permissionAttributes.Count == 0)
         {
-            foreach (var requirement in context.PendingRequirements)
-            {
-                context.Succeed(requirement);
-            }
             return;
         }
 
