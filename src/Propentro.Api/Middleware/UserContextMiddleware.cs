@@ -19,7 +19,7 @@ public sealed class UserContextMiddleware(RequestDelegate next)
         }
 
         // Push resolved IDs to log context for structured logging
-        var userId = currentUser.IsAuthenticated && currentUser.UserId != Guid.Empty
+        var userId = currentUser.IsAuthenticated
             ? currentUser.UserId.ToString()
             : "anonymous";
         var organizationId = currentUser.IsAuthenticated && currentUser.OrganizationId != Guid.Empty
