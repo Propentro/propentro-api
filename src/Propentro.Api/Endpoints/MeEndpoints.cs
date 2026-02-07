@@ -2,6 +2,7 @@ using MediatR;
 using Propentro.Api.Extensions;
 using Propentro.Application.Me.Queries.GetMe;
 using Propentro.Contracts.Me;
+using Scalar.AspNetCore;
 
 namespace Propentro.Api.Endpoints;
 
@@ -15,7 +16,8 @@ internal static class MeEndpoints
 
         group.MapGet("/", GetMeAsync)
             .WithName("GetMe")
-            .WithSummary("Get current authenticated user profile, roles, and permissions")
+            .WithDescription("Get current authenticated user profile, roles, and permissions")
+            .WithSummary("/v1/me")
             .Produces<MeDto>()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status404NotFound);
