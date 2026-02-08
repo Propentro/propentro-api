@@ -8,8 +8,8 @@ namespace Propentro.Infrastructure.Services;
 /// </summary>
 public sealed class PermissionService(IDbConnectionFactory db, ICacheService cache) : IPermissionService
 {
-    private const string CacheKeyPrefix = "permissions:";
-    private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(5);
+    private const string _cacheKeyPrefix = "permissions:";
+    private static readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
 
     public async Task<HashSet<string>> GetUserPermissionsAsync(
         Guid userId,
@@ -49,7 +49,7 @@ public sealed class PermissionService(IDbConnectionFactory db, ICacheService cac
 
         var result = permissions.ToHashSet();
 
-        await cache.SetAsync(cacheKey, result, CacheExpiration, cancellationToken);
+        await cache.SetAsync(cacheKey, result, _cacheExpiration, cancellationToken);
 
         return result;
     }
@@ -79,5 +79,5 @@ public sealed class PermissionService(IDbConnectionFactory db, ICacheService cac
     }
 
     private static string GetCacheKey(Guid userId, Guid organizationId) =>
-        $"{CacheKeyPrefix}{organizationId}:{userId}";
+        $"{_cacheKeyPrefix}{organizationId}:{userId}";
 }
