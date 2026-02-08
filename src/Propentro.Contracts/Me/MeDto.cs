@@ -12,6 +12,4 @@ public sealed record MeDto(
 public sealed record MeOrganizationDto(
     string OrganizationId,
     string Name,
-    string Slug,
-    string CurrencyCode,
-    string Timezone);
+    string Slug);

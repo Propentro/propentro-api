@@ -26,12 +26,10 @@ public sealed class GetMeHandler(
                 u.last_name AS LastName,
                 o.public_id AS OrganizationId,
                 o.name AS OrganizationName,
-                o.slug AS OrganizationSlug,
-                o.currency_code AS CurrencyCode,
-                o.timezone AS Timezone
+                o.slug AS OrganizationSlug
             FROM users u
-            LEFT JOIN organization_users ou ON ou.user_id = u.id AND ou.organization_id = @OrganizationId
-            LEFT JOIN organizations o ON o.id = ou.organization_id
+            LEFT JOIN organization_users ou ON ou.user_id = u.id AND ou.organization_id = @OrganizationId AND ou.status =  'active'
+            LEFT JOIN organizations o ON o.id = ou.organization_id AND o.is_active = true
             WHERE u.id = @UserId
               AND u.is_active = true
             """;
@@ -66,15 +64,13 @@ public sealed class GetMeHandler(
 
         var dto = new MeDto(
             result.UserId,
-            result.Email ?? currentUser.Email ?? string.Empty,
+            result.Email,
             result.FirstName,
             result.LastName,
             new MeOrganizationDto(
-                result.OrganizationId ?? string.Empty,
-                result.OrganizationName ?? string.Empty,
-                result.OrganizationSlug ?? string.Empty,
-                result.CurrencyCode ?? "EUR",
-                result.Timezone ?? "UTC"),
+                result.OrganizationId,
+                result.OrganizationName,
+                result.OrganizationSlug),
             roles,
             permissions.Order().ToList());
 
@@ -83,12 +79,10 @@ public sealed class GetMeHandler(
 
     private sealed record MeQueryResult(
         string UserId,
-        string? Email,
-        string? FirstName,
-        string? LastName,
-        string? OrganizationId,
-        string? OrganizationName,
-        string? OrganizationSlug,
-        string? CurrencyCode,
-        string? Timezone);
+        string Email,
+        string FirstName,
+        string LastName,
+        string OrganizationId,
+        string OrganizationName,
+        string OrganizationSlug);
 }
