@@ -51,9 +51,7 @@ public sealed class PermissionService(IDbConnectionFactory db, ICacheService cac
             _cacheExpiration,
             cancellationToken);
 
-        await cache.SetAsync(cacheKey, result, _cacheExpiration, cancellationToken);
-
-        return result;
+        return result ?? [];
     }
 
     public async Task<bool> HasPermissionAsync(
