@@ -15,6 +15,7 @@ public sealed class MemoryCacheService(
 {
     private readonly CacheOptions _options = options.Value;
     private readonly ConcurrentDictionary<string, byte> _keys = new();
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
     private bool _disposed;
 
     public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
@@ -89,16 +90,32 @@ public sealed class MemoryCacheService(
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentNullException.ThrowIfNull(factory);
 
+        // Fast path: check cache without acquiring lock
         var existing = await GetAsync<T>(key, cancellationToken);
         if (existing is not null) return existing;
 
-        var value = await factory(cancellationToken);
-        if (value is not null)
-        {
-            await SetAsync(key, value, expiration, cancellationToken);
-        }
+        // Slow path: acquire per-key lock to prevent cache stampede
+        var keyLock = _locks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
 
-        return value;
+        await keyLock.WaitAsync(cancellationToken);
+        try
+        {
+            // Double-check after acquiring lock
+            existing = await GetAsync<T>(key, cancellationToken);
+            if (existing is not null) return existing;
+
+            var value = await factory(cancellationToken);
+            if (value is not null)
+            {
+                await SetAsync(key, value, expiration, cancellationToken);
+            }
+
+            return value;
+        }
+        finally
+        {
+            keyLock.Release();
+        }
     }
 
     public Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
@@ -130,6 +147,13 @@ public sealed class MemoryCacheService(
     public void Dispose()
     {
         if (_disposed) return;
+
+        foreach (var semaphore in _locks.Values)
+        {
+            semaphore.Dispose();
+        }
+
+        _locks.Clear();
         _keys.Clear();
         _disposed = true;
     }

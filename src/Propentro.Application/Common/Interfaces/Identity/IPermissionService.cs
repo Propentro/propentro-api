@@ -34,14 +34,25 @@ public interface IPermissionService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Invalidates the cached permissions for a user within an organization.
-    /// Call this when role assignments change.
+    /// Invalidates the cached permissions for a specific user within an organization.
+    /// Call this when a specific user's role assignment changes.
     /// </summary>
     /// <param name="userId">The internal user ID.</param>
     /// <param name="organizationId">The internal organization ID.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task InvalidatePermissionsCacheAsync(
         Guid userId,
+        Guid organizationId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Invalidates all cached permissions for an organization.
+    /// Call this when roles or permissions are modified at the organization level
+    /// (e.g., a permission is added/removed from a role).
+    /// </summary>
+    /// <param name="organizationId">The internal organization ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task InvalidateOrganizationPermissionsCacheAsync(
         Guid organizationId,
         CancellationToken cancellationToken = default);
 }

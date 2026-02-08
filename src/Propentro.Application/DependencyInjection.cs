@@ -13,10 +13,16 @@ public static class DependencyInjection
         services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssembly(assembly);
+
+            // Pipeline order matters:
+            // 1. Logging      → Always runs first (timing, diagnostics)
+            // 2. QueryCaching → Short-circuits on cache hit (skips validation + handler)
+            // 3. Validation   → Runs only on cache miss
+            // 4. UnitOfWork   → Transaction management for commands only
             cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
+            cfg.AddOpenBehavior(typeof(QueryCachingBehavior<,>));
             cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
             cfg.AddOpenBehavior(typeof(UnitOfWorkBehavior<,>));
-            cfg.AddOpenBehavior(typeof(QueryCachingBehavior<,>));
         });
 
         services.AddValidatorsFromAssembly(assembly);
