@@ -8,13 +8,13 @@ namespace Propentro.Domain.Common;
 /// </summary>
 public static class PublicIdGenerator
 {
-    private const int HexLength = 12;
+    private const int _hexLength = 12;
 
     public static string Generate(string prefix)
     {
         Span<byte> bytes = stackalloc byte[8];
         RandomNumberGenerator.Fill(bytes);
-        var hex = Convert.ToHexString(bytes).ToLowerInvariant()[..HexLength];
+        var hex = Convert.ToHexString(bytes).ToLowerInvariant()[.._hexLength];
         return $"{prefix}_{hex}";
     }
 }
