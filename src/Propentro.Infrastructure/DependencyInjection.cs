@@ -51,13 +51,23 @@ public static class DependencyInjection
             .GetSection(CacheOptions.SectionName)
             .Get<CacheOptions>() ?? new CacheOptions();
 
-        services.AddMemoryCache(options =>
+        if (cacheOptions.Provider == CacheProvider.Redis
+            && !string.IsNullOrWhiteSpace(cacheOptions.RedisConnectionString))
         {
-            options.SizeLimit = cacheOptions.MemoryCacheSizeLimit;
-            options.ExpirationScanFrequency = cacheOptions.MemoryCacheExpirationScanFrequency;
-        });
-
-        services.AddSingleton<ICacheService, MemoryCacheService>();
+            services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(
+                StackExchange.Redis.ConnectionMultiplexer.Connect(cacheOptions.RedisConnectionString));
+            services.AddSingleton<ICacheService, RedisCacheService>();
+        }
+        else
+        {
+            // Fallback to in-memory cache for development or single-instance deployments
+            services.AddMemoryCache(options =>
+            {
+                options.SizeLimit = cacheOptions.MemoryCacheSizeLimit;
+                options.ExpirationScanFrequency = cacheOptions.MemoryCacheExpirationScanFrequency;
+            });
+            services.AddSingleton<ICacheService, MemoryCacheService>();
+        }
 
         return services;
     }

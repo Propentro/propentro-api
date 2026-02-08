@@ -17,7 +17,7 @@ Propentro is a property management API built with **.NET 10.0** following **Clea
 | Auth | Clerk JWT (Bearer tokens) |
 | Logging | Serilog (static `Log` class) |
 | Testing | xUnit, FluentAssertions, NSubstitute, Testcontainers |
-| Caching | MemoryCache (ICacheService abstraction) |
+| Caching | Redis (default), MemoryCache (fallback) via ICacheService abstraction |
 
 ## Architecture
 
@@ -84,7 +84,7 @@ src/
 │   │   └── Configurations/        # Entity type configurations
 │   ├── Services/                  # CurrentUser, Permission, DateTime, BlobStorage
 │   ├── Authorization/             # Permission-based auth handlers
-│   ├── Caching/                   # ICacheService (MemoryCache implementation)
+│   ├── Caching/                   # ICacheService (Redis default, MemoryCache fallback)
 │   └── DependencyInjection.cs
 │
 └── Propentro.Contracts/           # Shared DTOs
@@ -254,11 +254,14 @@ public class GetUnitByIdHandler(
 
 ### Cached Query Pattern
 
+Cache keys are **automatically prefixed** with `org:{OrganizationId}:` by `QueryCachingBehavior` for multi-tenant isolation. Do NOT include `OrganizationId` in `CacheKey` — it is added automatically.
+
 ```csharp
 public record GetUnitsQuery(int Page, int PageSize)
     : IQuery<PagedResult<UnitDto>>, ICachedQuery<PagedResult<UnitDto>>
 {
-    public string CacheKey => $"units-{Page}-{PageSize}";
+    // Final key: "org:{OrganizationId}:units:{Page}:{PageSize}" (auto-prefixed)
+    public string CacheKey => $"units:{Page}:{PageSize}";
     public TimeSpan? Expiration => TimeSpan.FromMinutes(5);
 }
 ```
@@ -445,15 +448,15 @@ public class MyHandler(IAppDbContext db) : ICommandHandler<MyCommand>
 Commands are wrapped in database transactions via `UnitOfWorkBehavior`:
 
 ```
-Request → Logging → Validation → UnitOfWork → Handler
-                                     ↓
-                          BeginTransaction
-                                     ↓
-                              Handler runs
-                                     ↓
-                    ┌─ Success → SaveChangesAsync → Commit
-                    ├─ Failure → Rollback (no save)
-                    └─ Exception → Rollback + throw
+Request → Logging → QueryCaching → Validation → UnitOfWork → Handler
+                        ↓                           ↓
+                   Cache hit?                  BeginTransaction
+                   ├─ Yes → Return                   ↓
+                   └─ No  → Continue           Handler runs
+                                                     ↓
+                                  ┌─ Success → SaveChangesAsync → Commit
+                                  ├─ Failure → Rollback (no save)
+                                  └─ Exception → Rollback + throw
 ```
 
 **Critical rules:**
@@ -527,6 +530,59 @@ const string sql = """
 ```
 
 **How global filters work:** `AppDbContext` exposes `CurrentOrganizationId` which delegates to `ICurrentUser.OrganizationId`. Each entity has an explicit `HasQueryFilter` call in `ApplyGlobalFilters()` that references `CurrentOrganizationId`. EF Core rebinds this DbContext property per query, ensuring correct tenant isolation. When adding a new entity, add the corresponding `HasQueryFilter` line in `AppDbContext.ApplyGlobalFilters()`.
+
+## Caching
+
+### Cache Provider Selection
+
+The cache provider is configured via `Caching:Provider` in appsettings:
+
+- **Redis** (default for production): Used when `Provider = "Redis"` and `RedisConnectionString` is set. Suitable for multi-instance deployments.
+- **Memory** (fallback): Used when `Provider = "Memory"` or Redis connection string is empty. Suitable for development and single-instance deployments.
+
+```json
+{
+  "Caching": {
+    "Provider": "Redis",
+    "RedisConnectionString": "localhost:6379",
+    "DefaultExpiration": "00:05:00",
+    "KeyPrefix": "propentro:"
+  }
+}
+```
+
+### Cache Stampede Protection
+
+Both `MemoryCacheService` and `RedisCacheService` implement **per-key `SemaphoreSlim` locking** in `GetOrCreateAsync` to prevent cache stampede (thundering herd):
+
+```
+Thread 1: Cache miss → Acquire lock → DB query → Set cache → Release
+Thread 2: Cache miss → Wait for lock → Cache hit (from Thread 1) → Return
+Thread 3: Cache miss → Wait for lock → Cache hit (from Thread 1) → Return
+```
+
+**Always use `GetOrCreateAsync`** for hot-path caching (e.g., `PermissionService`). Never use manual get-then-set pattern.
+
+### Multi-Tenant Cache Key Enforcement
+
+`QueryCachingBehavior` **automatically prefixes** all `ICachedQuery` cache keys with `org:{OrganizationId}:`. This prevents cross-tenant data leaks. When defining a cached query's `CacheKey`, do NOT include `OrganizationId` — it is added by the behavior.
+
+### Permission Caching
+
+`PermissionService` caches user permissions per organization for 5 minutes using `GetOrCreateAsync` (stampede-protected). Two invalidation levels are available:
+
+| Method | Scope | When to Use |
+|--------|-------|-------------|
+| `InvalidatePermissionsCacheAsync(userId, orgId)` | Single user | User's role assignment changes |
+| `InvalidateOrganizationPermissionsCacheAsync(orgId)` | All users in org | Role or permission definitions change |
+
+### MediatR Pipeline Caching Order
+
+```
+Logging → QueryCaching → Validation → UnitOfWork → Handler
+```
+
+`QueryCachingBehavior` runs **before** `ValidationBehavior`, so cache hits skip validation entirely for optimal performance.
 
 ## Testing Guidelines
 

@@ -4,7 +4,8 @@ namespace Propentro.Infrastructure.Services;
 
 /// <summary>
 /// Provides permission lookup for authorization purposes.
-/// Permissions are cached for performance and can be invalidated when role assignments change.
+/// Uses GetOrCreateAsync for stampede-protected caching.
+/// Supports both user-level and organization-level cache invalidation.
 /// </summary>
 public sealed class PermissionService(IDbConnectionFactory db, ICacheService cache) : IPermissionService
 {
@@ -23,35 +24,34 @@ public sealed class PermissionService(IDbConnectionFactory db, ICacheService cac
 
         var cacheKey = GetCacheKey(userId, organizationId);
 
-        var cached = await cache.GetAsync<HashSet<string>>(cacheKey, cancellationToken);
-        if (cached is not null)
-        {
-            return cached;
-        }
+        var result = await cache.GetOrCreateAsync(
+            cacheKey,
+            async ct =>
+            {
+                await using var connection = db.CreateConnection();
+                await connection.OpenAsync(ct);
 
-        await using var connection = db.CreateConnection();
-        await connection.OpenAsync(cancellationToken);
+                const string sql = """
+                    SELECT DISTINCT p.code
+                    FROM organization_user_roles our
+                    JOIN role_permissions rp ON rp.role_id = our.role_id
+                    JOIN permissions p ON p.id = rp.permission_id
+                    JOIN roles r ON r.id = our.role_id
+                    WHERE our.user_id = @UserId
+                      AND our.organization_id = @OrganizationId
+                      AND r.is_active = TRUE
+                    """;
 
-        const string sql = """
-            SELECT DISTINCT p.code
-            FROM organization_user_roles our
-            JOIN role_permissions rp ON rp.role_id = our.role_id
-            JOIN permissions p ON p.id = rp.permission_id
-            JOIN roles r ON r.id = our.role_id
-            WHERE our.user_id = @UserId
-              AND our.organization_id = @OrganizationId
-              AND r.is_active = TRUE
-            """;
+                var permissions = await connection.QueryAsync<string>(
+                    sql,
+                    new { UserId = userId, OrganizationId = organizationId });
 
-        var permissions = await connection.QueryAsync<string>(
-            sql,
-            new { UserId = userId, OrganizationId = organizationId });
+                return permissions.ToHashSet();
+            },
+            CacheExpiration,
+            cancellationToken);
 
-        var result = permissions.ToHashSet();
-
-        await cache.SetAsync(cacheKey, result, CacheExpiration, cancellationToken);
-
-        return result;
+        return result ?? [];
     }
 
     public async Task<bool> HasPermissionAsync(
@@ -76,6 +76,14 @@ public sealed class PermissionService(IDbConnectionFactory db, ICacheService cac
     {
         var cacheKey = GetCacheKey(userId, organizationId);
         await cache.RemoveAsync(cacheKey, cancellationToken);
+    }
+
+    public async Task InvalidateOrganizationPermissionsCacheAsync(
+        Guid organizationId,
+        CancellationToken cancellationToken = default)
+    {
+        var pattern = $"{CacheKeyPrefix}{organizationId}:*";
+        await cache.RemoveByPatternAsync(pattern, cancellationToken);
     }
 
     private static string GetCacheKey(Guid userId, Guid organizationId) =>

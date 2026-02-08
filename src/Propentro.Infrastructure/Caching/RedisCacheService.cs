@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;
@@ -7,6 +8,8 @@ namespace Propentro.Infrastructure.Caching;
 /// <summary>
 /// Redis-based distributed cache implementation using StackExchange.Redis.
 /// Suitable for multi-instance deployments requiring shared cache state.
+/// Uses per-key SemaphoreSlim for local stampede protection in GetOrCreateAsync.
+/// For cross-instance protection, consider RedLock distributed locking.
 /// </summary>
 public sealed class RedisCacheService(
     IConnectionMultiplexer redis,
@@ -14,6 +17,7 @@ public sealed class RedisCacheService(
 {
     private readonly CacheOptions _options = options.Value;
     private readonly IDatabase _database = redis.GetDatabase();
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -86,19 +90,33 @@ public sealed class RedisCacheService(
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentNullException.ThrowIfNull(factory);
 
+        // Fast path: check cache without acquiring lock
         var existing = await GetAsync<T>(key, cancellationToken);
         if (existing is not null) return existing;
 
-        // Note: For high-concurrency scenarios, consider implementing distributed locking
-        // using RedLock (https://redis.io/docs/manual/patterns/distributed-locks/)
-        // to prevent cache stampede/thundering herd problem
-        var value = await factory(cancellationToken);
-        if (value is not null)
-        {
-            await SetAsync(key, value, expiration, cancellationToken);
-        }
+        // Slow path: acquire per-key lock for local stampede protection.
+        // For cross-instance protection, consider RedLock distributed locking.
+        var keyLock = _locks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
 
-        return value;
+        await keyLock.WaitAsync(cancellationToken);
+        try
+        {
+            // Double-check after acquiring lock
+            existing = await GetAsync<T>(key, cancellationToken);
+            if (existing is not null) return existing;
+
+            var value = await factory(cancellationToken);
+            if (value is not null)
+            {
+                await SetAsync(key, value, expiration, cancellationToken);
+            }
+
+            return value;
+        }
+        finally
+        {
+            keyLock.Release();
+        }
     }
 
     public async Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
@@ -121,6 +139,13 @@ public sealed class RedisCacheService(
     public async ValueTask DisposeAsync()
     {
         if (_disposed) return;
+
+        foreach (var semaphore in _locks.Values)
+        {
+            semaphore.Dispose();
+        }
+
+        _locks.Clear();
 
         await redis.CloseAsync();
         _disposed = true;

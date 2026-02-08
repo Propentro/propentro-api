@@ -6,9 +6,11 @@ namespace Propentro.Application.Common.Behaviors;
 
 /// <summary>
 /// MediatR pipeline behavior that caches query results for queries implementing ICachedQuery.
+/// Automatically prefixes cache keys with "org:{OrganizationId}:" for multi-tenant isolation.
 /// </summary>
 public sealed class QueryCachingBehavior<TRequest, TResponse>(
-    ICacheService cache) : IPipelineBehavior<TRequest, Result<TResponse>>
+    ICacheService cache,
+    ICurrentUser currentUser) : IPipelineBehavior<TRequest, Result<TResponse>>
     where TRequest : ICachedQuery<TResponse>
 {
     public async Task<Result<TResponse>> Handle(
@@ -16,10 +18,12 @@ public sealed class QueryCachingBehavior<TRequest, TResponse>(
         RequestHandlerDelegate<Result<TResponse>> next,
         CancellationToken cancellationToken)
     {
-        var cached = await cache.GetAsync<TResponse>(request.CacheKey, cancellationToken);
+        var cacheKey = GetTenantScopedCacheKey(request.CacheKey);
+
+        var cached = await cache.GetAsync<TResponse>(cacheKey, cancellationToken);
         if (cached is not null)
         {
-            Log.Debug("Cache hit: {CacheKey}", request.CacheKey);
+            Log.Debug("Cache hit: {CacheKey}", cacheKey);
             return cached;
         }
 
@@ -28,10 +32,13 @@ public sealed class QueryCachingBehavior<TRequest, TResponse>(
         if (result.IsSuccess && result.Value is not null)
         {
             var expiration = request.Expiration ?? TimeSpan.FromMinutes(5);
-            await cache.SetAsync(request.CacheKey, result.Value, expiration, cancellationToken);
-            Log.Debug("Cached: {CacheKey}, Expiration: {Expiration}", request.CacheKey, expiration);
+            await cache.SetAsync(cacheKey, result.Value, expiration, cancellationToken);
+            Log.Debug("Cached: {CacheKey}, Expiration: {Expiration}", cacheKey, expiration);
         }
 
         return result;
     }
+
+    private string GetTenantScopedCacheKey(string queryCacheKey) =>
+        $"org:{currentUser.OrganizationId}:{queryCacheKey}";
 }

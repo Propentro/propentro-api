@@ -6,9 +6,9 @@ namespace Propentro.Application.Common.Interfaces.Messaging;
 public interface ICachedQuery
 {
     /// <summary>
-    /// The unique cache key for this query.
-    /// IMPORTANT: For multi-tenant apps, include OrganizationId in the key.
-    /// For user-specific data, include UserId in the key.
+    /// The query-specific portion of the cache key (e.g., "units:{Page}:{PageSize}").
+    /// The pipeline behavior automatically prefixes this with "org:{OrganizationId}:" for tenant isolation.
+    /// Do NOT include OrganizationId in this key — it is added automatically.
     /// </summary>
     string CacheKey { get; }
 
@@ -19,19 +19,20 @@ public interface ICachedQuery
 }
 
 /// <summary>
-/// Marker interface for queries that support automatic caching.
+/// Marker interface for queries that support automatic tenant-scoped caching.
+/// The cache key is automatically prefixed with "org:{OrganizationId}:" by QueryCachingBehavior.
 /// </summary>
 /// <typeparam name="TResponse">The type of the query response.</typeparam>
 /// <example>
 /// // Organization-scoped cache (most common):
-/// public record GetUnitsQuery(Guid OrganizationId, int Page, int PageSize)
+/// public record GetUnitsQuery(int Page, int PageSize)
 ///     : IQuery&lt;PagedResult&lt;UnitDto&gt;&gt;, ICachedQuery&lt;PagedResult&lt;UnitDto&gt;&gt;
 /// {
-///     public string CacheKey => $"org:{OrganizationId}:units:{Page}:{PageSize}";
+///     public string CacheKey => $"units:{Page}:{PageSize}";
 ///     public TimeSpan? Expiration => TimeSpan.FromMinutes(5);
 /// }
 ///
-/// // User-scoped cache:
+/// // User-scoped cache (include UserId manually):
 /// public record GetUserPreferencesQuery(Guid UserId)
 ///     : IQuery&lt;UserPreferencesDto&gt;, ICachedQuery&lt;UserPreferencesDto&gt;
 /// {
