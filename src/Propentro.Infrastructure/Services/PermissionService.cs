@@ -48,7 +48,7 @@ public sealed class PermissionService(IDbConnectionFactory db, ICacheService cac
 
                 return permissions.ToHashSet();
             },
-            CacheExpiration,
+            _cacheExpiration,
             cancellationToken);
 
         await cache.SetAsync(cacheKey, result, _cacheExpiration, cancellationToken);
@@ -84,7 +84,7 @@ public sealed class PermissionService(IDbConnectionFactory db, ICacheService cac
         Guid organizationId,
         CancellationToken cancellationToken = default)
     {
-        var pattern = $"{CacheKeyPrefix}{organizationId}:*";
+        var pattern = $"{_cacheKeyPrefix}{organizationId}:*";
         await cache.RemoveByPatternAsync(pattern, cancellationToken);
     }
 
