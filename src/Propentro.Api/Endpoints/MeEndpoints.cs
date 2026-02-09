@@ -1,7 +1,7 @@
 using MediatR;
 using Propentro.Api.Extensions;
-using Propentro.Application.MyProfile.Queries.GetMe;
-using Propentro.Contracts.MyProfile;
+using Propentro.Application.Me.Queries.GetMe;
+using Propentro.Contracts.Me;
 using Scalar.AspNetCore;
 
 namespace Propentro.Api.Endpoints;
@@ -11,7 +11,7 @@ internal static class MeEndpoints
     public static void MapMeEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/me")
-            .WithTags("MyProfile")
+            .WithTags("Me")
             .RequireAuthorization();
 
         group.MapGet("/", GetMeAsync)

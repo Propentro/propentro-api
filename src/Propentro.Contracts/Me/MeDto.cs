@@ -1,4 +1,4 @@
-namespace Propentro.Contracts.MyProfile;
+namespace Propentro.Contracts.Me;
 
 public sealed record MeDto(
     string UserId,

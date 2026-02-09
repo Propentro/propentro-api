@@ -1,8 +1,8 @@
 using Dapper;
 using Propentro.Application.Common.Models;
-using Propentro.Contracts.MyProfile;
+using Propentro.Contracts.Me;
 
-namespace Propentro.Application.MyProfile.Queries.GetMe;
+namespace Propentro.Application.Me.Queries.GetMe;
 
 public sealed class GetMeHandler(
     IDbConnectionFactory db,
