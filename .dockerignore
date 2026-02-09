@@ -1,0 +1,15 @@
+**/.git
+**/.vs
+**/.vscode
+**/.idea
+**/bin
+**/obj
+**/node_modules
+**/TestResults
+**/.env
+**/.env.*
+**/tests
+**/*.md
+**/coverage
+**/.DS_Store
+**/Thumbs.db
