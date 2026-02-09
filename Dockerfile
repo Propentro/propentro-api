@@ -17,7 +17,7 @@ RUN dotnet restore src/Propentro.Api/Propentro.Api.csproj
 
 # Copy everything and publish
 COPY src/ src/
-RUN dotnet publish src/Propentro.Api/Propentro.Api.csproj -c Release -o /app/publish --no-restore "/p:NoWarn=CA1716;CS1591;CA1711"
+RUN dotnet publish src/Propentro.Api/Propentro.Api.csproj -c Release -o /app/publish --no-restore /p:NoWarn=CA1716%3BCS1591%3BCA1711
 
 # Runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
