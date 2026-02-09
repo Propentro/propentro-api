@@ -2,14 +2,14 @@ using Dapper;
 using Propentro.Application.Common.Models;
 using Propentro.Contracts.MyProfile;
 
-namespace Propentro.Application.Me.Queries.GetMe;
+namespace Propentro.Application.MyProfile.Queries.GetMe;
 
 public sealed class GetMeHandler(
     IDbConnectionFactory db,
     ICurrentUser currentUser,
-    IPermissionService permissionService) : IQueryHandler<GetMeQuery, MyProfileDto>
+    IPermissionService permissionService) : IQueryHandler<GetMeQuery, MeDto>
 {
-    public async Task<Result<MyProfileDto>> Handle(GetMeQuery request, CancellationToken cancellationToken)
+    public async Task<Result<MeDto>> Handle(GetMeQuery request, CancellationToken cancellationToken)
     {
         // Authentication and user/org resolution are guaranteed by the middleware pipeline:
         // Authentication → UserContextMiddleware → ActiveUserAuthorizationHandler
@@ -62,12 +62,12 @@ public sealed class GetMeHandler(
             currentUser.OrganizationId,
             cancellationToken);
 
-        var dto = new MyProfileDto(
+        var dto = new MeDto(
             result.UserId,
             result.Email,
             result.FirstName,
             result.LastName,
-            new MyOrganizationDto(
+            new MeOrganizationDto(
                 result.OrganizationId,
                 result.OrganizationName,
                 result.OrganizationSlug),

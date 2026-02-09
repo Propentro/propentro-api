@@ -1,15 +1,15 @@
 namespace Propentro.Contracts.MyProfile;
 
-public sealed record MyProfileDto(
+public sealed record MeDto(
     string UserId,
     string Email,
     string? FirstName,
     string? LastName,
-    MyOrganizationDto Organization,
+    MeOrganizationDto Organization,
     IReadOnlyList<string> Roles,
     IReadOnlyList<string> Permissions);
 
-public sealed record MyOrganizationDto(
+public sealed record MeOrganizationDto(
     string OrganizationId,
     string Name,
     string Slug);

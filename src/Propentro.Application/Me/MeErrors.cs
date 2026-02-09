@@ -1,6 +1,6 @@
 using Propentro.Application.Common.Models;
 
-namespace Propentro.Application.Me;
+namespace Propentro.Application.MyProfile;
 
 public static class MeErrors
 {

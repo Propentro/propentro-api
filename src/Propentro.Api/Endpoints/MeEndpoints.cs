@@ -1,6 +1,6 @@
 using MediatR;
 using Propentro.Api.Extensions;
-using Propentro.Application.Me.Queries.GetMe;
+using Propentro.Application.MyProfile.Queries.GetMe;
 using Propentro.Contracts.MyProfile;
 using Scalar.AspNetCore;
 
@@ -11,12 +11,12 @@ internal static class MeEndpoints
     public static void MapMeEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/me")
-            .WithTags("Me")
+            .WithTags("MyProfile")
             .RequireAuthorization();
 
         group.MapGet("/", GetMeAsync)
             .WithDescription("Get current authenticated user profile, roles, and permissions")
-            .Produces<MyProfileDto>()
+            .Produces<MeDto>()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status404NotFound);
     }

@@ -1,5 +1,5 @@
 using Propentro.Contracts.MyProfile;
 
-namespace Propentro.Application.Me.Queries.GetMe;
+namespace Propentro.Application.MyProfile.Queries.GetMe;
 
-public sealed record GetMeQuery : IQuery<MyProfileDto>;
+public sealed record GetMeQuery : IQuery<MeDto>;
