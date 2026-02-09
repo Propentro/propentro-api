@@ -13,7 +13,7 @@ COPY src/Propentro.Domain/Propentro.Domain.csproj src/Propentro.Domain/
 COPY src/Propentro.Infrastructure/Propentro.Infrastructure.csproj src/Propentro.Infrastructure/
 
 # Restore dependencies
-RUN dotnet restore Propentro.slnx
+RUN dotnet restore src/Propentro.Api/Propentro.Api.csproj
 
 # Copy everything and publish
 COPY src/ src/
