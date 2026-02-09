@@ -23,16 +23,11 @@ RUN dotnet publish src/Propentro.Api/Propentro.Api.csproj -c Release -o /app/pub
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
-# Create non-root user
-RUN adduser -D appuser
-
 COPY --from=build /app/publish .
 
 ENV ASPNETCORE_ENVIRONMENT=Production
 
 EXPOSE 8080
-
-USER appuser
 
 # Railway injects PORT at runtime; fall back to 8080
 CMD dotnet Propentro.Api.dll --urls "http://+:${PORT:-8080}"
