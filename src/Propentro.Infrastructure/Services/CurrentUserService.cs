@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Dapper;
 using Microsoft.AspNetCore.Http;
 using Serilog;
@@ -25,7 +26,7 @@ public sealed class CurrentUserService(
     public string? ExternalUserId => User?.FindFirstValue(ClaimTypes.NameIdentifier)
                                      ?? User?.FindFirstValue("sub");
 
-    public string? ExternalOrganizationId => User?.FindFirstValue("org_id");
+    public string? ExternalOrganizationId => ExtractOrganizationId();
 
     public Guid UserId => _userId;
     public string PublicUserId => _publicUserId;
@@ -75,6 +76,23 @@ public sealed class CurrentUserService(
         }
 
         _isInitialized = true;
+    }
+
+    private string? ExtractOrganizationId()
+    {
+        var oClaim = User?.FindFirstValue("o");
+        if (oClaim is null) return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(oClaim);
+            return doc.RootElement.TryGetProperty("id", out var id) ? id.GetString() : null;
+        }
+        catch (JsonException)
+        {
+            Log.Warning("Failed to parse organization claim: {ClaimValue}", oClaim);
+            return null;
+        }
     }
 
     private async Task<bool> VerifyOrganizationMembershipAsync(
