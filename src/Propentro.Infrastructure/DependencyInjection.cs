@@ -120,8 +120,9 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var clerkAuthority = configuration["Clerk:Authority"]
-                             ?? throw new InvalidOperationException("Clerk:Authority not configured");
+        var clerkAuthority = configuration["Clerk:Authority"];
+        if (string.IsNullOrWhiteSpace(clerkAuthority))
+            throw new InvalidOperationException("Clerk:Authority not configured");
 
         // Audience is typically the Clerk publishable key or the frontend application URL
         // If not configured, audience validation is disabled (common for Clerk)
