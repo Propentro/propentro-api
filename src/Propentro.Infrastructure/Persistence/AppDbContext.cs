@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Propentro.Domain.Common;
 using Propentro.Domain.Common.Interfaces;
 using Propentro.Domain.Entities;
+using Activity = Propentro.Domain.Entities.Activity;
 using Unit = Propentro.Domain.Entities.Unit;
 
 namespace Propentro.Infrastructure.Persistence;

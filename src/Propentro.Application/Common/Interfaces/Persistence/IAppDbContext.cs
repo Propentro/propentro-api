@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Propentro.Domain.Entities;
+using Activity = Propentro.Domain.Entities.Activity;
 
 namespace Propentro.Application.Common.Interfaces.Persistence;
 

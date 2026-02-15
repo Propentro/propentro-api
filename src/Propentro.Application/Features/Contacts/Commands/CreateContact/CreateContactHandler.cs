@@ -1,6 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Models;
 using Propentro.Domain.Entities;
+using Activity = Propentro.Domain.Entities.Activity;
 
 namespace Propentro.Application.Features.Contacts.Commands.CreateContact;
 
