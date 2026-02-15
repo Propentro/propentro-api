@@ -8,11 +8,11 @@ public sealed class CreateContactHandler(
     IAppDbContext dbContext,
     ICurrentUser currentUser) : ICommandHandler<CreateContactCommand, string>
 {
-    private static readonly HashSet<string> ValidRoles = ["tenant", "owner", "supplier", "vendor"];
+    private static readonly HashSet<string> _validRoles = ["tenant", "owner", "supplier", "vendor"];
 
     public async Task<Result<string>> Handle(CreateContactCommand request, CancellationToken cancellationToken)
     {
-        if (request.Roles.Length == 0 || !request.Roles.All(r => ValidRoles.Contains(r)))
+        if (request.Roles.Length == 0 || !request.Roles.All(r => _validRoles.Contains(r)))
             return ContactErrors.InvalidRole;
 
         var contact = new Contact(request.DisplayName, request.Kind)

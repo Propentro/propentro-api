@@ -6,7 +6,7 @@ namespace Propentro.Application.Features.Activities.Commands.DeleteActivity;
 public sealed class DeleteActivityHandler(
     IAppDbContext dbContext) : ICommandHandler<DeleteActivityCommand>
 {
-    private static readonly HashSet<string> UserDeletableTypes = ["note", "phone_call"];
+    private static readonly HashSet<string> _userDeletableTypes = ["note", "phone_call"];
 
     public async Task<Result> Handle(DeleteActivityCommand request, CancellationToken cancellationToken)
     {
@@ -16,7 +16,7 @@ public sealed class DeleteActivityHandler(
         if (activity is null)
             return ActivityErrors.NotFoundById(request.ActivityId);
 
-        if (!UserDeletableTypes.Contains(activity.ActivityType))
+        if (!_userDeletableTypes.Contains(activity.ActivityType))
             return ActivityErrors.SystemActivityImmutable;
 
         activity.IsActive = false;

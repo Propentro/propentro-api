@@ -4,7 +4,7 @@ namespace Propentro.Application.Features.Activities.Commands.CreateActivity;
 
 public sealed class CreateActivityValidator : AbstractValidator<CreateActivityCommand>
 {
-    private static readonly string[] ValidTypes = ["note", "phone_call"];
+    private static readonly string[] _validTypes = ["note", "phone_call"];
 
     public CreateActivityValidator()
     {
@@ -12,7 +12,7 @@ public sealed class CreateActivityValidator : AbstractValidator<CreateActivityCo
 
         RuleFor(x => x.ActivityType)
             .NotEmpty()
-            .Must(t => ValidTypes.Contains(t))
+            .Must(t => _validTypes.Contains(t))
             .WithMessage("Activity type must be 'note' or 'phone_call'.");
 
         RuleFor(x => x.Title).MaximumLength(500);

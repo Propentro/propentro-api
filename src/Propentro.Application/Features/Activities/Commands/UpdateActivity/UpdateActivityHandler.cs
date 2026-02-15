@@ -6,7 +6,7 @@ namespace Propentro.Application.Features.Activities.Commands.UpdateActivity;
 public sealed class UpdateActivityHandler(
     IAppDbContext dbContext) : ICommandHandler<UpdateActivityCommand>
 {
-    private static readonly HashSet<string> UserEditableTypes = ["note", "phone_call"];
+    private static readonly HashSet<string> _userEditableTypes = ["note", "phone_call"];
 
     public async Task<Result> Handle(UpdateActivityCommand request, CancellationToken cancellationToken)
     {
@@ -16,7 +16,7 @@ public sealed class UpdateActivityHandler(
         if (activity is null)
             return ActivityErrors.NotFoundById(request.ActivityId);
 
-        if (!UserEditableTypes.Contains(activity.ActivityType))
+        if (!_userEditableTypes.Contains(activity.ActivityType))
             return ActivityErrors.SystemActivityImmutable;
 
         if (request.Description is not null)

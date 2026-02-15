@@ -8,11 +8,11 @@ public sealed class CreateActivityHandler(
     IAppDbContext dbContext,
     ICurrentUser currentUser) : ICommandHandler<CreateActivityCommand, string>
 {
-    private static readonly HashSet<string> UserCreatableTypes = ["note", "phone_call"];
+    private static readonly HashSet<string> _userCreatableTypes = ["note", "phone_call"];
 
     public async Task<Result<string>> Handle(CreateActivityCommand request, CancellationToken cancellationToken)
     {
-        if (!UserCreatableTypes.Contains(request.ActivityType))
+        if (!_userCreatableTypes.Contains(request.ActivityType))
             return ActivityErrors.InvalidActivityType;
 
         var contact = await dbContext.Contacts
