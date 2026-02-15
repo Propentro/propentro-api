@@ -73,8 +73,7 @@ public sealed class CreateContactHandler(
             contact.ContactRoles.Add(new ContactRole
             {
                 ContactId = contact.Id,
-                Role = role,
-                CreatedAt = DateTime.UtcNow
+                Role = role
             });
         }
 
@@ -82,9 +81,7 @@ public sealed class CreateContactHandler(
 
         dbContext.Activities.Add(new Activity("contact", contact.Id, "system_event")
         {
-            Title = "Contact created",
-            OrganizationId = currentUser.OrganizationId,
-            CreatedById = currentUser.UserId
+            Title = "Contact created"
         });
 
         return contact.PublicId;

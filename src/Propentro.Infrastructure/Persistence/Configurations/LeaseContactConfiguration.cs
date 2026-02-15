@@ -19,7 +19,7 @@ public sealed class LeaseContactConfiguration : IEntityTypeConfiguration<LeaseCo
         builder.Property(e => e.IsSignatory).HasColumnName("is_signatory").HasDefaultValue(true);
         builder.Property(e => e.IsOccupant).HasColumnName("is_occupant").HasDefaultValue(false);
         builder.Property(e => e.Note).HasColumnName("note");
-        builder.Property(e => e.CreatedAt).HasColumnName("created_at");
+        builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
         builder.HasOne(e => e.Lease)
             .WithMany(e => e.LeaseContacts)

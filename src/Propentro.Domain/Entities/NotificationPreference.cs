@@ -9,8 +9,8 @@ public sealed class NotificationPreference
     public bool SmsEnabled { get; set; }
     public bool PushEnabled { get; set; } = true;
     public bool InAppEnabled { get; set; } = true;
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? UpdatedAt { get; set; }
 
     // Navigation
     public Organization Organization { get; set; } = default!;

@@ -5,7 +5,7 @@ public sealed class PropertyAmenity
     public Guid Id { get; set; }
     public Guid PropertyId { get; set; }
     public string AmenityCode { get; set; } = default!;
-    public DateTime CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 
     // Navigation
     public Property Property { get; set; } = default!;

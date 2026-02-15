@@ -2,6 +2,8 @@ using MediatR;
 using Propentro.Api.Extensions;
 using Propentro.Application.Common.Models;
 using Propentro.Application.Features.Contacts.Commands.ArchiveContact;
+using Propentro.Application.Features.Contacts.Commands.BulkArchiveContacts;
+using Propentro.Application.Features.Contacts.Commands.BulkUnarchiveContacts;
 using Propentro.Application.Features.Contacts.Commands.CreateContact;
 using Propentro.Application.Features.Contacts.Commands.DeleteContact;
 using Propentro.Application.Features.Contacts.Commands.UnarchiveContact;
@@ -65,6 +67,20 @@ internal static class ContactEndpoints
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
+
+        group.MapPost("/bulk-archive", BulkArchiveContactsAsync)
+            .WithDescription("Bulk archive multiple contacts")
+            .WithMetadata(new RequirePermissionAttribute("contacts:update"))
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapPost("/bulk-unarchive", BulkUnarchiveContactsAsync)
+            .WithDescription("Bulk unarchive multiple contacts")
+            .WithMetadata(new RequirePermissionAttribute("contacts:update"))
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
     private static async Task<IResult> GetContactsAsync(
@@ -174,6 +190,26 @@ internal static class ContactEndpoints
         CancellationToken ct)
     {
         var result = await sender.Send(new UnarchiveContactCommand(id), ct);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> BulkArchiveContactsAsync(
+        BulkArchiveContactsRequest request,
+        ISender sender,
+        CancellationToken ct)
+    {
+        var command = new BulkArchiveContactsCommand(request.ContactIds);
+        var result = await sender.Send(command, ct);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> BulkUnarchiveContactsAsync(
+        BulkArchiveContactsRequest request,
+        ISender sender,
+        CancellationToken ct)
+    {
+        var command = new BulkUnarchiveContactsCommand(request.ContactIds);
+        var result = await sender.Send(command, ct);
         return result.ToHttpResult();
     }
 }

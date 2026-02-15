@@ -27,9 +27,7 @@ public sealed class ArchiveContactHandler(
 
         dbContext.Activities.Add(new Activity("contact", contact.Id, "archived")
         {
-            Title = "Contact archived",
-            OrganizationId = currentUser.OrganizationId,
-            CreatedById = currentUser.UserId
+            Title = "Contact archived"
         });
 
         return Result.Success();

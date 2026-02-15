@@ -5,7 +5,7 @@ public sealed class OrganizationUserRole
     public Guid OrganizationId { get; set; }
     public Guid UserId { get; set; }
     public Guid RoleId { get; set; }
-    public DateTime AssignedAt { get; set; }
+    public DateTimeOffset AssignedAt { get; set; }
     public Guid? AssignedBy { get; set; }
 
     // Navigation

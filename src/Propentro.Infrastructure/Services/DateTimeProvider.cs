@@ -1,17 +1,8 @@
 namespace Propentro.Infrastructure.Services;
 
-/// <summary>
-/// Provides the current UTC date and time.
-/// This implementation uses system time; tests can use a mock implementation.
-/// </summary>
 public sealed class DateTimeProvider : IDateTimeProvider
 {
-    /// <inheritdoc />
-    public DateTime UtcNow => DateTime.UtcNow;
-
-    /// <inheritdoc />
+    public DateTimeOffset UtcNow => DateTimeOffset.UtcNow;
     public DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow);
-
-    /// <inheritdoc />
     public TimeOnly TimeOfDay => TimeOnly.FromDateTime(DateTime.UtcNow);
 }

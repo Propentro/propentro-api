@@ -33,13 +33,24 @@ public sealed class GetContactsHandler(
 
         if (request.Search is not null)
         {
-            whereClause.Append(" AND (c.display_name ILIKE @Search OR c.email ILIKE @Search OR c.phone ILIKE @Search)");
+            whereClause.Append("""
+                 AND (
+                    c.display_name ILIKE @Search
+                    OR c.first_name ILIKE @Search
+                    OR c.last_name ILIKE @Search
+                    OR c.trading_name ILIKE @Search
+                    OR c.email ILIKE @Search
+                    OR c.phone ILIKE @Search
+                )
+                """);
             parameters.Add("Search", $"%{request.Search}%");
         }
 
-        var isArchived = request.IsArchived ?? false;
-        whereClause.Append(" AND c.is_archived = @IsArchived");
-        parameters.Add("IsArchived", isArchived);
+        if (request.IsArchived.HasValue)
+        {
+            whereClause.Append(" AND c.is_archived = @IsArchived");
+            parameters.Add("IsArchived", request.IsArchived.Value);
+        }
 
         var countSql = $"SELECT COUNT(1) FROM contacts c {whereClause}";
         var totalCount = await connection.ExecuteScalarAsync<int>(countSql, parameters);
@@ -53,8 +64,14 @@ public sealed class GetContactsHandler(
                 c.public_id AS ContactId,
                 c.kind AS Kind,
                 c.display_name AS DisplayName,
+                c.first_name AS FirstName,
+                c.last_name AS LastName,
+                c.legal_name AS LegalName,
+                c.trading_name AS TradingName,
                 c.email AS Email,
                 c.phone AS Phone,
+                c.secondary_email AS SecondaryEmail,
+                c.secondary_phone AS SecondaryPhone,
                 c.trade AS Trade,
                 c.is_archived AS IsArchived,
                 c.created_at AS CreatedAt
@@ -90,8 +107,14 @@ public sealed class GetContactsHandler(
             c.ContactId,
             c.Kind,
             c.DisplayName,
+            c.FirstName,
+            c.LastName,
+            c.LegalName,
+            c.TradingName,
             c.Email,
             c.Phone,
+            c.SecondaryEmail,
+            c.SecondaryPhone,
             c.Trade,
             c.IsArchived,
             allRoles.GetValueOrDefault(c.ContactId, []),
@@ -104,11 +127,17 @@ public sealed class GetContactsHandler(
         string ContactId,
         string Kind,
         string DisplayName,
+        string? FirstName,
+        string? LastName,
+        string? LegalName,
+        string? TradingName,
         string? Email,
         string? Phone,
+        string? SecondaryEmail,
+        string? SecondaryPhone,
         string? Trade,
         bool IsArchived,
-        DateTime CreatedAt);
+        DateTimeOffset CreatedAt);
 
     private sealed record ContactRoleRow(string ContactId, string Role);
 }

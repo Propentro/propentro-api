@@ -7,5 +7,5 @@ public sealed record ActivityResponse(
     string? Description,
     bool IsPinned,
     string? CreatedByName,
-    DateTime CreatedAt,
-    DateTime? UpdatedAt);
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? UpdatedAt);

@@ -26,6 +26,10 @@ public sealed class CreateContactValidator : AbstractValidator<CreateContactComm
             .Must(r => _validRoles.Contains(r))
             .WithMessage("Each role must be one of: tenant, owner, supplier.");
 
+        RuleFor(x => x.Roles)
+            .Must(roles => roles.Distinct().Count() == roles.Length)
+            .WithMessage("Duplicate roles are not allowed.");
+
         RuleFor(x => x.FirstName).MaximumLength(100);
         RuleFor(x => x.LastName).MaximumLength(100);
         RuleFor(x => x.LegalName).MaximumLength(200);

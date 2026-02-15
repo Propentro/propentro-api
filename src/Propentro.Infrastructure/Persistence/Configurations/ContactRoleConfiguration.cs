@@ -14,7 +14,7 @@ public sealed class ContactRoleConfiguration : IEntityTypeConfiguration<ContactR
 
         builder.Property(e => e.ContactId).HasColumnName("contact_id");
         builder.Property(e => e.Role).HasColumnName("role");
-        builder.Property(e => e.CreatedAt).HasColumnName("created_at");
+        builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
         builder.HasOne(e => e.Contact)
             .WithMany(e => e.ContactRoles)

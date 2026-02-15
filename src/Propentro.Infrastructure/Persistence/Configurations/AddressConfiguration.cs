@@ -22,7 +22,7 @@ public sealed class AddressConfiguration : IEntityTypeConfiguration<Address>
         builder.Property(e => e.PostalCode).HasColumnName("postal_code");
         builder.Property(e => e.CountryCode).HasColumnName("country_code").IsRequired();
         builder.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
-        builder.Property(e => e.CreatedAt).HasColumnName("created_at");
+        builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
         builder.Property(e => e.CreatedById).HasColumnName("created_by_id");
         builder.Property(e => e.UpdatedAt).HasColumnName("updated_at");
         builder.Property(e => e.UpdatedById).HasColumnName("updated_by_id");

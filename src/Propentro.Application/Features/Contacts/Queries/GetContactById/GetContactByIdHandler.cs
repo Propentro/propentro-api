@@ -36,6 +36,8 @@ public sealed class GetContactByIdHandler(
                 c.is_archived AS IsArchived,
                 c.created_at AS CreatedAt,
                 c.updated_at AS UpdatedAt,
+                CONCAT(cu.first_name, ' ', cu.last_name) AS CreatedByName,
+                CONCAT(uu.first_name, ' ', uu.last_name) AS UpdatedByName,
                 a.line1 AS AddressLine1,
                 a.line2 AS AddressLine2,
                 a.city AS AddressCity,
@@ -44,6 +46,8 @@ public sealed class GetContactByIdHandler(
                 a.country_code AS AddressCountryCode
             FROM contacts c
             LEFT JOIN addresses a ON a.id = c.address_id AND a.is_active = true
+            LEFT JOIN users cu ON cu.id = c.created_by_id AND cu.is_active = true
+            LEFT JOIN users uu ON uu.id = c.updated_by_id AND uu.is_active = true
             WHERE c.public_id = @Id
               AND c.organization_id = @OrganizationId
               AND c.is_active = true
@@ -104,6 +108,8 @@ public sealed class GetContactByIdHandler(
             contactResult.IsArchived,
             roles,
             address,
+            contactResult.CreatedByName,
+            contactResult.UpdatedByName,
             contactResult.CreatedAt,
             contactResult.UpdatedAt);
     }
@@ -128,8 +134,10 @@ public sealed class GetContactByIdHandler(
         string? TaxCountry,
         string? Note,
         bool IsArchived,
-        DateTime CreatedAt,
-        DateTime? UpdatedAt,
+        DateTimeOffset CreatedAt,
+        DateTimeOffset? UpdatedAt,
+        string? CreatedByName,
+        string? UpdatedByName,
         string? AddressLine1,
         string? AddressLine2,
         string? AddressCity,

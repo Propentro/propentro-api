@@ -5,8 +5,7 @@ using Activity = Propentro.Domain.Entities.Activity;
 namespace Propentro.Application.Features.Contacts.Commands.UnarchiveContact;
 
 public sealed class UnarchiveContactHandler(
-    IAppDbContext dbContext,
-    ICurrentUser currentUser) : ICommandHandler<UnarchiveContactCommand>
+    IAppDbContext dbContext) : ICommandHandler<UnarchiveContactCommand>
 {
     public async Task<Result> Handle(UnarchiveContactCommand request, CancellationToken cancellationToken)
     {
@@ -25,9 +24,7 @@ public sealed class UnarchiveContactHandler(
 
         dbContext.Activities.Add(new Activity("contact", contact.Id, "unarchived")
         {
-            Title = "Contact unarchived",
-            OrganizationId = currentUser.OrganizationId,
-            CreatedById = currentUser.UserId
+            Title = "Contact unarchived"
         });
 
         return Result.Success();

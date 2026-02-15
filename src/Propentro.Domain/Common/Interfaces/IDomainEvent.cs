@@ -4,5 +4,5 @@ namespace Propentro.Domain.Common.Interfaces;
 
 public interface IDomainEvent : INotification
 {
-    DateTime OccurredAt { get; }
+    DateTimeOffset OccurredAt { get; }
 }

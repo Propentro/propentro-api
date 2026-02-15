@@ -6,7 +6,7 @@ public sealed class PropertyComplianceDocument
     public Guid ComplianceId { get; set; }
     public Guid DocumentId { get; set; }
     public bool IsPrimary { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 
     // Navigation
     public PropertyCompliance Compliance { get; set; } = default!;

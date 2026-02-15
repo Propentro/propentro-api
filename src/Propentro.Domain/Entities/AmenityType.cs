@@ -6,6 +6,6 @@ public sealed class AmenityType
     public string? Target { get; set; }
     public string Label { get; set; } = default!;
     public bool IsActive { get; set; } = true;
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? UpdatedAt { get; set; }
 }

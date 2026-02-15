@@ -22,8 +22,10 @@ public sealed record ContactResponse(
     bool IsArchived,
     IReadOnlyList<string> Roles,
     ContactAddressResponse? Address,
-    DateTime CreatedAt,
-    DateTime? UpdatedAt);
+    string? CreatedByName,
+    string? UpdatedByName,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? UpdatedAt);
 
 public sealed record ContactAddressResponse(
     string Line1,

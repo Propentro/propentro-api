@@ -9,7 +9,7 @@ public sealed class LeaseContact
     public bool IsSignatory { get; set; } = true;
     public bool IsOccupant { get; set; }
     public string? Note { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 
     // Navigation
     public Lease Lease { get; set; } = default!;

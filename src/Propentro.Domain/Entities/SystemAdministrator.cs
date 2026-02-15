@@ -10,9 +10,9 @@ public sealed class SystemAdministrator : Entity, IAuditableEntity, ISoftDeletab
     public string? Note { get; set; }
 
     // IAuditableEntity
-    public DateTime CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
     public Guid? CreatedById { get; set; }
-    public DateTime? UpdatedAt { get; set; }
+    public DateTimeOffset? UpdatedAt { get; set; }
     public Guid? UpdatedById { get; set; }
 
     // ISoftDeletable

@@ -15,7 +15,7 @@ public sealed class LeaseUnitConfiguration : IEntityTypeConfiguration<LeaseUnit>
         builder.Property(e => e.LeaseId).HasColumnName("lease_id");
         builder.Property(e => e.UnitId).HasColumnName("unit_id");
         builder.Property(e => e.IsPrimary).HasColumnName("is_primary").HasDefaultValue(false);
-        builder.Property(e => e.CreatedAt).HasColumnName("created_at");
+        builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
         builder.HasOne(e => e.Lease)
             .WithMany(e => e.LeaseUnits)

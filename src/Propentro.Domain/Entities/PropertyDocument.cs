@@ -6,7 +6,7 @@ public sealed class PropertyDocument
     public Guid PropertyId { get; set; }
     public Guid DocumentId { get; set; }
     public bool IsPrimary { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 
     // Navigation
     public Property Property { get; set; } = default!;

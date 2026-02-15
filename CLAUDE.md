@@ -367,6 +367,73 @@ public static class UnitEndpoints
 
 **All endpoints must be registered in `EndpointExtensions.MapApiEndpoints()`.**
 
+### PublicId Format Validation
+
+All queries that accept a PublicId should validate the format before hitting the database. PublicIds follow the pattern `{prefix}_{12-hex-chars}`. Use `[GeneratedRegex]` for compile-time optimized validation:
+
+```csharp
+public sealed partial class GetContactByIdValidator : AbstractValidator<GetContactByIdQuery>
+{
+    public GetContactByIdValidator()
+    {
+        RuleFor(x => x.Id)
+            .NotEmpty()
+            .Must(id => ContactIdRegex().IsMatch(id))
+            .WithMessage("Invalid contact ID format.");
+    }
+
+    [GeneratedRegex(@"^cnt_[0-9a-f]{12}$", RegexOptions.Compiled)]
+    private static partial Regex ContactIdRegex();
+}
+```
+
+Entity prefixes: `prp`, `unt`, `lse`, `cnt`, `act`, `adr`, `doc`, `usr`, `org`, `rol`
+
+### Pagination Validation
+
+All paginated queries must have a validator enforcing:
+- `Page >= 1`
+- `PageSize` between 1 and 100
+
+Without this, `page=0` or negative values produce invalid SQL `OFFSET` and runtime 500s.
+
+### Audit Columns
+
+`AppDbContext.SaveChangesAsync` automatically sets audit fields based on EF change tracker state:
+- `EntityState.Added` → `CreatedAt`, `CreatedById`, `OrganizationId` (for `IOrganizationScoped`)
+- `EntityState.Modified` → `UpdatedAt`, `UpdatedById`
+
+**Do NOT manually set these in handlers.** The infrastructure handles it. Only set domain-specific fields that are NOT part of `IAuditableEntity` (e.g., `ArchivedAt`, `ArchivedById`).
+
+### Bulk Operations
+
+For operations that can be performed on multiple entities (archive, unarchive, delete), create separate bulk endpoints:
+- URL: `POST /v1/{entities}/bulk-{action}` (e.g., `/v1/contacts/bulk-archive`)
+- Request body: `{ "contactIds": ["cnt_xxx", "cnt_yyy"] }`
+- Limit: 50 items per request (validated)
+- Handler: Load all entities in one query, loop and modify, single transaction via UnitOfWork
+- Skip already-in-target-state entities silently (e.g., already archived contacts)
+
+### Activity Types
+
+Activity types are constrained at both validation and DB level:
+- **User-creatable**: `note`, `phone_call`
+- **System-only**: `system_event`, `archived`, `unarchived`
+- DB CHECK constraint: `ck_activities_activity_type`
+- When adding new types: update validator, handler whitelist (if system type), AND DB constraint (new migration)
+
+### Timestamps — DateTimeOffset Convention
+
+All timestamp fields use `DateTimeOffset` (not `DateTime`) to match PostgreSQL `TIMESTAMPTZ`:
+- Entity properties: `DateTimeOffset CreatedAt`, `DateTimeOffset? UpdatedAt`, etc.
+- DTOs/Response records: Same — `DateTimeOffset`
+- Dapper query result records: Same — Npgsql maps `TIMESTAMPTZ` → `DateTimeOffset` automatically
+- `IDateTimeProvider.UtcNow` returns `DateTimeOffset`
+- API responses serialize as ISO 8601 with timezone: `2025-06-15T10:30:00+00:00`
+- Date-only fields (lease start/end, compliance issued/expires) use `DateOnly` — not affected
+
+**Do NOT use `DateTime` for any timestamp.** Use `DateOnly` for dates, `TimeOnly` for times, `DateTimeOffset` for timestamps.
+
 ## Code Style Conventions
 
 ### C# Conventions (from .editorconfig)

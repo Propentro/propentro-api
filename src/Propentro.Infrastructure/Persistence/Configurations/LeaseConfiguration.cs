@@ -36,7 +36,7 @@ public sealed class LeaseConfiguration : IEntityTypeConfiguration<Lease>
         builder.Property(e => e.NoticePeriodDays).HasColumnName("notice_period_days");
         builder.Property(e => e.Note).HasColumnName("note");
         builder.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
-        builder.Property(e => e.CreatedAt).HasColumnName("created_at");
+        builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
         builder.Property(e => e.CreatedById).HasColumnName("created_by_id");
         builder.Property(e => e.UpdatedAt).HasColumnName("updated_at");
         builder.Property(e => e.UpdatedById).HasColumnName("updated_by_id");

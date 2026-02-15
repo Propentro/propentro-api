@@ -42,7 +42,7 @@ public sealed class Contact : AggregateRoot
 
     // Archive (separate from is_active soft delete)
     public bool IsArchived { get; set; }
-    public DateTime? ArchivedAt { get; set; }
+    public DateTimeOffset? ArchivedAt { get; set; }
     public Guid? ArchivedById { get; set; }
 
     // Navigation
