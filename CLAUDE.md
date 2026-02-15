@@ -4,7 +4,7 @@ This document provides comprehensive guidance for AI assistants working with the
 
 ## Project Overview
 
-Propentro is a property management API built with **.NET 10.0** following **Clean Architecture** principles. It provides multi-tenant property, unit, lease, and party management with CQRS pattern implementation.
+Propentro is a property management API built with **.NET 10.0** following **Clean Architecture** principles. It provides multi-tenant property, unit, lease, and contact management with CQRS pattern implementation.
 
 ### Technology Stack
 
@@ -62,18 +62,22 @@ src/
 │
 ├── Propentro.Application/         # Business logic layer
 │   ├── Common/
-│   │   ├── Abstractions/          # ICommand, IQuery, ICachedQuery interfaces
+│   │   ├── Interfaces/            # ICommand, IQuery, ICachedQuery, IAppDbContext, etc.
 │   │   ├── Behaviors/             # MediatR pipeline behaviors
 │   │   └── Models/                # Result<T>, Error, PagedResult<T>
-│   ├── [Feature]/
-│   │   ├── Commands/              # Create, Update, Delete handlers
-│   │   ├── Queries/               # Get, List handlers
-│   │   └── [Feature]Errors.cs     # Centralized error definitions
+│   ├── Features/
+│   │   ├── Me/                    # Current user profile
+│   │   ├── Contacts/              # Contact management (tenants, owners, suppliers)
+│   │   ├── Activities/            # Timeline activities (notes, phone calls, events)
+│   │   └── [Feature]/
+│   │       ├── Commands/          # Create, Update, Delete handlers
+│   │       ├── Queries/           # Get, List handlers
+│   │       └── [Feature]Errors.cs # Centralized error definitions
 │   └── DependencyInjection.cs
 │
 ├── Propentro.Domain/              # Domain entities and logic
 │   ├── Common/                    # Entity, AggregateRoot, ValueObject, PublicIdGenerator
-│   ├── Entities/                  # Domain entities (Property, Unit, Lease, etc.)
+│   ├── Entities/                  # Domain entities (Property, Unit, Lease, Contact, Activity, etc.)
 │   ├── ValueObjects/              # Money, DateRange
 │   ├── Enums/                     # LeaseStatus, UnitType, etc.
 │   └── Events/                    # Domain events
@@ -87,8 +91,8 @@ src/
 │   ├── Caching/                   # ICacheService (Redis default, MemoryCache fallback)
 │   └── DependencyInjection.cs
 │
-└── Propentro.Contracts/           # Shared DTOs
-    └── [Feature]/                 # XyzDto, CreateXyzRequest, etc.
+└── Propentro.Contracts/           # Shared request/response types
+    └── [Feature]/                 # {Verb}{Entity}Request, {Entity}Response, {Entity}ListItemResponse
 
 tests/
 ├── Propentro.Domain.Tests/        # Entity and value object tests
@@ -321,7 +325,7 @@ public class Unit : AggregateRoot
 - `Id` (Guid v7) - internal identifier, auto-generated in `Entity(prefix)` constructor
 - `PublicId` (prefixed hex: `prp_a3f9c12d8e4b`) - user-facing, generated client-side by `PublicIdGenerator`
 - Both IDs are available immediately after construction - no need to wait for database
-- Each entity defines its prefix via `base("prefix")`: `prp`, `unt`, `lse`, `pty`, `adr`, `doc`, `usr`, `org`, `rol`
+- Each entity defines its prefix via `base("prefix")`: `prp`, `unt`, `lse`, `cnt`, `act`, `adr`, `doc`, `usr`, `org`, `rol`
 - Parameterless constructor is for EF Core only (no ID generation)
 
 ### API Endpoint Pattern
@@ -410,8 +414,8 @@ The following CA rules are suppressed in `.editorconfig` to avoid false positive
 | Query | `Get{Entity}(ById/s)Query` | `GetUnitByIdQuery` |
 | Handler | `{Command/Query}Handler` | `CreateUnitHandler` |
 | Validator | `{Command}Validator` | `CreateUnitValidator` |
-| DTO | `{Entity}Dto` / `{Entity}DetailDto` | `UnitDto`, `UnitDetailDto` |
-| Request | `{Verb}{Entity}Request` | `CreateUnitRequest` |
+| Response | `{Entity}Response` / `{Entity}ListItemResponse` | `ContactResponse`, `ContactListItemResponse` |
+| Request | `{Verb}{Entity}Request` | `CreateContactRequest` |
 | Error class | `{Entity}Errors` | `UnitErrors` |
 
 ### Logging Conventions
@@ -644,8 +648,8 @@ public class UnitIntegrationTests : IAsyncLifetime
 3. Add `DbSet` in `AppDbContext`
 4. Add `HasQueryFilter` in `AppDbContext.ApplyGlobalFilters()`
 5. Create configuration in `Infrastructure/Persistence/Configurations/`
-6. Create DTOs in `Contracts/[Feature]/`
-7. Create Commands/Queries in `Application/[Feature]/`
+6. Create Request/Response types in `Contracts/[Feature]/`
+7. Create Commands/Queries in `Application/Features/[Feature]/`
 8. Create Endpoints in `Api/Endpoints/`
 9. Register endpoints in `EndpointExtensions.MapApiEndpoints()`
 10. Add migration: `dotnet ef migrations add Add{Entity}`
@@ -655,14 +659,14 @@ public class UnitIntegrationTests : IAsyncLifetime
 1. Create `{Verb}{Entity}Command.cs` record implementing `ICommand<TResponse>`
 2. Create `{Verb}{Entity}Handler.cs` implementing `ICommandHandler` - do NOT call `SaveChangesAsync`
 3. Create `{Verb}{Entity}Validator.cs` with FluentValidation rules
-4. Add request DTO to `Contracts/[Feature]/`
+4. Add request type to `Contracts/[Feature]/`
 5. Map endpoint in `Api/Endpoints/{Entity}Endpoints.cs`
 
 ### Adding a New Query
 
 1. Create `Get{Entity}(ById/s)Query.cs` implementing `IQuery<TResponse>`
 2. Create handler using Dapper (`await using` + `OpenAsync` pattern)
-3. Add response DTO to `Contracts/[Feature]/`
+3. Add response type to `Contracts/[Feature]/`
 4. Map endpoint in `Api/Endpoints/{Entity}Endpoints.cs`
 
 ## Important Files Reference
@@ -709,18 +713,18 @@ The `/me` endpoint is the reference implementation. All future endpoints should 
 | File | Purpose |
 |------|---------|
 | `Api/Endpoints/MeEndpoints.cs` | Endpoint definition with metadata |
-| `Application/Me/Queries/GetMe/GetMeQuery.cs` | Query record |
-| `Application/Me/Queries/GetMe/GetMeHandler.cs` | Dapper handler with roles + permissions |
-| `Application/Me/MeErrors.cs` | Error definitions |
-| `Contracts/Me/MeDto.cs` | Response DTOs |
+| `Application/Features/Me/Queries/GetMe/GetMeQuery.cs` | Query record |
+| `Application/Features/Me/Queries/GetMe/GetMeHandler.cs` | Dapper handler with roles + permissions |
+| `Application/Features/Me/MeErrors.cs` | Error definitions |
+| `Contracts/Me/MeDto.cs` | Response types (MeResponse, MeOrganizationResponse) |
 
 ### Key Patterns Demonstrated
 
 - **No `RequirePermission`** on `/me` - every authenticated user can view their own profile
 - **Dapper query** with `await using` + `OpenAsync` + sequential queries on same connection
 - **Error codes** follow `Entity.ErrorName` format (e.g., `Me.NotAuthenticated`)
-- **DTO** uses positional records, nullable fields where data may not exist
-- **Handler** checks `ICurrentUser.IsAuthenticated` before any DB access
+- **Response** types use positional records, nullable fields where data may not exist
+- **Handler** uses Dapper with `await using` + `OpenAsync` pattern
 - **Endpoint** uses `ProducesProblem()` for error responses, `Produces<T>()` for success
 
 ## Troubleshooting

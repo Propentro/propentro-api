@@ -43,7 +43,7 @@ public sealed class Unit : AggregateRoot
     public Property Property { get; set; } = default!;
     public Address? Address { get; set; }
     public Unit? ParentUnit { get; set; }
-    public ICollection<UnitPartyRole> PartyRoles { get; set; } = [];
+    public ICollection<UnitContactRole> ContactRoles { get; set; } = [];
     public ICollection<UnitCompliance> Compliances { get; set; } = [];
     public ICollection<UnitAmenity> Amenities { get; set; } = [];
     public ICollection<UnitDocument> Documents { get; set; } = [];

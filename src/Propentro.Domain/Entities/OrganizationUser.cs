@@ -6,7 +6,6 @@ public sealed class OrganizationUser : IAuditableEntity
 {
     public Guid OrganizationId { get; set; }
     public Guid UserId { get; set; }
-    public Guid? PartyId { get; set; }
     public string Status { get; set; } = "active";
 
     // IAuditableEntity
@@ -18,5 +17,4 @@ public sealed class OrganizationUser : IAuditableEntity
     // Navigation
     public Organization Organization { get; set; } = default!;
     public User User { get; set; } = default!;
-    public Party? Party { get; set; }
 }

@@ -37,7 +37,7 @@ public sealed class Lease : AggregateRoot
     // Navigation
     public Lease? PreviousLease { get; set; }
     public ICollection<LeaseUnit> LeaseUnits { get; set; } = [];
-    public ICollection<LeaseParty> LeaseParties { get; set; } = [];
+    public ICollection<LeaseContact> LeaseContacts { get; set; } = [];
     public ICollection<LeaseDocument> LeaseDocuments { get; set; } = [];
     public ICollection<LeaseCompliance> LeaseCompliances { get; set; } = [];
 }

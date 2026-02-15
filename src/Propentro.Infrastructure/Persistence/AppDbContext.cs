@@ -31,10 +31,13 @@ public sealed class AppDbContext(
     // Lease Management
     public DbSet<Lease> Leases => Set<Lease>();
     public DbSet<LeaseUnit> LeaseUnits => Set<LeaseUnit>();
-    public DbSet<LeaseParty> LeaseParties => Set<LeaseParty>();
+    public DbSet<LeaseContact> LeaseContacts => Set<LeaseContact>();
 
-    // Parties
-    public DbSet<Party> Parties => Set<Party>();
+    // Contacts
+    public DbSet<Contact> Contacts => Set<Contact>();
+
+    // Activities
+    public DbSet<Activity> Activities => Set<Activity>();
 
     // Documents
     public DbSet<Document> Documents => Set<Document>();
@@ -75,7 +78,7 @@ public sealed class AppDbContext(
         builder.Entity<Property>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
         builder.Entity<Unit>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
         builder.Entity<Lease>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
-        builder.Entity<Party>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+        builder.Entity<Contact>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
         builder.Entity<Address>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
         builder.Entity<Document>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
         builder.Entity<PropertyCompliance>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
@@ -84,8 +87,11 @@ public sealed class AppDbContext(
 
         // Organization-scoped only
         builder.Entity<Notification>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
-        builder.Entity<PropertyPartyRole>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
-        builder.Entity<UnitPartyRole>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
+        builder.Entity<PropertyContactRole>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
+        builder.Entity<UnitContactRole>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
+
+        // Activity: Organization-scoped + soft-delete
+        builder.Entity<Activity>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
 
         // Soft-delete only
         builder.Entity<User>().HasQueryFilter(e => e.IsActive);

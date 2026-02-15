@@ -51,7 +51,7 @@ public sealed class LeaseConfiguration : IEntityTypeConfiguration<Lease>
             .HasForeignKey(e => e.LeaseId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasMany(e => e.LeaseParties)
+        builder.HasMany(e => e.LeaseContacts)
             .WithOne(e => e.Lease)
             .HasForeignKey(e => e.LeaseId)
             .OnDelete(DeleteBehavior.Cascade);
