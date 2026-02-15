@@ -52,10 +52,10 @@ internal static class ActivityEndpoints
 
     private static async Task<IResult> GetActivitiesAsync(
         string contactId,
-        int page = 1,
-        int pageSize = 25,
         ISender sender,
-        CancellationToken ct)
+        CancellationToken ct,
+        int page = 1,
+        int pageSize = 25)
     {
         var query = new GetActivitiesQuery(contactId, page, pageSize);
         var result = await sender.Send(query, ct);

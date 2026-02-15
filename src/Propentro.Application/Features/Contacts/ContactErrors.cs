@@ -33,4 +33,9 @@ public static class ContactErrors
         "Contact.HasActiveLeases",
         "Cannot delete contact with active leases.",
         ErrorType.Conflict);
+
+    public static readonly Error DuplicateEmail = new(
+        "Contact.DuplicateEmail",
+        "A contact with this email already exists.",
+        ErrorType.Conflict);
 }

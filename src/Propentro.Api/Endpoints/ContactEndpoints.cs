@@ -68,13 +68,13 @@ internal static class ContactEndpoints
     }
 
     private static async Task<IResult> GetContactsAsync(
-        string? role,
-        string? search,
-        bool? isArchived,
-        int page = 1,
-        int pageSize = 25,
         ISender sender,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? role = null,
+        string? search = null,
+        bool? isArchived = null,
+        int page = 1,
+        int pageSize = 25)
     {
         var query = new GetContactsQuery(role, search, isArchived, page, pageSize);
         var result = await sender.Send(query, ct);

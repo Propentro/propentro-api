@@ -1,3 +1,4 @@
+using Dapper;
 using Propentro.Application.Common.Models;
 using Propentro.Domain.Entities;
 using Activity = Propentro.Domain.Entities.Activity;
@@ -6,14 +7,31 @@ namespace Propentro.Application.Features.Contacts.Commands.CreateContact;
 
 public sealed class CreateContactHandler(
     IAppDbContext dbContext,
+    IDbConnectionFactory db,
     ICurrentUser currentUser) : ICommandHandler<CreateContactCommand, string>
 {
-    private static readonly HashSet<string> _validRoles = ["tenant", "owner", "supplier"];
-
     public async Task<Result<string>> Handle(CreateContactCommand request, CancellationToken cancellationToken)
     {
-        if (request.Roles.Length == 0 || !request.Roles.All(r => _validRoles.Contains(r)))
-            return ContactErrors.InvalidRole;
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            await using var connection = db.CreateConnection();
+            await connection.OpenAsync(cancellationToken);
+
+            const string duplicateCheckSql = """
+                SELECT COUNT(1)
+                FROM contacts
+                WHERE email = @Email
+                  AND organization_id = @OrganizationId
+                  AND is_active = true
+                """;
+
+            var existingCount = await connection.ExecuteScalarAsync<int>(
+                duplicateCheckSql,
+                new { request.Email, currentUser.OrganizationId });
+
+            if (existingCount > 0)
+                return ContactErrors.DuplicateEmail;
+        }
 
         var contact = new Contact(request.DisplayName, request.Kind)
         {
