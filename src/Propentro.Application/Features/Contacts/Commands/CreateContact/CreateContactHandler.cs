@@ -8,7 +8,7 @@ public sealed class CreateContactHandler(
     IAppDbContext dbContext,
     ICurrentUser currentUser) : ICommandHandler<CreateContactCommand, string>
 {
-    private static readonly HashSet<string> _validRoles = ["tenant", "owner", "supplier", "vendor"];
+    private static readonly HashSet<string> _validRoles = ["tenant", "owner", "supplier"];
 
     public async Task<Result<string>> Handle(CreateContactCommand request, CancellationToken cancellationToken)
     {

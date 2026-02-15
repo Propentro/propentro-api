@@ -5,7 +5,7 @@ namespace Propentro.Application.Features.Contacts.Commands.CreateContact;
 public sealed class CreateContactValidator : AbstractValidator<CreateContactCommand>
 {
     private static readonly string[] _validKinds = ["individual", "company"];
-    private static readonly string[] _validRoles = ["tenant", "owner", "supplier", "vendor"];
+    private static readonly string[] _validRoles = ["tenant", "owner", "supplier"];
 
     public CreateContactValidator()
     {
@@ -24,7 +24,7 @@ public sealed class CreateContactValidator : AbstractValidator<CreateContactComm
 
         RuleForEach(x => x.Roles)
             .Must(r => _validRoles.Contains(r))
-            .WithMessage("Each role must be one of: tenant, owner, supplier, vendor.");
+            .WithMessage("Each role must be one of: tenant, owner, supplier.");
 
         RuleFor(x => x.FirstName).MaximumLength(100);
         RuleFor(x => x.LastName).MaximumLength(100);
