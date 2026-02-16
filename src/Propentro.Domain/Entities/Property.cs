@@ -18,7 +18,7 @@ public sealed class Property : AggregateRoot
     public Property? ParentProperty { get; set; }
     public Address? Address { get; set; }
     public ICollection<Unit> Units { get; set; } = [];
-    public ICollection<PropertyPartyRole> PartyRoles { get; set; } = [];
+    public ICollection<PropertyContactRole> ContactRoles { get; set; } = [];
     public ICollection<PropertyCompliance> Compliances { get; set; } = [];
     public ICollection<PropertyAmenity> Amenities { get; set; } = [];
     public ICollection<PropertyDocument> Documents { get; set; } = [];

@@ -6,9 +6,9 @@ public abstract class OrganizationEntity : Entity, IOrganizationScoped, IAuditab
 {
     public Guid OrganizationId { get; set; }
 
-    public DateTime CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
     public Guid? CreatedById { get; set; }
-    public DateTime? UpdatedAt { get; set; }
+    public DateTimeOffset? UpdatedAt { get; set; }
     public Guid? UpdatedById { get; set; }
 
     public bool IsActive { get; set; } = true;

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Propentro.Domain.Entities;
+using Activity = Propentro.Domain.Entities.Activity;
 
 namespace Propentro.Application.Common.Interfaces.Persistence;
 
@@ -24,10 +25,13 @@ public interface IAppDbContext
     // Lease Management
     DbSet<Lease> Leases { get; }
     DbSet<LeaseUnit> LeaseUnits { get; }
-    DbSet<LeaseParty> LeaseParties { get; }
+    DbSet<LeaseContact> LeaseContacts { get; }
 
-    // Parties
-    DbSet<Party> Parties { get; }
+    // Contacts
+    DbSet<Contact> Contacts { get; }
+
+    // Activities
+    DbSet<Activity> Activities { get; }
 
     // Documents
     DbSet<Document> Documents { get; }

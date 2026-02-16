@@ -4,7 +4,7 @@ This document provides comprehensive guidance for AI assistants working with the
 
 ## Project Overview
 
-Propentro is a property management API built with **.NET 10.0** following **Clean Architecture** principles. It provides multi-tenant property, unit, lease, and party management with CQRS pattern implementation.
+Propentro is a property management API built with **.NET 10.0** following **Clean Architecture** principles. It provides multi-tenant property, unit, lease, and contact management with CQRS pattern implementation.
 
 ### Technology Stack
 
@@ -62,18 +62,22 @@ src/
 │
 ├── Propentro.Application/         # Business logic layer
 │   ├── Common/
-│   │   ├── Abstractions/          # ICommand, IQuery, ICachedQuery interfaces
+│   │   ├── Interfaces/            # ICommand, IQuery, ICachedQuery, IAppDbContext, etc.
 │   │   ├── Behaviors/             # MediatR pipeline behaviors
 │   │   └── Models/                # Result<T>, Error, PagedResult<T>
-│   ├── [Feature]/
-│   │   ├── Commands/              # Create, Update, Delete handlers
-│   │   ├── Queries/               # Get, List handlers
-│   │   └── [Feature]Errors.cs     # Centralized error definitions
+│   ├── Features/
+│   │   ├── Me/                    # Current user profile
+│   │   ├── Contacts/              # Contact management (tenants, owners, suppliers)
+│   │   ├── Activities/            # Timeline activities (notes, phone calls, events)
+│   │   └── [Feature]/
+│   │       ├── Commands/          # Create, Update, Delete handlers
+│   │       ├── Queries/           # Get, List handlers
+│   │       └── [Feature]Errors.cs # Centralized error definitions
 │   └── DependencyInjection.cs
 │
 ├── Propentro.Domain/              # Domain entities and logic
 │   ├── Common/                    # Entity, AggregateRoot, ValueObject, PublicIdGenerator
-│   ├── Entities/                  # Domain entities (Property, Unit, Lease, etc.)
+│   ├── Entities/                  # Domain entities (Property, Unit, Lease, Contact, Activity, etc.)
 │   ├── ValueObjects/              # Money, DateRange
 │   ├── Enums/                     # LeaseStatus, UnitType, etc.
 │   └── Events/                    # Domain events
@@ -87,8 +91,8 @@ src/
 │   ├── Caching/                   # ICacheService (Redis default, MemoryCache fallback)
 │   └── DependencyInjection.cs
 │
-└── Propentro.Contracts/           # Shared DTOs
-    └── [Feature]/                 # XyzDto, CreateXyzRequest, etc.
+└── Propentro.Contracts/           # Shared request/response types
+    └── [Feature]/                 # {Verb}{Entity}Request, {Entity}Response, {Entity}ListItemResponse
 
 tests/
 ├── Propentro.Domain.Tests/        # Entity and value object tests
@@ -321,7 +325,7 @@ public class Unit : AggregateRoot
 - `Id` (Guid v7) - internal identifier, auto-generated in `Entity(prefix)` constructor
 - `PublicId` (prefixed hex: `prp_a3f9c12d8e4b`) - user-facing, generated client-side by `PublicIdGenerator`
 - Both IDs are available immediately after construction - no need to wait for database
-- Each entity defines its prefix via `base("prefix")`: `prp`, `unt`, `lse`, `pty`, `adr`, `doc`, `usr`, `org`, `rol`
+- Each entity defines its prefix via `base("prefix")`: `prp`, `unt`, `lse`, `cnt`, `act`, `adr`, `doc`, `usr`, `org`, `rol`
 - Parameterless constructor is for EF Core only (no ID generation)
 
 ### API Endpoint Pattern
@@ -362,6 +366,73 @@ public static class UnitEndpoints
 ```
 
 **All endpoints must be registered in `EndpointExtensions.MapApiEndpoints()`.**
+
+### PublicId Format Validation
+
+All queries that accept a PublicId should validate the format before hitting the database. PublicIds follow the pattern `{prefix}_{12-hex-chars}`. Use `[GeneratedRegex]` for compile-time optimized validation:
+
+```csharp
+public sealed partial class GetContactByIdValidator : AbstractValidator<GetContactByIdQuery>
+{
+    public GetContactByIdValidator()
+    {
+        RuleFor(x => x.Id)
+            .NotEmpty()
+            .Must(id => ContactIdRegex().IsMatch(id))
+            .WithMessage("Invalid contact ID format.");
+    }
+
+    [GeneratedRegex(@"^cnt_[0-9a-f]{12}$", RegexOptions.Compiled)]
+    private static partial Regex ContactIdRegex();
+}
+```
+
+Entity prefixes: `prp`, `unt`, `lse`, `cnt`, `act`, `adr`, `doc`, `usr`, `org`, `rol`
+
+### Pagination Validation
+
+All paginated queries must have a validator enforcing:
+- `Page >= 1`
+- `PageSize` between 1 and 100
+
+Without this, `page=0` or negative values produce invalid SQL `OFFSET` and runtime 500s.
+
+### Audit Columns
+
+`AppDbContext.SaveChangesAsync` automatically sets audit fields based on EF change tracker state:
+- `EntityState.Added` → `CreatedAt`, `CreatedById`, `OrganizationId` (for `IOrganizationScoped`)
+- `EntityState.Modified` → `UpdatedAt`, `UpdatedById`
+
+**Do NOT manually set these in handlers.** The infrastructure handles it. Only set domain-specific fields that are NOT part of `IAuditableEntity` (e.g., `ArchivedAt`, `ArchivedById`).
+
+### Bulk Operations
+
+For operations that can be performed on multiple entities (archive, unarchive, delete), create separate bulk endpoints:
+- URL: `POST /v1/{entities}/bulk-{action}` (e.g., `/v1/contacts/bulk-archive`)
+- Request body: `{ "contactIds": ["cnt_xxx", "cnt_yyy"] }`
+- Limit: 50 items per request (validated)
+- Handler: Load all entities in one query, loop and modify, single transaction via UnitOfWork
+- Skip already-in-target-state entities silently (e.g., already archived contacts)
+
+### Activity Types
+
+Activity types are constrained at both validation and DB level:
+- **User-creatable**: `note`, `phone_call`
+- **System-only**: `system_event`, `archived`, `unarchived`
+- DB CHECK constraint: `ck_activities_activity_type`
+- When adding new types: update validator, handler whitelist (if system type), AND DB constraint (new migration)
+
+### Timestamps — DateTimeOffset Convention
+
+All timestamp fields use `DateTimeOffset` (not `DateTime`) to match PostgreSQL `TIMESTAMPTZ`:
+- Entity properties: `DateTimeOffset CreatedAt`, `DateTimeOffset? UpdatedAt`, etc.
+- DTOs/Response records: Same — `DateTimeOffset`
+- Dapper query result records: Same — Npgsql maps `TIMESTAMPTZ` → `DateTimeOffset` automatically
+- `IDateTimeProvider.UtcNow` returns `DateTimeOffset`
+- API responses serialize as ISO 8601 with timezone: `2025-06-15T10:30:00+00:00`
+- Date-only fields (lease start/end, compliance issued/expires) use `DateOnly` — not affected
+
+**Do NOT use `DateTime` for any timestamp.** Use `DateOnly` for dates, `TimeOnly` for times, `DateTimeOffset` for timestamps.
 
 ## Code Style Conventions
 
@@ -410,8 +481,8 @@ The following CA rules are suppressed in `.editorconfig` to avoid false positive
 | Query | `Get{Entity}(ById/s)Query` | `GetUnitByIdQuery` |
 | Handler | `{Command/Query}Handler` | `CreateUnitHandler` |
 | Validator | `{Command}Validator` | `CreateUnitValidator` |
-| DTO | `{Entity}Dto` / `{Entity}DetailDto` | `UnitDto`, `UnitDetailDto` |
-| Request | `{Verb}{Entity}Request` | `CreateUnitRequest` |
+| Response | `{Entity}Response` / `{Entity}ListItemResponse` | `ContactResponse`, `ContactListItemResponse` |
+| Request | `{Verb}{Entity}Request` | `CreateContactRequest` |
 | Error class | `{Entity}Errors` | `UnitErrors` |
 
 ### Logging Conventions
@@ -644,8 +715,8 @@ public class UnitIntegrationTests : IAsyncLifetime
 3. Add `DbSet` in `AppDbContext`
 4. Add `HasQueryFilter` in `AppDbContext.ApplyGlobalFilters()`
 5. Create configuration in `Infrastructure/Persistence/Configurations/`
-6. Create DTOs in `Contracts/[Feature]/`
-7. Create Commands/Queries in `Application/[Feature]/`
+6. Create Request/Response types in `Contracts/[Feature]/`
+7. Create Commands/Queries in `Application/Features/[Feature]/`
 8. Create Endpoints in `Api/Endpoints/`
 9. Register endpoints in `EndpointExtensions.MapApiEndpoints()`
 10. Add migration: `dotnet ef migrations add Add{Entity}`
@@ -655,14 +726,14 @@ public class UnitIntegrationTests : IAsyncLifetime
 1. Create `{Verb}{Entity}Command.cs` record implementing `ICommand<TResponse>`
 2. Create `{Verb}{Entity}Handler.cs` implementing `ICommandHandler` - do NOT call `SaveChangesAsync`
 3. Create `{Verb}{Entity}Validator.cs` with FluentValidation rules
-4. Add request DTO to `Contracts/[Feature]/`
+4. Add request type to `Contracts/[Feature]/`
 5. Map endpoint in `Api/Endpoints/{Entity}Endpoints.cs`
 
 ### Adding a New Query
 
 1. Create `Get{Entity}(ById/s)Query.cs` implementing `IQuery<TResponse>`
 2. Create handler using Dapper (`await using` + `OpenAsync` pattern)
-3. Add response DTO to `Contracts/[Feature]/`
+3. Add response type to `Contracts/[Feature]/`
 4. Map endpoint in `Api/Endpoints/{Entity}Endpoints.cs`
 
 ## Important Files Reference
@@ -709,18 +780,18 @@ The `/me` endpoint is the reference implementation. All future endpoints should 
 | File | Purpose |
 |------|---------|
 | `Api/Endpoints/MeEndpoints.cs` | Endpoint definition with metadata |
-| `Application/Me/Queries/GetMe/GetMeQuery.cs` | Query record |
-| `Application/Me/Queries/GetMe/GetMeHandler.cs` | Dapper handler with roles + permissions |
-| `Application/Me/MeErrors.cs` | Error definitions |
-| `Contracts/Me/MeDto.cs` | Response DTOs |
+| `Application/Features/Me/Queries/GetMe/GetMeQuery.cs` | Query record |
+| `Application/Features/Me/Queries/GetMe/GetMeHandler.cs` | Dapper handler with roles + permissions |
+| `Application/Features/Me/MeErrors.cs` | Error definitions |
+| `Contracts/Me/MeDto.cs` | Response types (MeResponse, MeOrganizationResponse) |
 
 ### Key Patterns Demonstrated
 
 - **No `RequirePermission`** on `/me` - every authenticated user can view their own profile
 - **Dapper query** with `await using` + `OpenAsync` + sequential queries on same connection
 - **Error codes** follow `Entity.ErrorName` format (e.g., `Me.NotAuthenticated`)
-- **DTO** uses positional records, nullable fields where data may not exist
-- **Handler** checks `ICurrentUser.IsAuthenticated` before any DB access
+- **Response** types use positional records, nullable fields where data may not exist
+- **Handler** uses Dapper with `await using` + `OpenAsync` pattern
 - **Endpoint** uses `ProducesProblem()` for error responses, `Produces<T>()` for success
 
 ## Troubleshooting

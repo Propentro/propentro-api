@@ -6,7 +6,7 @@ public sealed class LeaseComplianceDocument
     public Guid ComplianceId { get; set; }
     public Guid DocumentId { get; set; }
     public bool IsPrimary { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 
     // Navigation
     public LeaseCompliance Compliance { get; set; } = default!;

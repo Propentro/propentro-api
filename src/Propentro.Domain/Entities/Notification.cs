@@ -13,10 +13,10 @@ public sealed class Notification : Entity, IOrganizationScoped
     public string Severity { get; set; } = "info";
     public string Data { get; set; } = "{}";
     public bool IsRead { get; set; }
-    public DateTime? ReadAt { get; set; }
+    public DateTimeOffset? ReadAt { get; set; }
     public Guid? SenderId { get; set; }
-    public DateTime? ExpiresAt { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public DateTimeOffset? ExpiresAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 
     // Navigation
     public User User { get; set; } = default!;

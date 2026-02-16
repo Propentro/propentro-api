@@ -7,6 +7,6 @@ public sealed class Currency
     public string? Symbol { get; set; }
     public short MinorUnits { get; set; } = 2;
     public bool IsActive { get; set; } = true;
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? UpdatedAt { get; set; }
 }

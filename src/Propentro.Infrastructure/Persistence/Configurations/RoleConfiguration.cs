@@ -19,7 +19,7 @@ public sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.Property(e => e.Description).HasColumnName("description");
         builder.Property(e => e.IsSystem).HasColumnName("is_system").HasDefaultValue(false);
         builder.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
-        builder.Property(e => e.CreatedAt).HasColumnName("created_at");
+        builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
         builder.Property(e => e.CreatedById).HasColumnName("created_by_id");
         builder.Property(e => e.UpdatedAt).HasColumnName("updated_at");
         builder.Property(e => e.UpdatedById).HasColumnName("updated_by_id");

@@ -26,7 +26,7 @@ public sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
         builder.Property(e => e.Status).HasColumnName("status").IsRequired().HasDefaultValue("pending");
         builder.Property(e => e.UploadedById).HasColumnName("uploaded_by_id");
         builder.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
-        builder.Property(e => e.CreatedAt).HasColumnName("created_at");
+        builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
         builder.Property(e => e.UpdatedAt).HasColumnName("updated_at");
     }
 }

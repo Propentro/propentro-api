@@ -6,5 +6,5 @@ public sealed class Permission
     public string Code { get; set; } = default!;
     public string GroupName { get; set; } = default!;
     public string? Description { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 }
