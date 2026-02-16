@@ -77,12 +77,14 @@ public sealed class GetMeHandler(
         return response;
     }
 
-    private sealed record MeQueryResult(
-        string UserId,
-        string Email,
-        string FirstName,
-        string LastName,
-        string OrganizationId,
-        string OrganizationName,
-        string OrganizationSlug);
+    private sealed class MeQueryResult
+    {
+        public string UserId { get; init; } = null!;
+        public string Email { get; init; } = null!;
+        public string FirstName { get; init; } = null!;
+        public string LastName { get; init; } = null!;
+        public string OrganizationId { get; init; } = null!;
+        public string OrganizationName { get; init; } = null!;
+        public string OrganizationSlug { get; init; } = null!;
+    }
 }

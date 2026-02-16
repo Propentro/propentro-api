@@ -141,5 +141,9 @@ public sealed class GetContactsHandler(
         public DateTimeOffset CreatedAt { get; init; }
     }
 
-    private sealed record ContactRoleRow(string ContactId, string Role);
+    private sealed class ContactRoleRow
+    {
+        public string ContactId { get; init; } = null!;
+        public string Role { get; init; } = null!;
+    }
 }
