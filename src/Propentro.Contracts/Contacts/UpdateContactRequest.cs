@@ -1,7 +1,6 @@
 namespace Propentro.Contracts.Contacts;
 
 public sealed record UpdateContactRequest(
-    string? DisplayName,
     string? FirstName,
     string? LastName,
     string? LegalName,

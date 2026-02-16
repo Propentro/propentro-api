@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Models;
+using Propentro.Application.Features.Contacts.Commands.CreateContact;
 using Propentro.Domain.Entities;
 
 namespace Propentro.Application.Features.Contacts.Commands.UpdateContact;
@@ -15,9 +16,6 @@ public sealed class UpdateContactHandler(
 
         if (contact is null)
             return ContactErrors.NotFoundById(request.ContactId);
-
-        if (request.DisplayName is not null)
-            contact.DisplayName = request.DisplayName;
 
         if (request.FirstName is not null)
             contact.FirstName = request.FirstName;
@@ -101,6 +99,14 @@ public sealed class UpdateContactHandler(
                 dbContext.Addresses.Add(address);
                 contact.Address = address;
             }
+        }
+
+        // Recompute display name whenever name-related fields may have changed
+        if (request.FirstName is not null || request.LastName is not null ||
+            request.TradingName is not null || request.LegalName is not null)
+        {
+            contact.DisplayName = CreateContactHandler.ComputeDisplayName(
+                contact.Kind, contact.FirstName, contact.LastName, contact.TradingName, contact.LegalName);
         }
 
         return Result.Success();

@@ -2,7 +2,6 @@ namespace Propentro.Contracts.Contacts;
 
 public sealed record CreateContactRequest(
     string Kind,
-    string DisplayName,
     string[] Roles,
     string? FirstName,
     string? LastName,

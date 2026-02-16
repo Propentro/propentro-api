@@ -61,7 +61,7 @@ public sealed class GetContactsHandler(
 
         var dataSql = $"""
             SELECT
-                c.public_id AS ContactId,
+                c.public_id AS Id,
                 c.kind AS Kind,
                 c.display_name AS DisplayName,
                 c.first_name AS FirstName,
@@ -73,6 +73,11 @@ public sealed class GetContactsHandler(
                 c.secondary_email AS SecondaryEmail,
                 c.secondary_phone AS SecondaryPhone,
                 c.trade AS Trade,
+                c.emergency_contact_name AS EmergencyContactName,
+                c.emergency_contact_phone AS EmergencyContactPhone,
+                c.trade_other AS TradeOther,
+                c.tax_number AS TaxNumber,
+                c.tax_country AS TaxCountry,
                 c.is_archived AS IsArchived,
                 c.created_at AS CreatedAt
             FROM contacts c
@@ -86,7 +91,7 @@ public sealed class GetContactsHandler(
         if (contacts.Count == 0)
             return new PagedResult<ContactListItemResponse>([], totalCount, request.Page, request.PageSize);
 
-        var contactIds = contacts.Select(c => c.ContactId).ToList();
+        var contactIds = contacts.Select(c => c.Id).ToList();
 
         const string rolesSql = """
             SELECT c.public_id AS ContactId, cr.role AS Role
@@ -104,7 +109,7 @@ public sealed class GetContactsHandler(
             .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(r => r.Role).Order().ToList());
 
         var items = contacts.Select(c => new ContactListItemResponse(
-            c.ContactId,
+            c.Id,
             c.Kind,
             c.DisplayName,
             c.FirstName,
@@ -116,8 +121,13 @@ public sealed class GetContactsHandler(
             c.SecondaryEmail,
             c.SecondaryPhone,
             c.Trade,
+            c.EmergencyContactName,
+            c.EmergencyContactPhone,
+            c.TradeOther,
+            c.TaxNumber,
+            c.TaxCountry,
             c.IsArchived,
-            allRoles.GetValueOrDefault(c.ContactId, []),
+            allRoles.GetValueOrDefault(c.Id, []),
             c.CreatedAt)).ToList();
 
         return new PagedResult<ContactListItemResponse>(items, totalCount, request.Page, request.PageSize);
@@ -125,7 +135,7 @@ public sealed class GetContactsHandler(
 
     private sealed class ContactListItemQueryResult
     {
-        public string ContactId { get; init; } = null!;
+        public string Id { get; init; } = null!;
         public string Kind { get; init; } = null!;
         public string DisplayName { get; init; } = null!;
         public string? FirstName { get; init; }
@@ -137,6 +147,11 @@ public sealed class GetContactsHandler(
         public string? SecondaryEmail { get; init; }
         public string? SecondaryPhone { get; init; }
         public string? Trade { get; init; }
+        public string? EmergencyContactName { get; init; }
+        public string? EmergencyContactPhone { get; init; }
+        public string? TradeOther { get; init; }
+        public string? TaxNumber { get; init; }
+        public string? TaxCountry { get; init; }
         public bool IsArchived { get; init; }
         public DateTimeOffset CreatedAt { get; init; }
     }

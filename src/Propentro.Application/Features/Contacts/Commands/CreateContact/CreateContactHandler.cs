@@ -33,7 +33,9 @@ public sealed class CreateContactHandler(
                 return ContactErrors.DuplicateEmail;
         }
 
-        var contact = new Contact(request.DisplayName, request.Kind)
+        var displayName = ComputeDisplayName(request.Kind, request.FirstName, request.LastName, request.TradingName, request.LegalName);
+
+        var contact = new Contact(displayName, request.Kind)
         {
             FirstName = request.FirstName,
             LastName = request.LastName,
@@ -85,5 +87,17 @@ public sealed class CreateContactHandler(
         });
 
         return contact.PublicId;
+    }
+
+    internal static string ComputeDisplayName(string kind, string? firstName, string? lastName, string? tradingName, string? legalName)
+    {
+        if (kind == "person")
+        {
+            var parts = new[] { firstName, lastName }.Where(p => !string.IsNullOrWhiteSpace(p));
+            var name = string.Join(" ", parts);
+            return string.IsNullOrWhiteSpace(name) ? "Unnamed Contact" : name;
+        }
+
+        return tradingName ?? legalName ?? "Unnamed Organization";
     }
 }

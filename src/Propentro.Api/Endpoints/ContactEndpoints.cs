@@ -113,7 +113,6 @@ internal static class ContactEndpoints
     {
         var command = new CreateContactCommand(
             request.Kind,
-            request.DisplayName,
             request.Roles,
             request.FirstName,
             request.LastName,
@@ -144,7 +143,6 @@ internal static class ContactEndpoints
     {
         var command = new UpdateContactCommand(
             id,
-            request.DisplayName,
             request.FirstName,
             request.LastName,
             request.LegalName,

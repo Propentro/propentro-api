@@ -1,11 +1,12 @@
 namespace Propentro.Contracts.Activities;
 
 public sealed record ActivityResponse(
-    string ActivityId,
+    string Id,
     string ActivityType,
     string? Title,
     string? Description,
     bool IsPinned,
-    string? CreatedByName,
+    Dictionary<string, object>? Metadata,
+    string? CreatedBy,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt);

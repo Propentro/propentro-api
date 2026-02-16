@@ -15,7 +15,7 @@ public sealed class GetContactByIdHandler(
 
         const string contactSql = """
             SELECT
-                c.public_id AS ContactId,
+                c.public_id AS Id,
                 c.kind AS Kind,
                 c.display_name AS DisplayName,
                 c.first_name AS FirstName,
@@ -34,6 +34,7 @@ public sealed class GetContactByIdHandler(
                 c.tax_country AS TaxCountry,
                 c.note AS Note,
                 c.is_archived AS IsArchived,
+                c.archived_at AS ArchivedAt,
                 c.created_at AS CreatedAt,
                 c.updated_at AS UpdatedAt,
                 CONCAT(cu.first_name, ' ', cu.last_name) AS CreatedByName,
@@ -87,7 +88,7 @@ public sealed class GetContactByIdHandler(
         }
 
         return new ContactResponse(
-            contactResult.ContactId,
+            contactResult.Id,
             contactResult.Kind,
             contactResult.DisplayName,
             contactResult.FirstName,
@@ -106,6 +107,7 @@ public sealed class GetContactByIdHandler(
             contactResult.TaxCountry,
             contactResult.Note,
             contactResult.IsArchived,
+            contactResult.ArchivedAt,
             roles,
             address,
             contactResult.CreatedByName,
@@ -116,7 +118,7 @@ public sealed class GetContactByIdHandler(
 
     private sealed class ContactQueryResult
     {
-        public string ContactId { get; init; } = null!;
+        public string Id { get; init; } = null!;
         public string Kind { get; init; } = null!;
         public string DisplayName { get; init; } = null!;
         public string? FirstName { get; init; }
@@ -135,6 +137,7 @@ public sealed class GetContactByIdHandler(
         public string? TaxCountry { get; init; }
         public string? Note { get; init; }
         public bool IsArchived { get; init; }
+        public DateTimeOffset? ArchivedAt { get; init; }
         public DateTimeOffset CreatedAt { get; init; }
         public DateTimeOffset? UpdatedAt { get; init; }
         public string? CreatedByName { get; init; }
