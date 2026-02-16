@@ -29,21 +29,33 @@ public interface IAppDbContext
 
     // Contacts
     DbSet<Contact> Contacts { get; }
+    DbSet<ContactRole> ContactRoles { get; }
+    DbSet<ContactDocument> ContactDocuments { get; }
+    DbSet<PropertyContactRole> PropertyContactRoles { get; }
+    DbSet<UnitContactRole> UnitContactRoles { get; }
 
     // Activities
     DbSet<Activity> Activities { get; }
 
     // Documents
     DbSet<Document> Documents { get; }
+    DbSet<PropertyDocument> PropertyDocuments { get; }
+    DbSet<UnitDocument> UnitDocuments { get; }
+    DbSet<LeaseDocument> LeaseDocuments { get; }
 
     // Compliance
     DbSet<PropertyCompliance> PropertyCompliances { get; }
     DbSet<UnitCompliance> UnitCompliances { get; }
     DbSet<LeaseCompliance> LeaseCompliances { get; }
+    DbSet<ComplianceType> ComplianceTypes { get; }
+    DbSet<PropertyComplianceDocument> PropertyComplianceDocuments { get; }
+    DbSet<UnitComplianceDocument> UnitComplianceDocuments { get; }
+    DbSet<LeaseComplianceDocument> LeaseComplianceDocuments { get; }
 
     // Amenities
     DbSet<PropertyAmenity> PropertyAmenities { get; }
     DbSet<UnitAmenity> UnitAmenities { get; }
+    DbSet<AmenityType> AmenityTypes { get; }
 
     // Authorization
     DbSet<Permission> Permissions { get; }
@@ -53,6 +65,11 @@ public interface IAppDbContext
 
     // Notifications
     DbSet<Notification> Notifications { get; }
+    DbSet<NotificationPreference> NotificationPreferences { get; }
+    DbSet<NotificationTemplate> NotificationTemplates { get; }
+
+    // Lookup Tables
+    DbSet<Currency> Currencies { get; }
 
     /// <summary>
     /// Provides access to database-related information and operations.
