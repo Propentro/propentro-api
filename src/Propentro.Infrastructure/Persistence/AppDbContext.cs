@@ -135,6 +135,8 @@ public sealed class AppDbContext(
                 {
                     auditable.CreatedAt = now;
                     auditable.CreatedById = userId;
+                    auditable.UpdatedAt = now;
+                    auditable.UpdatedById = userId;
                 }
 
                 if (entry.State == EntityState.Modified)
