@@ -23,7 +23,7 @@ public sealed class LeaseConfiguration : IEntityTypeConfiguration<Lease>
         builder.Property(e => e.MoveOutDate).HasColumnName("move_out_date");
         builder.Property(e => e.ReferenceCode).HasColumnName("reference_code");
         builder.Property(e => e.RentMinor).HasColumnName("rent_minor");
-        builder.Property(e => e.Currency).HasColumnName("currency").IsRequired().HasDefaultValue("EUR");
+        builder.Property(e => e.Currency).HasColumnName("currency").IsRequired().HasDefaultValue("EUR").HasMaxLength(3).IsFixedLength();
         builder.Property(e => e.RentFrequency).HasColumnName("rent_frequency").IsRequired().HasDefaultValue("monthly");
         builder.Property(e => e.RentDueDay).HasColumnName("rent_due_day");
         builder.Property(e => e.DepositMinor).HasColumnName("deposit_minor");
@@ -55,5 +55,11 @@ public sealed class LeaseConfiguration : IEntityTypeConfiguration<Lease>
             .WithOne(e => e.Lease)
             .HasForeignKey(e => e.LeaseId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne<Currency>()
+            .WithMany()
+            .HasForeignKey(e => e.Currency)
+            .HasPrincipalKey(e => e.Code)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

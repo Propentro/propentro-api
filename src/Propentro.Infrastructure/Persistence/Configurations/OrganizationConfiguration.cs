@@ -30,7 +30,7 @@ public sealed class OrganizationConfiguration : IEntityTypeConfiguration<Organiz
         builder.Property(e => e.LegalName).HasColumnName("legal_name");
         builder.Property(e => e.TaxNumber).HasColumnName("tax_number");
         builder.Property(e => e.TaxCountry).HasColumnName("tax_country");
-        builder.Property(e => e.CurrencyCode).HasColumnName("currency_code").IsRequired().HasDefaultValue("EUR");
+        builder.Property(e => e.CurrencyCode).HasColumnName("currency_code").IsRequired().HasDefaultValue("EUR").HasMaxLength(3).IsFixedLength();
         builder.Property(e => e.Timezone).HasColumnName("timezone").IsRequired().HasDefaultValue("UTC");
         builder.Property(e => e.SubscriptionPlan).HasColumnName("subscription_plan").IsRequired().HasDefaultValue("starter");
         builder.Property(e => e.UiSettings).HasColumnName("ui_settings").HasColumnType("jsonb").HasDefaultValueSql("'{}'::jsonb");
@@ -40,5 +40,11 @@ public sealed class OrganizationConfiguration : IEntityTypeConfiguration<Organiz
         builder.Property(e => e.CreatedById).HasColumnName("created_by_id");
         builder.Property(e => e.UpdatedAt).HasColumnName("updated_at");
         builder.Property(e => e.UpdatedById).HasColumnName("updated_by_id");
+
+        builder.HasOne<Currency>()
+            .WithMany()
+            .HasForeignKey(e => e.CurrencyCode)
+            .HasPrincipalKey(e => e.Code)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

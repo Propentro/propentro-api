@@ -36,21 +36,33 @@ public sealed class AppDbContext(
 
     // Contacts
     public DbSet<Contact> Contacts => Set<Contact>();
+    public DbSet<ContactRole> ContactRoles => Set<ContactRole>();
+    public DbSet<ContactDocument> ContactDocuments => Set<ContactDocument>();
+    public DbSet<PropertyContactRole> PropertyContactRoles => Set<PropertyContactRole>();
+    public DbSet<UnitContactRole> UnitContactRoles => Set<UnitContactRole>();
 
     // Activities
     public DbSet<Activity> Activities => Set<Activity>();
 
     // Documents
     public DbSet<Document> Documents => Set<Document>();
+    public DbSet<PropertyDocument> PropertyDocuments => Set<PropertyDocument>();
+    public DbSet<UnitDocument> UnitDocuments => Set<UnitDocument>();
+    public DbSet<LeaseDocument> LeaseDocuments => Set<LeaseDocument>();
 
     // Compliance
     public DbSet<PropertyCompliance> PropertyCompliances => Set<PropertyCompliance>();
     public DbSet<UnitCompliance> UnitCompliances => Set<UnitCompliance>();
     public DbSet<LeaseCompliance> LeaseCompliances => Set<LeaseCompliance>();
+    public DbSet<ComplianceType> ComplianceTypes => Set<ComplianceType>();
+    public DbSet<PropertyComplianceDocument> PropertyComplianceDocuments => Set<PropertyComplianceDocument>();
+    public DbSet<UnitComplianceDocument> UnitComplianceDocuments => Set<UnitComplianceDocument>();
+    public DbSet<LeaseComplianceDocument> LeaseComplianceDocuments => Set<LeaseComplianceDocument>();
 
     // Amenities
     public DbSet<PropertyAmenity> PropertyAmenities => Set<PropertyAmenity>();
     public DbSet<UnitAmenity> UnitAmenities => Set<UnitAmenity>();
+    public DbSet<AmenityType> AmenityTypes => Set<AmenityType>();
 
     // Authorization
     public DbSet<Permission> Permissions => Set<Permission>();
@@ -60,6 +72,11 @@ public sealed class AppDbContext(
 
     // Notifications
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
+    public DbSet<NotificationTemplate> NotificationTemplates => Set<NotificationTemplate>();
+
+    // Lookup Tables
+    public DbSet<Currency> Currencies => Set<Currency>();
 
     /// <summary>
     /// Current organization ID for global query filter.
@@ -90,6 +107,7 @@ public sealed class AppDbContext(
         builder.Entity<Notification>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
         builder.Entity<PropertyContactRole>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
         builder.Entity<UnitContactRole>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
+        builder.Entity<NotificationPreference>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
 
         // Activity: Organization-scoped + soft-delete
         builder.Entity<Activity>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
