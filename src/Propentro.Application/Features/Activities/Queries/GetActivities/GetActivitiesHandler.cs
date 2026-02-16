@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Dapper;
 using Propentro.Application.Common.Models;
 using Propentro.Contracts.Activities;
@@ -46,12 +47,13 @@ public sealed class GetActivitiesHandler(
 
         const string dataSql = """
             SELECT
-                a.public_id AS ActivityId,
+                a.public_id AS Id,
                 a.activity_type AS ActivityType,
                 a.title AS Title,
                 a.description AS Description,
                 a.is_pinned AS IsPinned,
-                CONCAT(u.first_name, ' ', u.last_name) AS CreatedByName,
+                a.metadata AS Metadata,
+                CONCAT(u.first_name, ' ', u.last_name) AS CreatedBy,
                 a.created_at AS CreatedAt,
                 a.updated_at AS UpdatedAt
             FROM activities a
@@ -64,11 +66,43 @@ public sealed class GetActivitiesHandler(
             OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY
             """;
 
-        var items = (await connection.QueryAsync<ActivityResponse>(
+        var rows = (await connection.QueryAsync<ActivityQueryResult>(
             dataSql,
             new { EntityId = contactId.Value, currentUser.OrganizationId, Offset = offset, PageSize = request.PageSize }))
             .ToList();
 
+        var items = rows.Select(r => new ActivityResponse(
+            r.Id,
+            r.ActivityType,
+            r.Title,
+            r.Description,
+            r.IsPinned,
+            DeserializeMetadata(r.Metadata),
+            r.CreatedBy,
+            r.CreatedAt,
+            r.UpdatedAt)).ToList();
+
         return new PagedResult<ActivityResponse>(items, totalCount, request.Page, request.PageSize);
+    }
+
+    private static Dictionary<string, object>? DeserializeMetadata(string? metadata)
+    {
+        if (string.IsNullOrWhiteSpace(metadata) || metadata == "{}")
+            return null;
+
+        return JsonSerializer.Deserialize<Dictionary<string, object>>(metadata);
+    }
+
+    private sealed class ActivityQueryResult
+    {
+        public string Id { get; init; } = null!;
+        public string ActivityType { get; init; } = null!;
+        public string? Title { get; init; }
+        public string? Description { get; init; }
+        public bool IsPinned { get; init; }
+        public string? Metadata { get; init; }
+        public string? CreatedBy { get; init; }
+        public DateTimeOffset CreatedAt { get; init; }
+        public DateTimeOffset? UpdatedAt { get; init; }
     }
 }

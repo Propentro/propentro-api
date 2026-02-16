@@ -1,7 +1,7 @@
 namespace Propentro.Contracts.Contacts;
 
 public sealed record ContactResponse(
-    string ContactId,
+    string Id,
     string Kind,
     string DisplayName,
     string? FirstName,
@@ -20,6 +20,7 @@ public sealed record ContactResponse(
     string? TaxCountry,
     string? Note,
     bool IsArchived,
+    DateTimeOffset? ArchivedAt,
     IReadOnlyList<string> Roles,
     ContactAddressResponse? Address,
     string? CreatedByName,

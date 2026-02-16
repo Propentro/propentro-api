@@ -4,7 +4,7 @@ namespace Propentro.Application.Features.Contacts.Commands.CreateContact;
 
 public sealed class CreateContactValidator : AbstractValidator<CreateContactCommand>
 {
-    private static readonly string[] _validKinds = ["individual", "company"];
+    private static readonly string[] _validKinds = ["person", "organization"];
     private static readonly string[] _validRoles = ["tenant", "owner", "supplier"];
 
     public CreateContactValidator()
@@ -12,11 +12,7 @@ public sealed class CreateContactValidator : AbstractValidator<CreateContactComm
         RuleFor(x => x.Kind)
             .NotEmpty()
             .Must(k => _validKinds.Contains(k))
-            .WithMessage("Kind must be 'individual' or 'company'.");
-
-        RuleFor(x => x.DisplayName)
-            .NotEmpty()
-            .MaximumLength(200);
+            .WithMessage("Kind must be 'person' or 'organization'.");
 
         RuleFor(x => x.Roles)
             .NotEmpty()

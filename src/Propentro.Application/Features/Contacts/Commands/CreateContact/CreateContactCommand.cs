@@ -4,7 +4,6 @@ namespace Propentro.Application.Features.Contacts.Commands.CreateContact;
 
 public sealed record CreateContactCommand(
     string Kind,
-    string DisplayName,
     string[] Roles,
     string? FirstName,
     string? LastName,

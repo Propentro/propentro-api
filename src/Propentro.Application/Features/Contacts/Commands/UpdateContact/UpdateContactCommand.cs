@@ -4,7 +4,6 @@ namespace Propentro.Application.Features.Contacts.Commands.UpdateContact;
 
 public sealed record UpdateContactCommand(
     string ContactId,
-    string? DisplayName,
     string? FirstName,
     string? LastName,
     string? LegalName,
