@@ -15,7 +15,7 @@ public sealed class ComplianceTypeConfiguration : IEntityTypeConfiguration<Compl
         builder.Property(e => e.Id).HasColumnName("id");
         builder.Property(e => e.Code).HasColumnName("code").IsRequired();
         builder.Property(e => e.Target).HasColumnName("target").IsRequired();
-        builder.Property(e => e.Country).HasColumnName("country").IsRequired();
+        builder.Property(e => e.Country).HasColumnName("country").IsRequired().HasMaxLength(2).IsFixedLength();
         builder.Property(e => e.Label).HasColumnName("label").IsRequired();
         builder.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
         builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");

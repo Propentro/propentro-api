@@ -12,7 +12,7 @@ public sealed class CurrencyConfiguration : IEntityTypeConfiguration<Currency>
 
         builder.HasKey(e => e.Code);
 
-        builder.Property(e => e.Code).HasColumnName("code").IsRequired();
+        builder.Property(e => e.Code).HasColumnName("code").IsRequired().HasMaxLength(3).IsFixedLength();
         builder.Property(e => e.Name).HasColumnName("name").IsRequired();
         builder.Property(e => e.Symbol).HasColumnName("symbol");
         builder.Property(e => e.MinorUnits).HasColumnName("minor_units").HasDefaultValue((short)2);

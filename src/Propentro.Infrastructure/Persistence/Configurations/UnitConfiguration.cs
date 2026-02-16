@@ -33,7 +33,7 @@ public sealed class UnitConfiguration : IEntityTypeConfiguration<Unit>
         builder.Property(e => e.FurnishedStatus).HasColumnName("furnished_status");
         builder.Property(e => e.DefaultRentMinor).HasColumnName("default_rent_minor");
         builder.Property(e => e.DefaultDepositMinor).HasColumnName("default_deposit_minor");
-        builder.Property(e => e.DefaultCurrency).HasColumnName("default_currency");
+        builder.Property(e => e.DefaultCurrency).HasColumnName("default_currency").HasMaxLength(3).IsFixedLength();
         builder.Property(e => e.MonthlyFeesMinor).HasColumnName("monthly_fees_minor");
         builder.Property(e => e.MonthlyFeesNote).HasColumnName("monthly_fees_note");
         builder.Property(e => e.MaxOccupants).HasColumnName("max_occupants");
@@ -57,6 +57,12 @@ public sealed class UnitConfiguration : IEntityTypeConfiguration<Unit>
         builder.HasOne(e => e.ParentUnit)
             .WithMany()
             .HasForeignKey(e => e.ParentUnitId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Currency>()
+            .WithMany()
+            .HasForeignKey(e => e.DefaultCurrency)
+            .HasPrincipalKey(e => e.Code)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

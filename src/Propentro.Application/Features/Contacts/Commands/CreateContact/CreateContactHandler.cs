@@ -91,8 +91,7 @@ public sealed class CreateContactHandler(
 
     internal static string ComputeDisplayName(string kind, string? firstName, string? lastName, string? tradingName, string? legalName)
     {
-        // Accept both current ("person") and legacy ("individual") kind values
-        if (kind is "person" or "individual")
+        if (kind is "person")
         {
             var parts = new[] { firstName, lastName }.Where(p => !string.IsNullOrWhiteSpace(p));
             var name = string.Join(" ", parts);

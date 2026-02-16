@@ -8,7 +8,7 @@ public sealed class LeaseComplianceConfiguration : IEntityTypeConfiguration<Leas
 {
     public void Configure(EntityTypeBuilder<LeaseCompliance> builder)
     {
-        builder.ToTable("lease_compliances");
+        builder.ToTable("lease_compliance");
 
         builder.HasKey(e => e.Id);
 

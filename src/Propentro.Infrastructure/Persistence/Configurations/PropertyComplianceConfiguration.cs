@@ -8,7 +8,7 @@ public sealed class PropertyComplianceConfiguration : IEntityTypeConfiguration<P
 {
     public void Configure(EntityTypeBuilder<PropertyCompliance> builder)
     {
-        builder.ToTable("property_compliances");
+        builder.ToTable("property_compliance");
 
         builder.HasKey(e => e.Id);
 

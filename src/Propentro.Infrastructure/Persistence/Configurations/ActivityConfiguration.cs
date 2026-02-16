@@ -11,7 +11,7 @@ public sealed class ActivityConfiguration : IEntityTypeConfiguration<Activity>
         builder.ToTable("activities", t =>
         {
             t.HasCheckConstraint("ck_activities_activity_type",
-                "activity_type IN ('note', 'phone_call', 'system_event', 'archived', 'unarchived')");
+                "activity_type IN ('note', 'phone_call', 'system_event', 'archived', 'unarchived', 'document_uploaded')");
         });
 
         builder.HasKey(e => e.Id);

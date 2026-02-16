@@ -8,7 +8,7 @@ public sealed class UnitComplianceConfiguration : IEntityTypeConfiguration<UnitC
 {
     public void Configure(EntityTypeBuilder<UnitCompliance> builder)
     {
-        builder.ToTable("unit_compliances");
+        builder.ToTable("unit_compliance");
 
         builder.HasKey(e => e.Id);
 
