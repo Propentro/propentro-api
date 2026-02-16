@@ -21,11 +21,8 @@ public sealed class BulkArchiveContactsHandler(
 
         var now = dateTime.UtcNow;
 
-        foreach (var contact in contacts)
+        foreach (var contact in contacts.Where(c => !c.IsArchived))
         {
-            if (contact.IsArchived)
-                continue;
-
             contact.IsArchived = true;
             contact.ArchivedAt = now;
             contact.ArchivedById = currentUser.UserId;
