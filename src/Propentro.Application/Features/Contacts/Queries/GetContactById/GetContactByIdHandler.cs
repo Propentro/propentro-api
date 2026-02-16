@@ -114,34 +114,36 @@ public sealed class GetContactByIdHandler(
             contactResult.UpdatedAt);
     }
 
-    private sealed record ContactQueryResult(
-        string ContactId,
-        string Kind,
-        string DisplayName,
-        string? FirstName,
-        string? LastName,
-        string? LegalName,
-        string? TradingName,
-        string? Email,
-        string? Phone,
-        string? SecondaryEmail,
-        string? SecondaryPhone,
-        string? EmergencyContactName,
-        string? EmergencyContactPhone,
-        string? Trade,
-        string? TradeOther,
-        string? TaxNumber,
-        string? TaxCountry,
-        string? Note,
-        bool IsArchived,
-        DateTimeOffset CreatedAt,
-        DateTimeOffset? UpdatedAt,
-        string? CreatedByName,
-        string? UpdatedByName,
-        string? AddressLine1,
-        string? AddressLine2,
-        string? AddressCity,
-        string? AddressRegion,
-        string? AddressPostalCode,
-        string? AddressCountryCode);
+    private sealed class ContactQueryResult
+    {
+        public string ContactId { get; init; } = null!;
+        public string Kind { get; init; } = null!;
+        public string DisplayName { get; init; } = null!;
+        public string? FirstName { get; init; }
+        public string? LastName { get; init; }
+        public string? LegalName { get; init; }
+        public string? TradingName { get; init; }
+        public string? Email { get; init; }
+        public string? Phone { get; init; }
+        public string? SecondaryEmail { get; init; }
+        public string? SecondaryPhone { get; init; }
+        public string? EmergencyContactName { get; init; }
+        public string? EmergencyContactPhone { get; init; }
+        public string? Trade { get; init; }
+        public string? TradeOther { get; init; }
+        public string? TaxNumber { get; init; }
+        public string? TaxCountry { get; init; }
+        public string? Note { get; init; }
+        public bool IsArchived { get; init; }
+        public DateTimeOffset CreatedAt { get; init; }
+        public DateTimeOffset? UpdatedAt { get; init; }
+        public string? CreatedByName { get; init; }
+        public string? UpdatedByName { get; init; }
+        public string? AddressLine1 { get; init; }
+        public string? AddressLine2 { get; init; }
+        public string? AddressCity { get; init; }
+        public string? AddressRegion { get; init; }
+        public string? AddressPostalCode { get; init; }
+        public string? AddressCountryCode { get; init; }
+    }
 }

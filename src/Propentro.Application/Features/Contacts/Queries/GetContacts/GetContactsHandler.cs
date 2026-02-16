@@ -123,21 +123,27 @@ public sealed class GetContactsHandler(
         return new PagedResult<ContactListItemResponse>(items, totalCount, request.Page, request.PageSize);
     }
 
-    private sealed record ContactListItemQueryResult(
-        string ContactId,
-        string Kind,
-        string DisplayName,
-        string? FirstName,
-        string? LastName,
-        string? LegalName,
-        string? TradingName,
-        string? Email,
-        string? Phone,
-        string? SecondaryEmail,
-        string? SecondaryPhone,
-        string? Trade,
-        bool IsArchived,
-        DateTimeOffset CreatedAt);
+    private sealed class ContactListItemQueryResult
+    {
+        public string ContactId { get; init; } = null!;
+        public string Kind { get; init; } = null!;
+        public string DisplayName { get; init; } = null!;
+        public string? FirstName { get; init; }
+        public string? LastName { get; init; }
+        public string? LegalName { get; init; }
+        public string? TradingName { get; init; }
+        public string? Email { get; init; }
+        public string? Phone { get; init; }
+        public string? SecondaryEmail { get; init; }
+        public string? SecondaryPhone { get; init; }
+        public string? Trade { get; init; }
+        public bool IsArchived { get; init; }
+        public DateTimeOffset CreatedAt { get; init; }
+    }
 
-    private sealed record ContactRoleRow(string ContactId, string Role);
+    private sealed class ContactRoleRow
+    {
+        public string ContactId { get; init; } = null!;
+        public string Role { get; init; } = null!;
+    }
 }

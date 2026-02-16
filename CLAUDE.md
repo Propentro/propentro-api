@@ -579,6 +579,14 @@ var result = await connection.QueryAsync<UnitDto>(sql, new { currentUser.Organiz
 
 **Important:** Dapper `MatchNamesWithUnderscores = true` is set in `Program.cs`, so `snake_case` DB columns map to `PascalCase` C# properties automatically.
 
+### Dapper Query Result Conventions
+
+- **Never use positional records as Dapper materialization targets.** Dapper's constructor matching fails with nullable parameters and complex signatures.
+- For all Dapper `QueryAsync<T>` result types, use `sealed class` with a parameterless constructor and `init`-only properties.
+- Non-nullable reference type properties must use `= null!;` suppression.
+- This applies to all private/internal DTOs inside CQRS query handlers that Dapper maps into.
+- Records are fine for: MediatR requests, API response contracts (`Contracts` project), domain events, and anything not touched by Dapper.
+
 ## Multi-Tenancy
 
 The application uses implicit organization-scoped multi-tenancy:
