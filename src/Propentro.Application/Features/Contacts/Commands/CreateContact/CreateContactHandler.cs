@@ -91,13 +91,21 @@ public sealed class CreateContactHandler(
 
     internal static string ComputeDisplayName(string kind, string? firstName, string? lastName, string? tradingName, string? legalName)
     {
-        if (kind == "person")
+        // Accept both current ("person") and legacy ("individual") kind values
+        if (kind is "person" or "individual")
         {
             var parts = new[] { firstName, lastName }.Where(p => !string.IsNullOrWhiteSpace(p));
             var name = string.Join(" ", parts);
             return string.IsNullOrWhiteSpace(name) ? "Unnamed Contact" : name;
         }
 
-        return tradingName ?? legalName ?? "Unnamed Organization";
+        // Treat blank/whitespace tradingName as missing so we fall through to legalName
+        if (!string.IsNullOrWhiteSpace(tradingName))
+            return tradingName;
+
+        if (!string.IsNullOrWhiteSpace(legalName))
+            return legalName;
+
+        return "Unnamed Organization";
     }
 }
