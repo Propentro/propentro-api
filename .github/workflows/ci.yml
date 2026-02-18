@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main, staging]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+
+      - name: Restore
+        run: dotnet restore Propentro.slnx
+
+      - name: Build
+        run: dotnet build Propentro.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test Propentro.slnx --configuration Release --no-restore --no-build --verbosity normal
