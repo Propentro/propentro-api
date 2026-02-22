@@ -7,8 +7,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Propentro.Infrastructure.Authorization;
 using Propentro.Infrastructure.Caching;
+using Propentro.Infrastructure.Outbox;
 using Propentro.Infrastructure.Persistence;
 using Propentro.Infrastructure.Services;
+using Propentro.Infrastructure.Webhooks;
 
 namespace Propentro.Infrastructure;
 
@@ -26,6 +28,8 @@ public static class DependencyInjection
         services.AddApplicationServices();
         services.AddPermissionAuthorization();
         services.AddClerkAuthentication(configuration);
+        services.AddOutbox();
+        services.AddWebhooks(configuration);
 
         return services;
     }
@@ -112,6 +116,27 @@ public static class DependencyInjection
                 .AddRequirements(new ActiveUserRequirement())
                 .Build();
         });
+
+        return services;
+    }
+
+    private static IServiceCollection AddWebhooks(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        // Only register if webhook secret is configured
+        if (!string.IsNullOrWhiteSpace(configuration["Clerk:WebhookSecret"]))
+            services.AddSingleton<ClerkWebhookVerifier>();
+
+        services.AddSingleton<WebhookIdempotencyStore>();
+
+        return services;
+    }
+
+    private static IServiceCollection AddOutbox(this IServiceCollection services)
+    {
+        services.AddScoped<OutboxProcessor>();
+        services.AddHostedService<OutboxWorkerService>();
 
         return services;
     }

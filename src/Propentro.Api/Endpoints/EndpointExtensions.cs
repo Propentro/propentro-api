@@ -7,6 +7,7 @@ internal static class EndpointExtensions
         app.MapMeEndpoints();
         app.MapContactEndpoints();
         app.MapActivityEndpoints();
+        app.MapWebhookEndpoints();
 
         return app;
     }

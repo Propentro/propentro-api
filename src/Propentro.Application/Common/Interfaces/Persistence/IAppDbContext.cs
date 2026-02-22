@@ -71,6 +71,9 @@ public interface IAppDbContext
     // Lookup Tables
     DbSet<Currency> Currencies { get; }
 
+    // Outbox
+    DbSet<OutboxMessage> OutboxMessages { get; }
+
     /// <summary>
     /// Provides access to database-related information and operations.
     /// Used for transaction management in UnitOfWork pattern.
