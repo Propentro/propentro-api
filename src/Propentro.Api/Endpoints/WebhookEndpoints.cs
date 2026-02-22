@@ -16,7 +16,7 @@ namespace Propentro.Api.Endpoints;
 
 internal static class WebhookEndpoints
 {
-    private const string AuthProvider = "clerk";
+    private const string _authProvider = "clerk";
 
     public static void MapWebhookEndpoints(this IEndpointRouteBuilder app)
     {
@@ -114,14 +114,14 @@ internal static class WebhookEndpoints
                     if (data.Id is not null && email is not null)
                     {
                         await sender.Send(new SyncUserCommand(
-                            data.Id, AuthProvider, email, data.FirstName, data.LastName), ct);
+                            data.Id, _authProvider, email, data.FirstName, data.LastName), ct);
                     }
                     break;
 
                 case "user.deleted":
                     if (data.Id is not null)
                     {
-                        await sender.Send(new DeactivateUserCommand(data.Id, AuthProvider), ct);
+                        await sender.Send(new DeactivateUserCommand(data.Id, _authProvider), ct);
                     }
                     break;
 
@@ -130,14 +130,14 @@ internal static class WebhookEndpoints
                     if (data.Id is not null && data.Name is not null && data.Slug is not null)
                     {
                         await sender.Send(new SyncOrganizationCommand(
-                            data.Id, AuthProvider, data.Name, data.Slug, data.LogoUrl), ct);
+                            data.Id, _authProvider, data.Name, data.Slug, data.LogoUrl), ct);
                     }
                     break;
 
                 case "organization.deleted":
                     if (data.Id is not null)
                     {
-                        await sender.Send(new DeactivateOrganizationCommand(data.Id, AuthProvider), ct);
+                        await sender.Send(new DeactivateOrganizationCommand(data.Id, _authProvider), ct);
                     }
                     break;
 
@@ -148,7 +148,7 @@ internal static class WebhookEndpoints
                     if (orgId is not null && userId is not null && data.Role is not null)
                     {
                         await sender.Send(new SyncMembershipCommand(
-                            orgId, userId, AuthProvider, data.Role), ct);
+                            orgId, userId, _authProvider, data.Role), ct);
                     }
                     break;
 
@@ -158,7 +158,7 @@ internal static class WebhookEndpoints
                     if (delOrgId is not null && delUserId is not null)
                     {
                         await sender.Send(new RemoveMembershipCommand(
-                            delOrgId, delUserId, AuthProvider), ct);
+                            delOrgId, delUserId, _authProvider), ct);
                     }
                     break;
 
@@ -169,7 +169,7 @@ internal static class WebhookEndpoints
                     if (invOrgId is not null && data.EmailAddress is not null)
                     {
                         await sender.Send(new SyncInvitationCommand(
-                            invOrgId, data.EmailAddress, AuthProvider, data.Status ?? "unknown"), ct);
+                            invOrgId, data.EmailAddress, _authProvider, data.Status ?? "unknown"), ct);
                     }
                     break;
 
