@@ -1,4 +1,3 @@
-using Propentro.Application.Common.Interfaces.Messaging;
 using Propentro.Application.Common.Models;
 using Serilog;
 

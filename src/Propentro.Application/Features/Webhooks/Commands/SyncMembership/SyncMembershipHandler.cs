@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Propentro.Application.Common.Interfaces.Messaging;
 using Propentro.Application.Common.Models;
 using Propentro.Domain.Entities;
 using Serilog;

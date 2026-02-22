@@ -1,5 +1,3 @@
-using Propentro.Application.Common.Interfaces.Messaging;
-
 namespace Propentro.Application.Features.Webhooks.Commands.RemoveMembership;
 
 /// <summary>
