@@ -6,9 +6,12 @@ namespace Propentro.Application.Features.Webhooks.Commands.RemoveMembership;
 
 /// <summary>
 /// Removes an organization membership and associated role assignments. Idempotent.
+/// Invalidates permission cache after removal.
 /// Does NOT call SaveChangesAsync — UnitOfWorkBehavior handles persistence.
 /// </summary>
-public sealed class RemoveMembershipHandler(IAppDbContext dbContext) : ICommandHandler<RemoveMembershipCommand>
+public sealed class RemoveMembershipHandler(
+    IAppDbContext dbContext,
+    IPermissionService permissionService) : ICommandHandler<RemoveMembershipCommand>
 {
     public async Task<Result> Handle(RemoveMembershipCommand request, CancellationToken cancellationToken)
     {
@@ -63,6 +66,9 @@ public sealed class RemoveMembershipHandler(IAppDbContext dbContext) : ICommandH
             Log.Debug("Membership already removed for user {UserPublicId} in org {OrgPublicId}",
                 user.PublicId, org.PublicId);
         }
+
+        // Invalidate permission cache after membership removal
+        await permissionService.InvalidatePermissionsCacheAsync(user.Id, org.Id, cancellationToken);
 
         return Result.Success();
     }

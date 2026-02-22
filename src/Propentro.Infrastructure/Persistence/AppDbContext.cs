@@ -36,11 +36,6 @@ public sealed partial class AppDbContext(
     public DbSet<Unit> Units => Set<Unit>();
     public DbSet<Address> Addresses => Set<Address>();
 
-    // Lease Management
-    public DbSet<Lease> Leases => Set<Lease>();
-    public DbSet<LeaseUnit> LeaseUnits => Set<LeaseUnit>();
-    public DbSet<LeaseContact> LeaseContacts => Set<LeaseContact>();
-
     // Contacts
     public DbSet<Contact> Contacts => Set<Contact>();
     public DbSet<ContactRole> ContactRoles => Set<ContactRole>();
@@ -55,16 +50,13 @@ public sealed partial class AppDbContext(
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<PropertyDocument> PropertyDocuments => Set<PropertyDocument>();
     public DbSet<UnitDocument> UnitDocuments => Set<UnitDocument>();
-    public DbSet<LeaseDocument> LeaseDocuments => Set<LeaseDocument>();
 
     // Compliance
     public DbSet<PropertyCompliance> PropertyCompliances => Set<PropertyCompliance>();
     public DbSet<UnitCompliance> UnitCompliances => Set<UnitCompliance>();
-    public DbSet<LeaseCompliance> LeaseCompliances => Set<LeaseCompliance>();
     public DbSet<ComplianceType> ComplianceTypes => Set<ComplianceType>();
     public DbSet<PropertyComplianceDocument> PropertyComplianceDocuments => Set<PropertyComplianceDocument>();
     public DbSet<UnitComplianceDocument> UnitComplianceDocuments => Set<UnitComplianceDocument>();
-    public DbSet<LeaseComplianceDocument> LeaseComplianceDocuments => Set<LeaseComplianceDocument>();
 
     // Amenities
     public DbSet<PropertyAmenity> PropertyAmenities => Set<PropertyAmenity>();
@@ -80,7 +72,6 @@ public sealed partial class AppDbContext(
     // Notifications
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
-    public DbSet<NotificationTemplate> NotificationTemplates => Set<NotificationTemplate>();
 
     // Lookup Tables
     public DbSet<Currency> Currencies => Set<Currency>();
@@ -105,14 +96,11 @@ public sealed partial class AppDbContext(
         // Organization-scoped + soft-delete
         builder.Entity<Property>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
         builder.Entity<Unit>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
-        builder.Entity<Lease>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
         builder.Entity<Contact>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
         builder.Entity<Address>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
         builder.Entity<Document>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
         builder.Entity<PropertyCompliance>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
         builder.Entity<UnitCompliance>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
-        builder.Entity<LeaseCompliance>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
-
         // Organization-scoped only
         builder.Entity<Notification>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
         builder.Entity<PropertyContactRole>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);

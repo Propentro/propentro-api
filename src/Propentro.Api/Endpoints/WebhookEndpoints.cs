@@ -180,7 +180,9 @@ internal static class WebhookEndpoints
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to process Clerk webhook event {EventType}", webhookEvent.Type);
+            Log.Error(ex,
+                "Failed to process Clerk webhook event {EventType} for entity {EntityId}",
+                webhookEvent.Type, data.Id);
             // Return 200 to prevent Clerk from retrying — the error is logged
         }
     }

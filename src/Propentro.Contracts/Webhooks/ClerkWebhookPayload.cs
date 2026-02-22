@@ -11,7 +11,7 @@ public sealed record ClerkWebhookEvent
     public required ClerkWebhookData Data { get; init; }
 
     [JsonPropertyName("object")]
-    public string? Object { get; init; }
+    public string? ObjectType { get; init; }
 
     [JsonPropertyName("timestamp")]
     public long Timestamp { get; init; }

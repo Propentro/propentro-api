@@ -22,11 +22,6 @@ public interface IAppDbContext
     DbSet<Unit> Units { get; }
     DbSet<Address> Addresses { get; }
 
-    // Lease Management
-    DbSet<Lease> Leases { get; }
-    DbSet<LeaseUnit> LeaseUnits { get; }
-    DbSet<LeaseContact> LeaseContacts { get; }
-
     // Contacts
     DbSet<Contact> Contacts { get; }
     DbSet<ContactRole> ContactRoles { get; }
@@ -41,16 +36,13 @@ public interface IAppDbContext
     DbSet<Document> Documents { get; }
     DbSet<PropertyDocument> PropertyDocuments { get; }
     DbSet<UnitDocument> UnitDocuments { get; }
-    DbSet<LeaseDocument> LeaseDocuments { get; }
 
     // Compliance
     DbSet<PropertyCompliance> PropertyCompliances { get; }
     DbSet<UnitCompliance> UnitCompliances { get; }
-    DbSet<LeaseCompliance> LeaseCompliances { get; }
     DbSet<ComplianceType> ComplianceTypes { get; }
     DbSet<PropertyComplianceDocument> PropertyComplianceDocuments { get; }
     DbSet<UnitComplianceDocument> UnitComplianceDocuments { get; }
-    DbSet<LeaseComplianceDocument> LeaseComplianceDocuments { get; }
 
     // Amenities
     DbSet<PropertyAmenity> PropertyAmenities { get; }
@@ -66,7 +58,6 @@ public interface IAppDbContext
     // Notifications
     DbSet<Notification> Notifications { get; }
     DbSet<NotificationPreference> NotificationPreferences { get; }
-    DbSet<NotificationTemplate> NotificationTemplates { get; }
 
     // Lookup Tables
     DbSet<Currency> Currencies { get; }

@@ -47,5 +47,4 @@ public sealed class Unit : AggregateRoot
     public ICollection<UnitCompliance> Compliances { get; set; } = [];
     public ICollection<UnitAmenity> Amenities { get; set; } = [];
     public ICollection<UnitDocument> Documents { get; set; } = [];
-    public ICollection<LeaseUnit> LeaseUnits { get; set; } = [];
 }

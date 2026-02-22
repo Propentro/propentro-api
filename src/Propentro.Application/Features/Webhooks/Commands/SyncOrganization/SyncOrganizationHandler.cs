@@ -41,9 +41,17 @@ public sealed class SyncOrganizationHandler(IAppDbContext dbContext) : ICommandH
         }
         else
         {
+            if (!org.IsActive)
+            {
+                org.IsActive = true;
+                Log.Warning(
+                    "Reactivated previously deactivated organization {PublicId}. " +
+                    "Memberships remain disabled — Clerk will re-sync them via membership events.",
+                    org.PublicId);
+            }
+
             org.Name = request.Name;
             org.Slug = request.Slug;
-            org.IsActive = true;
 
             Log.Information("Updated organization {PublicId} for external ID {ExternalId}",
                 org.PublicId, request.ExternalId);

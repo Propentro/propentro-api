@@ -28,6 +28,12 @@ public sealed class SyncMembershipHandler(IAppDbContext dbContext) : ICommandHan
             return Result.Success();
         }
 
+        if (!org.IsActive)
+        {
+            Log.Warning("Skipping membership sync: organization {OrgPublicId} is deactivated", org.PublicId);
+            return Result.Success();
+        }
+
         var user = await dbContext.Users
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(
@@ -38,6 +44,12 @@ public sealed class SyncMembershipHandler(IAppDbContext dbContext) : ICommandHan
         {
             Log.Warning("Cannot sync membership: user not found for external ID {ExternalUserId}",
                 request.ExternalUserId);
+            return Result.Success();
+        }
+
+        if (!user.IsActive)
+        {
+            Log.Warning("Skipping membership sync: user {UserPublicId} is deactivated", user.PublicId);
             return Result.Success();
         }
 
@@ -113,7 +125,7 @@ public sealed class SyncMembershipHandler(IAppDbContext dbContext) : ICommandHan
     private static string MapClerkRole(string clerkRole) => clerkRole switch
     {
         "org:admin" => "Owner",
-        "org:member" => "Member",
-        _ => "Member"
+        "org:member" => "Manager",
+        _ => "Viewer"
     };
 }
