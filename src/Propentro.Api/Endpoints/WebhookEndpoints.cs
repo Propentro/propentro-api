@@ -163,7 +163,6 @@ internal static class WebhookEndpoints
                     break;
 
                 case "organizationInvitation.created":
-                case "organizationInvitation.updated":
                 case "organizationInvitation.accepted":
                 case "organizationInvitation.revoked":
                     var invOrgId = data.Organization?.Id;
