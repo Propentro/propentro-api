@@ -5,6 +5,7 @@
   <ItemGroup>
     <!-- EF Core (.NET 10 compatible) -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.2" />
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
     <!-- Dapper -->
     <PackageVersion Include="Dapper" Version="2.1.66" />
@@ -17,6 +18,7 @@
     <!-- Auth (.NET 10 compatible) -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.2" />
     <!-- Logging & Telemetry -->
+    <PackageVersion Include="Quartz.Extensions.Hosting" Version="3.15.1" />
     <PackageVersion Include="Serilog" Version="4.3.0" />
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageVersion Include="Serilog.Enrichers.Environment" Version="3.0.1" />

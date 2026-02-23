@@ -10,9 +10,11 @@ using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Infrastructure.Authentication;
 using Propentro.Infrastructure.Authorization;
 using Propentro.Infrastructure.Caching;
+using Propentro.Infrastructure.Outbox;
 using Propentro.Infrastructure.Persistence;
 using Propentro.Infrastructure.Services;
 using Propentro.Infrastructure.Webhooks;
+using Quartz;
 
 namespace Propentro.Infrastructure;
 
@@ -30,7 +32,7 @@ public static class DependencyInjection
         services.AddApplicationServices();
         services.AddPermissionAuthorization();
         services.AddClerkAuthentication(configuration);
-        services.AddOutbox();
+        AddBackgroundJobs(services, configuration);
         services.AddWebhooks(configuration);
 
         return services;
@@ -135,10 +137,15 @@ public static class DependencyInjection
         return services;
     }
 
-    private static IServiceCollection AddOutbox(this IServiceCollection services)
+    private static void AddBackgroundJobs(IServiceCollection services, IConfiguration configuration)
     {
+        services.Configure<OutboxOptions>(configuration.GetSection("Outbox"));
 
-        return services;
+        services.AddQuartz();
+
+        services.AddQuartzHostedService(options => options.WaitForJobsToComplete = true);
+
+        services.ConfigureOptions<ProcessOutboxMessagesJobSetup>();
     }
 
     private static IServiceCollection AddClerkAuthentication(
