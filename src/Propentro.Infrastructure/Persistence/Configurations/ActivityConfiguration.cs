@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Activity = Propentro.Domain.Entities.Activity;
+using Activity = Propentro.Domain.Entities.Activities.Activity;
 
 namespace Propentro.Infrastructure.Persistence.Configurations;
 

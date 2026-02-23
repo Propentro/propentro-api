@@ -28,7 +28,8 @@ internal static class WebhookEndpoints
             .WithName("ClerkWebhook")
             .WithSummary("Receive Clerk webhook events")
             .Produces(StatusCodes.Status200OK)
-            .Produces(StatusCodes.Status401Unauthorized);
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status500InternalServerError);
     }
 
     private static async Task<IResult> HandleClerkWebhook(
@@ -91,7 +92,21 @@ internal static class WebhookEndpoints
             Log.Information("Processing Clerk webhook event {EventType} (id: {EventId})",
                 webhookEvent.Type, eventId);
 
-            await RouteEventAsync(webhookEvent, sender, ct);
+            try
+            {
+                await RouteEventAsync(webhookEvent, sender, ct);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex,
+                    "Failed to process Clerk webhook event {EventType} (id: {EventId})",
+                    webhookEvent.Type, eventId);
+
+                // Remove idempotency entry so Clerk can retry this event
+                idempotencyStore.TryRemoveProcessed(eventId);
+
+                return Results.StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
 
         return Results.Ok();
@@ -104,86 +119,76 @@ internal static class WebhookEndpoints
     {
         var data = webhookEvent.Data;
 
-        try
+        switch (webhookEvent.Type)
         {
-            switch (webhookEvent.Type)
-            {
-                case "user.created":
-                case "user.updated":
-                    var email = GetPrimaryEmail(data);
-                    if (data.Id is not null && email is not null)
-                    {
-                        await sender.Send(new SyncUserCommand(
-                            data.Id, _authProvider, email, data.FirstName, data.LastName), ct);
-                    }
-                    break;
+            case "user.created":
+            case "user.updated":
+                var email = GetPrimaryEmail(data);
+                if (data.Id is not null && email is not null)
+                {
+                    await sender.Send(new SyncUserCommand(
+                        data.Id, _authProvider, email, data.FirstName, data.LastName), ct);
+                }
+                break;
 
-                case "user.deleted":
-                    if (data.Id is not null)
-                    {
-                        await sender.Send(new DeactivateUserCommand(data.Id, _authProvider), ct);
-                    }
-                    break;
+            case "user.deleted":
+                if (data.Id is not null)
+                {
+                    await sender.Send(new DeactivateUserCommand(data.Id, _authProvider), ct);
+                }
+                break;
 
-                case "organization.created":
-                case "organization.updated":
-                    if (data.Id is not null && data.Name is not null && data.Slug is not null)
-                    {
-                        await sender.Send(new SyncOrganizationCommand(
-                            data.Id, _authProvider, data.Name, data.Slug, data.LogoUrl), ct);
-                    }
-                    break;
+            case "organization.created":
+            case "organization.updated":
+                if (data.Id is not null && data.Name is not null && data.Slug is not null)
+                {
+                    await sender.Send(new SyncOrganizationCommand(
+                        data.Id, _authProvider, data.Name, data.Slug, data.LogoUrl), ct);
+                }
+                break;
 
-                case "organization.deleted":
-                    if (data.Id is not null)
-                    {
-                        await sender.Send(new DeactivateOrganizationCommand(data.Id, _authProvider), ct);
-                    }
-                    break;
+            case "organization.deleted":
+                if (data.Id is not null)
+                {
+                    await sender.Send(new DeactivateOrganizationCommand(data.Id, _authProvider), ct);
+                }
+                break;
 
-                case "organizationMembership.created":
-                case "organizationMembership.updated":
-                    var orgId = data.Organization?.Id;
-                    var userId = data.PublicUserData?.UserId;
-                    if (orgId is not null && userId is not null && data.Role is not null)
-                    {
-                        await sender.Send(new SyncMembershipCommand(
-                            orgId, userId, _authProvider, data.Role), ct);
-                    }
-                    break;
+            case "organizationMembership.created":
+            case "organizationMembership.updated":
+                var orgId = data.Organization?.Id;
+                var userId = data.PublicUserData?.UserId;
+                if (orgId is not null && userId is not null && data.Role is not null)
+                {
+                    await sender.Send(new SyncMembershipCommand(
+                        orgId, userId, _authProvider, data.Role), ct);
+                }
+                break;
 
-                case "organizationMembership.deleted":
-                    var delOrgId = data.Organization?.Id;
-                    var delUserId = data.PublicUserData?.UserId;
-                    if (delOrgId is not null && delUserId is not null)
-                    {
-                        await sender.Send(new RemoveMembershipCommand(
-                            delOrgId, delUserId, _authProvider), ct);
-                    }
-                    break;
+            case "organizationMembership.deleted":
+                var delOrgId = data.Organization?.Id;
+                var delUserId = data.PublicUserData?.UserId;
+                if (delOrgId is not null && delUserId is not null)
+                {
+                    await sender.Send(new RemoveMembershipCommand(
+                        delOrgId, delUserId, _authProvider), ct);
+                }
+                break;
 
-                case "organizationInvitation.created":
-                case "organizationInvitation.accepted":
-                case "organizationInvitation.revoked":
-                    var invOrgId = data.Organization?.Id;
-                    if (invOrgId is not null && data.EmailAddress is not null)
-                    {
-                        await sender.Send(new SyncInvitationCommand(
-                            invOrgId, data.EmailAddress, _authProvider, data.Status ?? "unknown"), ct);
-                    }
-                    break;
+            case "organizationInvitation.created":
+            case "organizationInvitation.accepted":
+            case "organizationInvitation.revoked":
+                var invOrgId = data.Organization?.Id;
+                if (invOrgId is not null && data.EmailAddress is not null)
+                {
+                    await sender.Send(new SyncInvitationCommand(
+                        invOrgId, data.EmailAddress, _authProvider, data.Status ?? "unknown"), ct);
+                }
+                break;
 
-                default:
-                    Log.Information("Unknown Clerk webhook event type: {EventType}", webhookEvent.Type);
-                    break;
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex,
-                "Failed to process Clerk webhook event {EventType} for entity {EntityId}",
-                webhookEvent.Type, data.Id);
-            // Return 200 to prevent Clerk from retrying — the error is logged
+            default:
+                Log.Information("Unknown Clerk webhook event type: {EventType}", webhookEvent.Type);
+                break;
         }
     }
 

@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Models;
-using Activity = Propentro.Domain.Entities.Activity;
+using Activity = Propentro.Domain.Entities.Activities.Activity;
 
 namespace Propentro.Application.Features.Contacts.Commands.UnarchiveContact;
 

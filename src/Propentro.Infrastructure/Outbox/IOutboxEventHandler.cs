@@ -1,5 +1,3 @@
-using Propentro.Domain.Entities;
-
 namespace Propentro.Infrastructure.Outbox;
 
 /// <summary>

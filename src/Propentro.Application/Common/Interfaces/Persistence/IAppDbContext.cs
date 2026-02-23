@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Propentro.Domain.Entities;
-using Activity = Propentro.Domain.Entities.Activity;
+using Activity = Propentro.Domain.Entities.Activities.Activity;
 
 namespace Propentro.Application.Common.Interfaces.Persistence;
 
@@ -61,6 +60,7 @@ public interface IAppDbContext
 
     // Lookup Tables
     DbSet<Currency> Currencies { get; }
+    DbSet<Country> Countries { get; }
 
     // Outbox
     DbSet<OutboxMessage> OutboxMessages { get; }

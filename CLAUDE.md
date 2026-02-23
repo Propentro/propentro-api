@@ -461,6 +461,7 @@ The following CA rules are suppressed in `.editorconfig` to avoid false positive
 | `CA1848` | "Use LoggerMessage delegates" - project uses Serilog static `Log` |
 | `CA2007` | "ConfigureAwait" - not needed in ASP.NET Core |
 | `CA1034` | "Nested types not visible" - common for DTOs/result types |
+| `CA1711` | "Identifiers incorrect suffix" - `EventHandler` is correct for outbox handlers |
 | `CA1716` | "Identifiers match keywords" - `Me` is VB.NET keyword, irrelevant for C# |
 | `CA1724` | "Type names match namespaces" - false positives with domain names |
 | `CA1054/55/56` | "URI as strings" - simpler for API DTOs |
@@ -801,6 +802,123 @@ The `/me` endpoint is the reference implementation. All future endpoints should 
 - **Response** types use positional records, nullable fields where data may not exist
 - **Handler** uses Dapper with `await using` + `OpenAsync` pattern
 - **Endpoint** uses `ProducesProblem()` for error responses, `Produces<T>()` for success
+
+## Outbox Pattern
+
+Domain events are persisted to the `outbox_messages` table atomically with business data, then processed asynchronously by the `OutboxWorkerService`.
+
+### Pipeline Flow
+
+```
+Handler raises event → entity.MarkAs{Action}(orgId)
+    → RaiseDomainEvent(new {Entity}{Action}Event(Id, OrgId))
+    → UnitOfWorkBehavior → SaveChangesAsync
+    → AppDbContext collects DomainEvents, serializes to OutboxMessage
+    → Saved atomically with business data
+    → OutboxWorkerService picks up via LISTEN/NOTIFY (instant) or polling (30s fallback)
+    → OutboxProcessor → IOutboxEventHandler.HandleAsync()
+```
+
+### Event Type Naming
+
+Format: `{aggregate}.{action}` (lowercase, dot-separated)
+
+| Domain Event | Outbox EventType |
+|-------------|-----------------|
+| `ContactCreatedEvent` | `contact.created` |
+| `PropertyCreatedEvent` | `property.created` |
+| `PropertyUpdatedEvent` | `property.updated` |
+
+Derived automatically in `AppDbContext.DeriveEventType()` from the record name.
+
+### IOutboxEventHandler Convention
+
+```csharp
+public sealed class ContactCreatedOutboxHandler : IOutboxEventHandler
+{
+    public string EventType => "contact.created";  // matches outbox event_type column
+
+    public Task HandleAsync(OutboxMessage message, CancellationToken ct)
+    {
+        // Process the event (e.g., create notifications)
+        return Task.CompletedTask;
+    }
+}
+```
+
+- Register handlers in `Infrastructure/DependencyInjection.cs` → `AddOutbox()`
+- Handlers are resolved by `EventType` match (case-insensitive)
+- Unmatched event types are marked completed with a debug log
+- Each message is processed within its own DB transaction (`FOR UPDATE SKIP LOCKED`)
+
+### LISTEN/NOTIFY
+
+The `outbox_messages` table has a PostgreSQL trigger that sends `pg_notify('outbox_channel', id)` on INSERT. The `OutboxWorkerService` listens on this channel for instant processing. If LISTEN/NOTIFY fails, the 30-second polling fallback handles it.
+
+**Trigger SQL:** `sql/001_outbox_notify_trigger.sql` (applied manually, not via EF migrations)
+
+## Webhook Handler Conventions
+
+### Endpoint Structure
+
+- **URL**: `POST /v1/webhooks/clerk` (anonymous, no auth required)
+- **Signature verification**: Svix HMAC-SHA256 with replay prevention
+- **Idempotency**: In-memory store keyed by `svix-id` header (7-day TTL, 10K max entries)
+- **Error handling**: On handler failure → log error, remove idempotency entry, return **500** so Clerk retries with exponential backoff
+
+### Event Routing
+
+The webhook endpoint is the **only Clerk-aware code**. It translates Clerk events into auth-provider-agnostic MediatR commands:
+
+| Clerk Event | MediatR Command |
+|-------------|----------------|
+| `user.created/updated` | `SyncUserCommand` |
+| `user.deleted` | `DeactivateUserCommand` |
+| `organization.created/updated` | `SyncOrganizationCommand` |
+| `organization.deleted` | `DeactivateOrganizationCommand` |
+| `organizationMembership.created/updated` | `SyncMembershipCommand` |
+| `organizationMembership.deleted` | `RemoveMembershipCommand` |
+| `organizationInvitation.*` | `SyncInvitationCommand` |
+
+### Handler Design Principles
+
+- All handlers use `IgnoreQueryFilters()` (webhooks operate outside normal tenant context)
+- Idempotent at handler level (guard clauses for already-processed state)
+- Return `Result.Success()` even when entity not found (graceful degradation)
+- UnitOfWork pattern respected (no `SaveChangesAsync` in handlers)
+- `ExternalId` + `AuthProvider` tuple for all lookups (auth-provider agnostic)
+
+## Domain Event Conventions
+
+### Naming
+
+- Event records: `{Entity}{Action}Event` (e.g., `ContactCreatedEvent`, `PropertyUpdatedEvent`)
+- Located in `Domain/Events/`
+- Implement `IDomainEvent` (which extends `INotification`)
+
+### Required Properties
+
+Every domain event must include:
+- **Aggregate ID** (`Guid`) — the internal ID of the entity that raised the event
+- **OrganizationId** (`Guid`) — for multi-tenant isolation in the outbox
+
+### Raising Events
+
+Events are raised via `entity.MarkAs{Action}(organizationId)` methods on aggregate roots:
+
+```csharp
+// In entity class
+public void MarkAsCreated(Guid organizationId)
+{
+    RaiseDomainEvent(new ContactCreatedEvent(Id, organizationId));
+}
+
+// In command handler (after adding to DbContext)
+dbContext.Contacts.Add(contact);
+contact.MarkAsCreated(currentUser.OrganizationId);
+```
+
+**Call `MarkAs{Action}` after adding the entity to the DbContext** so the change tracker picks it up during `SaveChangesAsync`.
 
 ## Troubleshooting
 

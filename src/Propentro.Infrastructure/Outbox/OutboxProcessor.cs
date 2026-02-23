@@ -1,6 +1,5 @@
 using System.Data.Common;
 using Dapper;
-using Propentro.Domain.Entities;
 using Serilog;
 
 namespace Propentro.Infrastructure.Outbox;
@@ -8,23 +7,41 @@ namespace Propentro.Infrastructure.Outbox;
 /// <summary>
 /// Processes pending outbox messages by fetching them with SELECT FOR UPDATE SKIP LOCKED,
 /// resolving the appropriate handler, and updating message status.
+/// Each message is processed within its own database transaction to hold the row lock
+/// through the entire processing lifecycle.
 /// </summary>
-public sealed class OutboxProcessor(
-    IDbConnectionFactory connectionFactory,
-    IEnumerable<IOutboxEventHandler> handlers,
-    IDateTimeProvider dateTimeProvider)
+public sealed class OutboxProcessor
 {
-    private readonly Dictionary<string, IOutboxEventHandler> _handlers =
-        handlers.ToDictionary(h => h.EventType, h => h, StringComparer.OrdinalIgnoreCase);
+    private readonly IDbConnectionFactory _connectionFactory;
+    private readonly Dictionary<string, IOutboxEventHandler> _handlers;
+    private readonly IDateTimeProvider _dateTimeProvider;
+
+    public OutboxProcessor(
+        IDbConnectionFactory connectionFactory,
+        IEnumerable<IOutboxEventHandler> handlers,
+        IDateTimeProvider dateTimeProvider)
+    {
+        _connectionFactory = connectionFactory;
+        _dateTimeProvider = dateTimeProvider;
+
+        _handlers = new Dictionary<string, IOutboxEventHandler>(StringComparer.OrdinalIgnoreCase);
+        foreach (var handler in handlers)
+        {
+            if (!_handlers.TryAdd(handler.EventType, handler))
+            {
+                Log.Warning(
+                    "Duplicate outbox handler for event type {EventType}: {HandlerType} ignored, keeping {ExistingType}",
+                    handler.EventType, handler.GetType().Name, _handlers[handler.EventType].GetType().Name);
+            }
+        }
+    }
 
     public async Task ProcessPendingMessagesAsync(CancellationToken ct)
     {
-        await using var connection = connectionFactory.CreateConnection();
+        await using var connection = _connectionFactory.CreateConnection();
         await connection.OpenAsync(ct);
 
-        var messages = await FetchPendingMessagesAsync(connection, ct);
-
-        foreach (var message in messages)
+        foreach (var message in await FetchPendingMessagesAsync(connection, ct))
         {
             await ProcessMessageAsync(connection, message, ct);
         }
@@ -43,7 +60,6 @@ public sealed class OutboxProcessor(
               AND (next_retry_at IS NULL OR next_retry_at <= now())
             ORDER BY created_at
             LIMIT 50
-            FOR UPDATE SKIP LOCKED
             """;
 
         return await connection.QueryAsync<OutboxMessage>(
@@ -55,9 +71,13 @@ public sealed class OutboxProcessor(
         OutboxMessage message,
         CancellationToken ct)
     {
+        await using var transaction = await connection.BeginTransactionAsync(ct);
+
         try
         {
-            await SetStatusAsync(connection, message.Id, "processing", ct);
+            // Lock the row within this transaction
+            await LockMessageAsync(connection, transaction, message.Id, ct);
+            await SetStatusAsync(connection, transaction, message.Id, "processing", ct);
 
             if (_handlers.TryGetValue(message.EventType, out var handler))
             {
@@ -74,27 +94,40 @@ public sealed class OutboxProcessor(
                     message.EventType);
             }
 
-            await MarkCompletedAsync(connection, message.Id, ct);
+            await MarkCompletedAsync(connection, transaction, message.Id, ct);
+            await transaction.CommitAsync(ct);
         }
         catch (Exception ex)
         {
+            await transaction.RollbackAsync(ct);
+
             Log.Error(ex,
                 "Failed to process outbox message {MessageId} (type: {EventType}, attempt: {RetryCount})",
                 message.Id, message.EventType, message.RetryCount + 1);
 
+            // Mark failed in a separate scope — we don't want this to be part of the rolled-back transaction
             await MarkFailedAsync(connection, message, ex, ct);
         }
     }
 
+    private static async Task LockMessageAsync(
+        DbConnection connection, DbTransaction transaction, Guid messageId, CancellationToken ct)
+    {
+        const string sql = "SELECT id FROM outbox_messages WHERE id = @Id FOR UPDATE SKIP LOCKED";
+        await connection.ExecuteAsync(
+            new CommandDefinition(sql, new { Id = messageId }, transaction, cancellationToken: ct));
+    }
+
     private static async Task SetStatusAsync(
-        DbConnection connection, Guid messageId, string status, CancellationToken ct)
+        DbConnection connection, DbTransaction transaction, Guid messageId, string status, CancellationToken ct)
     {
         const string sql = "UPDATE outbox_messages SET status = @Status WHERE id = @Id";
-        await connection.ExecuteAsync(new CommandDefinition(sql, new { Id = messageId, Status = status }, cancellationToken: ct));
+        await connection.ExecuteAsync(
+            new CommandDefinition(sql, new { Id = messageId, Status = status }, transaction, cancellationToken: ct));
     }
 
     private async Task MarkCompletedAsync(
-        DbConnection connection, Guid messageId, CancellationToken ct)
+        DbConnection connection, DbTransaction transaction, Guid messageId, CancellationToken ct)
     {
         const string sql = """
             UPDATE outbox_messages
@@ -103,7 +136,7 @@ public sealed class OutboxProcessor(
             """;
 
         await connection.ExecuteAsync(
-            new CommandDefinition(sql, new { Id = messageId, Now = dateTimeProvider.UtcNow }, cancellationToken: ct));
+            new CommandDefinition(sql, new { Id = messageId, Now = _dateTimeProvider.UtcNow }, transaction, cancellationToken: ct));
     }
 
     private async Task MarkFailedAsync(
@@ -114,7 +147,7 @@ public sealed class OutboxProcessor(
         var nextRetryMinutes = Math.Pow(2, newRetryCount);
         var nextRetryAt = newStatus == "dead_letter"
             ? (DateTimeOffset?)null
-            : dateTimeProvider.UtcNow.AddMinutes(nextRetryMinutes);
+            : _dateTimeProvider.UtcNow.AddMinutes(nextRetryMinutes);
 
         const string sql = """
             UPDATE outbox_messages
@@ -125,13 +158,14 @@ public sealed class OutboxProcessor(
             WHERE id = @Id
             """;
 
+        var errorText = ex.ToString();
         await connection.ExecuteAsync(new CommandDefinition(sql, new
         {
             Id = message.Id,
             Status = newStatus,
             RetryCount = newRetryCount,
             NextRetryAt = nextRetryAt,
-            LastError = ex.ToString()[..Math.Min(ex.ToString().Length, 4000)]
+            LastError = errorText[..Math.Min(errorText.Length, 4000)]
         }, cancellationToken: ct));
 
         if (newStatus == "dead_letter")

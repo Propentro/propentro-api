@@ -22,10 +22,10 @@ public sealed class SyncOrganizationHandler(IAppDbContext dbContext) : ICommandH
 
         if (org is null)
         {
-            org = new Domain.Entities.Organization
+            org = new Organization
             {
                 Id = Guid.CreateVersion7(),
-                PublicId = PublicIdGenerator.Generate("org"),
+                PublicId = PublicIdGenerator.Generate(Organization.PublicIdPrefix),
                 ExternalId = request.ExternalId,
                 AuthProvider = request.AuthProvider,
                 Name = request.Name,

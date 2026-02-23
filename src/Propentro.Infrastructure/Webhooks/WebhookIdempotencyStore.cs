@@ -17,17 +17,24 @@ public sealed class WebhookIdempotencyStore
 
     /// <summary>
     /// Tries to mark an event ID as processed. Returns false if already processed.
+    /// Atomic — uses TryAdd directly to avoid TOCTOU race condition.
     /// </summary>
     public bool TryMarkProcessed(string eventId)
     {
-        if (_processedEvents.ContainsKey(eventId))
-            return false;
-
         // Evict old entries if at capacity
         if (_processedEvents.Count >= MaxEntries)
             EvictOldEntries();
 
         return _processedEvents.TryAdd(eventId, DateTimeOffset.UtcNow);
+    }
+
+    /// <summary>
+    /// Removes a previously processed event ID so it can be retried.
+    /// Used when handler processing fails after idempotency was recorded.
+    /// </summary>
+    public bool TryRemoveProcessed(string eventId)
+    {
+        return _processedEvents.TryRemove(eventId, out _);
     }
 
     private void EvictOldEntries()

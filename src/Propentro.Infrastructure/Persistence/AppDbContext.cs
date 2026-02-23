@@ -3,10 +3,9 @@ using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Propentro.Domain.Common;
 using Propentro.Domain.Common.Interfaces;
-using Propentro.Domain.Entities;
 using Serilog;
-using Activity = Propentro.Domain.Entities.Activity;
-using Unit = Propentro.Domain.Entities.Unit;
+using Activity = Propentro.Domain.Entities.Activities.Activity;
+using Unit = Propentro.Domain.Entities.Units.Unit;
 
 namespace Propentro.Infrastructure.Persistence;
 
@@ -75,6 +74,7 @@ public sealed partial class AppDbContext(
 
     // Lookup Tables
     public DbSet<Currency> Currencies => Set<Currency>();
+    public DbSet<Country> Countries => Set<Country>();
 
     // Outbox
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();

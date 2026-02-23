@@ -21,10 +21,10 @@ public sealed class SyncUserHandler(IAppDbContext dbContext) : ICommandHandler<S
 
         if (user is null)
         {
-            user = new Domain.Entities.User
+            user = new User
             {
                 Id = Guid.CreateVersion7(),
-                PublicId = PublicIdGenerator.Generate("usr"),
+                PublicId = PublicIdGenerator.Generate(User.PublicIdPrefix),
                 ExternalId = request.ExternalId,
                 AuthProvider = request.AuthProvider,
                 Email = request.Email,

@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Models;
-using Propentro.Domain.Entities;
 using Serilog;
 
 namespace Propentro.Application.Features.Webhooks.Commands.SyncMembership;
@@ -11,7 +10,9 @@ namespace Propentro.Application.Features.Webhooks.Commands.SyncMembership;
 /// and organization_user_roles records.
 /// Does NOT call SaveChangesAsync — UnitOfWorkBehavior handles persistence.
 /// </summary>
-public sealed class SyncMembershipHandler(IAppDbContext dbContext) : ICommandHandler<SyncMembershipCommand>
+public sealed class SyncMembershipHandler(
+    IAppDbContext dbContext,
+    IDateTimeProvider dateTimeProvider) : ICommandHandler<SyncMembershipCommand>
 {
     public async Task<Result> Handle(SyncMembershipCommand request, CancellationToken cancellationToken)
     {
@@ -78,7 +79,7 @@ public sealed class SyncMembershipHandler(IAppDbContext dbContext) : ICommandHan
         }
 
         // Map Clerk role to system role
-        var systemRoleName = MapClerkRole(request.Role);
+        string systemRoleName = MapClerkRole(request.Role);
         await SyncRoleAsync(org.Id, user.Id, systemRoleName, cancellationToken);
 
         return Result.Success();
@@ -115,7 +116,7 @@ public sealed class SyncMembershipHandler(IAppDbContext dbContext) : ICommandHan
             OrganizationId = orgId,
             UserId = userId,
             RoleId = role.Id,
-            AssignedAt = DateTimeOffset.UtcNow
+            AssignedAt = dateTimeProvider.UtcNow
         });
 
         Log.Information("Assigned role {RoleName} to user {UserId} in org {OrgId}",
