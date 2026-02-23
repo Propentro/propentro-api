@@ -18,7 +18,7 @@ public sealed partial class AppDbContext(
     ICurrentUser currentUser,
     IDateTimeProvider dateTime) : DbContext(options), IAppDbContext
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = false
@@ -167,7 +167,7 @@ public sealed partial class AppDbContext(
                 EventType = eventTypeName,
                 AggregateType = aggregateType,
                 AggregateId = aggregateId,
-                Payload = JsonSerializer.Serialize<object>(domainEvent, JsonOptions),
+                Payload = JsonSerializer.Serialize<object>(domainEvent, _jsonOptions),
                 Status = "pending",
                 CreatedAt = now,
                 CreatedById = userId != Guid.Empty ? userId : null

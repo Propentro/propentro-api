@@ -12,8 +12,8 @@ namespace Propentro.Infrastructure.Webhooks;
 public sealed class WebhookIdempotencyStore
 {
     private readonly ConcurrentDictionary<string, DateTimeOffset> _processedEvents = new();
-    private const int MaxEntries = 10_000;
-    private static readonly TimeSpan EventTtl = TimeSpan.FromDays(7);
+    private const int _maxEntries = 10_000;
+    private static readonly TimeSpan _eventTtl = TimeSpan.FromDays(7);
 
     /// <summary>
     /// Tries to mark an event ID as processed. Returns false if already processed.
@@ -22,7 +22,7 @@ public sealed class WebhookIdempotencyStore
     public bool TryMarkProcessed(string eventId)
     {
         // Evict old entries if at capacity
-        if (_processedEvents.Count >= MaxEntries)
+        if (_processedEvents.Count >= _maxEntries)
             EvictOldEntries();
 
         return _processedEvents.TryAdd(eventId, DateTimeOffset.UtcNow);
@@ -39,7 +39,7 @@ public sealed class WebhookIdempotencyStore
 
     private void EvictOldEntries()
     {
-        var cutoff = DateTimeOffset.UtcNow - EventTtl;
+        var cutoff = DateTimeOffset.UtcNow - _eventTtl;
         var keysToRemove = _processedEvents
             .Where(kvp => kvp.Value < cutoff)
             .Select(kvp => kvp.Key)

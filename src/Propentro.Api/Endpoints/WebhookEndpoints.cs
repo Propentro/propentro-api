@@ -24,7 +24,7 @@ internal static class WebhookEndpoints
             .WithTags("Webhooks")
             .AllowAnonymous();
 
-        group.MapPost("/clerk", HandleClerkWebhook)
+        group.MapPost("/clerk", HandleClerkWebhookAsync)
             .WithName("ClerkWebhook")
             .WithSummary("Receive Clerk webhook events")
             .Produces(StatusCodes.Status200OK)
@@ -32,7 +32,7 @@ internal static class WebhookEndpoints
             .Produces(StatusCodes.Status500InternalServerError);
     }
 
-    private static async Task<IResult> HandleClerkWebhook(
+    private static async Task<IResult> HandleClerkWebhookAsync(
         HttpRequest request,
         WebhookIdempotencyStore idempotencyStore,
         ISender sender,

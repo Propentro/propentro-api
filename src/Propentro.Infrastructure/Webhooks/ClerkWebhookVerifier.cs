@@ -12,7 +12,7 @@ namespace Propentro.Infrastructure.Webhooks;
 public sealed class ClerkWebhookVerifier
 {
     private readonly byte[] _secretBytes;
-    private static readonly TimeSpan TimestampTolerance = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan _timestampTolerance = TimeSpan.FromMinutes(5);
 
     public ClerkWebhookVerifier(IConfiguration configuration)
     {
@@ -54,7 +54,7 @@ public sealed class ClerkWebhookVerifier
         var timestamp = DateTimeOffset.FromUnixTimeSeconds(timestampSeconds);
         var age = DateTimeOffset.UtcNow - timestamp;
 
-        if (age.Duration() > TimestampTolerance)
+        if (age.Duration() > _timestampTolerance)
         {
             Log.Warning("Webhook verification failed: timestamp {Timestamp} is outside tolerance ({Age}s)",
                 timestamp, age.TotalSeconds);
