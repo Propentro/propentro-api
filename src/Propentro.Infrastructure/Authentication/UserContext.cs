@@ -10,7 +10,7 @@ namespace Propentro.Infrastructure.Authentication;
 /// Provides access to the current authenticated user's context.
 /// Orchestrates identity resolution and organization membership verification.
 /// </summary>
-public sealed class UserContextContextContext(
+public sealed class UserContext(
     IHttpContextAccessor httpContextAccessor,
     IExternalIdResolver idResolver,
     IDbConnectionFactory db) : IUserContext, IUserContextInitializer

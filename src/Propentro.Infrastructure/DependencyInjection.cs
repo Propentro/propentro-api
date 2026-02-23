@@ -83,9 +83,9 @@ public static class DependencyInjection
         services.AddSingleton<IExternalIdResolver>(sp => sp.GetRequiredService<ClerkIdResolver>());
 
         // CurrentUserService - Scoped (per-request identity orchestration + org membership check)
-        services.AddScoped<UserContextContextContext>();
-        services.AddScoped<IUserContext>(sp => sp.GetRequiredService<UserContextContextContext>());
-        services.AddScoped<IUserContextInitializer>(sp => sp.GetRequiredService<UserContextContextContext>());
+        services.AddScoped<UserContext>();
+        services.AddScoped<IUserContext>(sp => sp.GetRequiredService<UserContext>());
+        services.AddScoped<IUserContextInitializer>(sp => sp.GetRequiredService<UserContext>());
 
         // PermissionService - Scoped (depends on ICacheService)
         services.AddScoped<IPermissionService, PermissionService>();
