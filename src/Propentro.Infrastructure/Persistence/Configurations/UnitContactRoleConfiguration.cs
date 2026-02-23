@@ -27,7 +27,7 @@ public sealed class UnitContactRoleConfiguration : IEntityTypeConfiguration<Unit
         builder.Property(e => e.UpdatedById).HasColumnName("updated_by_id");
 
         builder.HasOne(e => e.Unit)
-            .WithMany()
+            .WithMany(u => u.ContactRoles)
             .HasForeignKey(e => e.UnitId)
             .OnDelete(DeleteBehavior.Cascade);
 

@@ -5,7 +5,7 @@ namespace Propentro.Domain.Entities.Identity;
 
 public sealed class SystemAdministrator : Entity, IAuditableEntity, ISoftDeletable
 {
-    public const string PublicIdPrefix = "sad";
+    public const string PublicIdPrefix = "sadm";
 
     public Guid UserId { get; set; }
     public string Role { get; set; } = default!;

@@ -1,5 +1,5 @@
 using Propentro.Domain.Common;
-using Propentro.Domain.Entities.Documents;
+using Propentro.Domain.Entities.Addresses;
 
 namespace Propentro.Domain.Entities.Contacts;
 

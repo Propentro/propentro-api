@@ -18,7 +18,7 @@ public sealed class PropertyDocumentConfiguration : IEntityTypeConfiguration<Pro
         builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
         builder.HasOne(e => e.Property)
-            .WithMany()
+            .WithMany(p => p.Documents)
             .HasForeignKey(e => e.PropertyId)
             .OnDelete(DeleteBehavior.Cascade);
 

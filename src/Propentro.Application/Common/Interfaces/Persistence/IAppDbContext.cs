@@ -33,6 +33,7 @@ public interface IAppDbContext
 
     // Documents
     DbSet<Document> Documents { get; }
+    DbSet<DocumentVersion> DocumentVersions { get; }
     DbSet<PropertyDocument> PropertyDocuments { get; }
     DbSet<UnitDocument> UnitDocuments { get; }
 
@@ -61,6 +62,8 @@ public interface IAppDbContext
     // Lookup Tables
     DbSet<Currency> Currencies { get; }
     DbSet<Country> Countries { get; }
+    DbSet<PropertyPurpose> PropertyPurposes { get; }
+    DbSet<PropertyType> PropertyTypes { get; }
 
     // Outbox
     DbSet<OutboxMessage> OutboxMessages { get; }

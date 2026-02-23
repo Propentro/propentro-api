@@ -325,7 +325,7 @@ public class Unit : AggregateRoot
 - `Id` (Guid v7) - internal identifier, auto-generated in `Entity(prefix)` constructor
 - `PublicId` (prefixed hex: `prp_a3f9c12d8e4b`) - user-facing, generated client-side by `PublicIdGenerator`
 - Both IDs are available immediately after construction - no need to wait for database
-- Each entity defines its prefix via `base("prefix")`: `prp`, `unt`, `lse`, `cnt`, `act`, `adr`, `doc`, `usr`, `org`, `rol`
+- Each entity defines its prefix via `base("prefix")`: `prp`, `unt`, `lse`, `cnt`, `act`, `adr`, `doc`, `docv`, `usr`, `org`, `rol`, `sadm`
 - Parameterless constructor is for EF Core only (no ID generation)
 
 ### API Endpoint Pattern
@@ -387,7 +387,7 @@ public sealed partial class GetContactByIdValidator : AbstractValidator<GetConta
 }
 ```
 
-Entity prefixes: `prp`, `unt`, `lse`, `cnt`, `act`, `adr`, `doc`, `usr`, `org`, `rol`
+Entity prefixes: `prp`, `unt`, `lse`, `cnt`, `act`, `adr`, `doc`, `docv`, `usr`, `org`, `rol`, `sadm`
 
 ### Pagination Validation
 
@@ -684,7 +684,7 @@ public class CreateUnitHandlerTests
     public async Task Handle_WhenPropertyExists_ShouldCreateUnit()
     {
         // Arrange
-        var property = new Property("Test Property", PropertyKind.Residential);
+        var property = new Property("Test Property", "single");
         _dbContext.Properties.Returns(new[] { property }.AsQueryable());
         var command = new CreateUnitCommand(property.PublicId, "101", UnitType.Apartment);
 
@@ -815,7 +815,7 @@ Handler raises event → entity.MarkAs{Action}(orgId)
     → UnitOfWorkBehavior → SaveChangesAsync
     → AppDbContext collects DomainEvents, serializes to OutboxMessage
     → Saved atomically with business data
-    → OutboxWorkerService picks up via LISTEN/NOTIFY (instant) or polling (30s fallback)
+    → OutboxWorkerService picks up via polling (every 10 seconds)
     → OutboxProcessor → IOutboxEventHandler.HandleAsync()
 ```
 
@@ -850,12 +850,6 @@ public sealed class ContactCreatedOutboxHandler : IOutboxEventHandler
 - Handlers are resolved by `EventType` match (case-insensitive)
 - Unmatched event types are marked completed with a debug log
 - Each message is processed within its own DB transaction (`FOR UPDATE SKIP LOCKED`)
-
-### LISTEN/NOTIFY
-
-The `outbox_messages` table has a PostgreSQL trigger that sends `pg_notify('outbox_channel', id)` on INSERT. The `OutboxWorkerService` listens on this channel for instant processing. If LISTEN/NOTIFY fails, the 30-second polling fallback handles it.
-
-**Trigger SQL:** `sql/001_outbox_notify_trigger.sql` (applied manually, not via EF migrations)
 
 ## Webhook Handler Conventions
 

@@ -27,7 +27,7 @@ public sealed class PropertyComplianceConfiguration : IEntityTypeConfiguration<P
         builder.Property(e => e.UpdatedById).HasColumnName("updated_by_id");
 
         builder.HasOne(e => e.Property)
-            .WithMany()
+            .WithMany(p => p.Compliances)
             .HasForeignKey(e => e.PropertyId)
             .OnDelete(DeleteBehavior.Cascade);
 

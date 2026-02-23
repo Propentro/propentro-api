@@ -48,6 +48,7 @@ public sealed partial class AppDbContext(
 
     // Documents
     public DbSet<Document> Documents => Set<Document>();
+    public DbSet<DocumentVersion> DocumentVersions => Set<DocumentVersion>();
     public DbSet<PropertyDocument> PropertyDocuments => Set<PropertyDocument>();
     public DbSet<UnitDocument> UnitDocuments => Set<UnitDocument>();
 
@@ -76,6 +77,8 @@ public sealed partial class AppDbContext(
     // Lookup Tables
     public DbSet<Currency> Currencies => Set<Currency>();
     public DbSet<Country> Countries => Set<Country>();
+    public DbSet<PropertyPurpose> PropertyPurposes => Set<PropertyPurpose>();
+    public DbSet<PropertyType> PropertyTypes => Set<PropertyType>();
 
     // Outbox
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();

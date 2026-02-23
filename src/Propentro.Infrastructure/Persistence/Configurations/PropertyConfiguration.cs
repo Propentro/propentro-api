@@ -16,9 +16,11 @@ public sealed class PropertyConfiguration : IEntityTypeConfiguration<Property>
         builder.Property(e => e.OrganizationId).HasColumnName("organization_id").IsRequired();
         builder.Property(e => e.ParentPropertyId).HasColumnName("parent_property_id");
         builder.Property(e => e.AddressId).HasColumnName("address_id");
+        builder.Property(e => e.PropertyTypeId).HasColumnName("property_type_id");
         builder.Property(e => e.Name).HasColumnName("name").IsRequired();
         builder.Property(e => e.ReferenceCode).HasColumnName("reference_code");
-        builder.Property(e => e.PropertyKind).HasColumnName("property_kind").IsRequired();
+        builder.Property(e => e.Category).HasColumnName("category").IsRequired();
+        builder.Property(e => e.Purpose).HasColumnName("purpose");
         builder.Property(e => e.YearBuilt).HasColumnName("year_built");
         builder.Property(e => e.TotalAreaSqm).HasColumnName("total_area_sqm").HasPrecision(12, 2);
         builder.Property(e => e.TotalFloors).HasColumnName("total_floors");

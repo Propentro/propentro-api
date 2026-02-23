@@ -1,5 +1,5 @@
 using Propentro.Domain.Common;
-using Propentro.Domain.Entities.Documents;
+using Propentro.Domain.Entities.Addresses;
 using Propentro.Domain.Entities.Units;
 
 namespace Propentro.Domain.Entities.Properties;
@@ -10,9 +10,11 @@ public sealed class Property : AggregateRoot
 
     public Guid? ParentPropertyId { get; set; }
     public Guid? AddressId { get; set; }
+    public Guid? PropertyTypeId { get; set; }
     public string Name { get; set; } = default!;
     public string? ReferenceCode { get; set; }
-    public string PropertyKind { get; set; } = default!;
+    public string Category { get; set; } = default!;
+    public string? Purpose { get; set; }
     public int? YearBuilt { get; set; }
     public decimal? TotalAreaSqm { get; set; }
     public int? TotalFloors { get; set; }
@@ -29,9 +31,9 @@ public sealed class Property : AggregateRoot
 
     private Property() { }
 
-    public Property(string name, string propertyKind) : base(PublicIdPrefix)
+    public Property(string name, string category) : base(PublicIdPrefix)
     {
         Name = name;
-        PropertyKind = propertyKind;
+        Category = category;
     }
 }

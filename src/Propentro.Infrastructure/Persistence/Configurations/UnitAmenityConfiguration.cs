@@ -17,7 +17,7 @@ public sealed class UnitAmenityConfiguration : IEntityTypeConfiguration<UnitAmen
         builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
         builder.HasOne(e => e.Unit)
-            .WithMany()
+            .WithMany(u => u.Amenities)
             .HasForeignKey(e => e.UnitId)
             .OnDelete(DeleteBehavior.Cascade);
 

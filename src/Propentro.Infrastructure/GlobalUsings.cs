@@ -8,6 +8,7 @@ global using Propentro.Application.Common.Interfaces.Storage;
 global using Propentro.Application.Common.Interfaces.Time;
 
 // Domain Entities (feature-based sub-namespaces)
+global using Propentro.Domain.Entities.Addresses;
 global using Propentro.Domain.Entities.Contacts;
 global using Propentro.Domain.Entities.Documents;
 global using Propentro.Domain.Entities.Identity;

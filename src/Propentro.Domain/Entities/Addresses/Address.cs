@@ -1,6 +1,6 @@
 using Propentro.Domain.Common;
 
-namespace Propentro.Domain.Entities.Documents;
+namespace Propentro.Domain.Entities.Addresses;
 
 public sealed class Address : OrganizationEntity
 {

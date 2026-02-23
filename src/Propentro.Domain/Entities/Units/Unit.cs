@@ -1,5 +1,5 @@
 using Propentro.Domain.Common;
-using Propentro.Domain.Entities.Documents;
+using Propentro.Domain.Entities.Addresses;
 using Propentro.Domain.Entities.Properties;
 
 namespace Propentro.Domain.Entities.Units;
@@ -16,7 +16,7 @@ public sealed class Unit : AggregateRoot
     public string UnitType { get; set; } = default!;
     public string? OwnershipType { get; set; }
     public string RentalMode { get; set; } = "long_term";
-    public string Status { get; set; } = "available";
+    public string OccupancyStatus { get; set; } = "void";
 
     // Location within property
     public int? Floor { get; set; }
