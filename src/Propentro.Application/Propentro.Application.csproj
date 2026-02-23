@@ -19,4 +19,9 @@
     <PackageReference Include="Serilog" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Features\Activities\Commands\" />
+    <Folder Include="Features\Activities\Queries\" />
+  </ItemGroup>
+
 </Project>

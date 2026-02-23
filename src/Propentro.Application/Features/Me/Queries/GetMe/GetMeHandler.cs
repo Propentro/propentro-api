@@ -1,4 +1,6 @@
 using Dapper;
+using Propentro.Application.Common.Interfaces.Authentication;
+using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Models;
 using Propentro.Contracts.Me;
 
@@ -6,7 +8,7 @@ namespace Propentro.Application.Features.Me.Queries.GetMe;
 
 public sealed class GetMeHandler(
     IDbConnectionFactory db,
-    ICurrentUser currentUser,
+    IUserContext userContext,
     IPermissionService permissionService) : IQueryHandler<GetMeQuery, MeResponse>
 {
     public async Task<Result<MeResponse>> Handle(GetMeQuery request, CancellationToken cancellationToken)
@@ -36,7 +38,7 @@ public sealed class GetMeHandler(
 
         var result = await connection.QueryFirstOrDefaultAsync<MeQueryResult>(
             userSql,
-            new { currentUser.UserId, currentUser.OrganizationId });
+            new { userContext.UserId, userContext.OrganizationId });
 
         if (result is null)
         {
@@ -54,12 +56,12 @@ public sealed class GetMeHandler(
 
         var roles = (await connection.QueryAsync<string>(
             rolesSql,
-            new { currentUser.UserId, currentUser.OrganizationId }))
+            new { userContext.UserId, userContext.OrganizationId }))
             .Order().ToList();
 
         var permissions = await permissionService.GetUserPermissionsAsync(
-            currentUser.UserId,
-            currentUser.OrganizationId,
+            userContext.UserId,
+            userContext.OrganizationId,
             cancellationToken);
 
         var response = new MeResponse(

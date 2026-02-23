@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Propentro.Domain.Entities;
 
 namespace Propentro.Infrastructure.Persistence.Configurations;
 
@@ -26,7 +25,7 @@ public sealed class OrganizationUserConfiguration : IEntityTypeConfiguration<Org
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(e => e.User)
-            .WithMany()
+            .WithMany(u => u.OrganizationUsers)
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.Cascade);
     }

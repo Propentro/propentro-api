@@ -5,10 +5,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using Propentro.Application.Common.Interfaces.Authentication;
+using Propentro.Application.Common.Interfaces.Authorization;
+using Propentro.Infrastructure.Authentication;
 using Propentro.Infrastructure.Authorization;
 using Propentro.Infrastructure.Caching;
 using Propentro.Infrastructure.Persistence;
 using Propentro.Infrastructure.Services;
+using Propentro.Infrastructure.Webhooks;
 
 namespace Propentro.Infrastructure;
 
@@ -26,6 +30,8 @@ public static class DependencyInjection
         services.AddApplicationServices();
         services.AddPermissionAuthorization();
         services.AddClerkAuthentication(configuration);
+        services.AddOutbox();
+        services.AddWebhooks(configuration);
 
         return services;
     }
@@ -79,9 +85,9 @@ public static class DependencyInjection
         services.AddSingleton<IExternalIdResolver>(sp => sp.GetRequiredService<ClerkIdResolver>());
 
         // CurrentUserService - Scoped (per-request identity orchestration + org membership check)
-        services.AddScoped<CurrentUserService>();
-        services.AddScoped<ICurrentUser>(sp => sp.GetRequiredService<CurrentUserService>());
-        services.AddScoped<ICurrentUserInitializer>(sp => sp.GetRequiredService<CurrentUserService>());
+        services.AddScoped<UserContext>();
+        services.AddScoped<IUserContext>(sp => sp.GetRequiredService<UserContext>());
+        services.AddScoped<IUserContextInitializer>(sp => sp.GetRequiredService<UserContext>());
 
         // PermissionService - Scoped (depends on ICacheService)
         services.AddScoped<IPermissionService, PermissionService>();
@@ -112,6 +118,25 @@ public static class DependencyInjection
                 .AddRequirements(new ActiveUserRequirement())
                 .Build();
         });
+
+        return services;
+    }
+
+    private static IServiceCollection AddWebhooks(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        // Only register if webhook secret is configured
+        if (!string.IsNullOrWhiteSpace(configuration["Clerk:WebhookSecret"]))
+            services.AddSingleton<ClerkWebhookVerifier>();
+
+        services.AddSingleton<WebhookIdempotencyStore>();
+
+        return services;
+    }
+
+    private static IServiceCollection AddOutbox(this IServiceCollection services)
+    {
 
         return services;
     }

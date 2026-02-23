@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Propentro.Application.Common.Interfaces.Authentication;
 using Serilog;
 
 namespace Propentro.Infrastructure.Authorization;
@@ -19,7 +20,7 @@ public sealed class ActiveUserAuthorizationHandler : AuthorizationHandler<Active
         if (context.Resource is not HttpContext httpContext)
             return Task.CompletedTask;
 
-        var currentUser = httpContext.RequestServices.GetService<ICurrentUser>();
+        var currentUser = httpContext.RequestServices.GetService<IUserContext>();
         if (currentUser is null)
         {
             context.Fail(new AuthorizationFailureReason(this, "User context service not available"));

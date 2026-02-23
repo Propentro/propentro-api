@@ -1,4 +1,5 @@
 using MediatR;
+using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Models;
 using Serilog;
 
@@ -10,7 +11,7 @@ namespace Propentro.Application.Common.Behaviors;
 /// </summary>
 public sealed class QueryCachingBehavior<TRequest, TResponse>(
     ICacheService cache,
-    ICurrentUser currentUser) : IPipelineBehavior<TRequest, Result<TResponse>>
+    IUserContext userContext) : IPipelineBehavior<TRequest, Result<TResponse>>
     where TRequest : ICachedQuery<TResponse>
 {
     public async Task<Result<TResponse>> Handle(
@@ -40,5 +41,5 @@ public sealed class QueryCachingBehavior<TRequest, TResponse>(
     }
 
     private string GetTenantScopedCacheKey(string queryCacheKey) =>
-        $"org:{currentUser.OrganizationId}:{queryCacheKey}";
+        $"org:{userContext.OrganizationId}:{queryCacheKey}";
 }

@@ -122,5 +122,5 @@ finally
     await Log.CloseAndFlushAsync();
 }
 
-// For integration testing
-internal partial class Program { }
+// For integration testing (WebApplicationFactory<Program> requires public access)
+public partial class Program { }

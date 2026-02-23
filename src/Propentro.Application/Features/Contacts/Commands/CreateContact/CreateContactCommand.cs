@@ -1,8 +1,6 @@
-using Propentro.Contracts.Contacts;
-
 namespace Propentro.Application.Features.Contacts.Commands.CreateContact;
 
-public sealed record CreateContactCommand(
+public record CreateContactCommand(
     string Kind,
     string[] Roles,
     string? FirstName,
@@ -20,4 +18,12 @@ public sealed record CreateContactCommand(
     string? TaxNumber,
     string? TaxCountry,
     string? Note,
-    CreateContactAddressRequest? Address) : ICommand<string>;
+    CreateContactAddressDto? Address) : ICommand<string>;
+
+public record CreateContactAddressDto(
+    string Line1,
+    string? Line2,
+    string City,
+    string? Region,
+    string? PostalCode,
+    string CountryCode);

@@ -3,9 +3,8 @@ using Propentro.Contracts.Contacts;
 
 namespace Propentro.Application.Features.Contacts.Queries.GetContacts;
 
-public sealed record GetContactsQuery(
+public record GetContactsQuery(
+    int Page,
+    int PageSize,
     string? Role,
-    string? Search,
-    bool? IsArchived,
-    int Page = 1,
-    int PageSize = 25) : IQuery<PagedResult<ContactListItemResponse>>;
+    string? Search) : IQuery<PagedResult<ContactListItemResponse>>;

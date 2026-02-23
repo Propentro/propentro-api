@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Propentro.Domain.Entities;
 
 namespace Propentro.Infrastructure.Persistence.Configurations;
 
@@ -17,7 +16,7 @@ public sealed class RolePermissionConfiguration : IEntityTypeConfiguration<RoleP
         builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
         builder.HasOne(e => e.Role)
-            .WithMany()
+            .WithMany(r => r.RolePermissions)
             .HasForeignKey(e => e.RoleId)
             .OnDelete(DeleteBehavior.Cascade);
 

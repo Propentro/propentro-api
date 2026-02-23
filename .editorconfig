@@ -159,6 +159,10 @@ dotnet_diagnostic.CA2007.severity = none
 # Common pattern for request/response DTOs and result types
 dotnet_diagnostic.CA1034.severity = none
 
+# CA1711: Identifiers should not have incorrect suffix - disabled
+# 'EventHandler' suffix is appropriate for domain-specific outbox event handlers
+dotnet_diagnostic.CA1711.severity = none
+
 # CA1716: Identifiers should not match keywords - disabled
 # 'Me' is a VB.NET keyword, irrelevant for C#-only projects; common feature name
 dotnet_diagnostic.CA1716.severity = none
