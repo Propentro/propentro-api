@@ -3,14 +3,10 @@ using Quartz;
 
 namespace Propentro.Infrastructure.Outbox;
 
-internal sealed class ProcessOutboxMessagesJobSetup : IConfigureOptions<QuartzOptions>
+internal sealed class ProcessOutboxMessagesJobSetup(IOptions<OutboxOptions> outboxOptions)
+    : IConfigureOptions<QuartzOptions>
 {
-    private readonly OutboxOptions _outboxOptions;
-
-    public ProcessOutboxMessagesJobSetup(IOptions<OutboxOptions> outboxOptions)
-    {
-        _outboxOptions = outboxOptions.Value;
-    }
+    private readonly OutboxOptions _outboxOptions = outboxOptions.Value;
 
     public void Configure(QuartzOptions options)
     {
