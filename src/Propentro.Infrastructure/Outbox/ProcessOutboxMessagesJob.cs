@@ -1,7 +1,5 @@
 using Dapper;
 using Microsoft.Extensions.Options;
-using Propentro.Application.Common.Interfaces.Persistence;
-using Propentro.Domain.Common.Interfaces;
 using Quartz;
 using Serilog;
 
