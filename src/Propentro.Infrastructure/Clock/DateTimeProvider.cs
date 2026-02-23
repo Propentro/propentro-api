@@ -1,4 +1,4 @@
-namespace Propentro.Infrastructure.Services;
+namespace Propentro.Infrastructure.Clock;
 
 public sealed class DateTimeProvider : IDateTimeProvider
 {
