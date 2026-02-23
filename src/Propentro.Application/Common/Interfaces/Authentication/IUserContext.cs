@@ -1,4 +1,4 @@
-namespace Propentro.Application.Common.Interfaces.Identity;
+namespace Propentro.Application.Common.Interfaces.Authentication;
 
 /// <summary>
 /// Provides access to the current authenticated user's context.

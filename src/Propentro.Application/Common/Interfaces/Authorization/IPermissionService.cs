@@ -1,4 +1,4 @@
-namespace Propentro.Application.Common.Interfaces.Identity;
+namespace Propentro.Application.Common.Interfaces.Authorization;
 
 /// <summary>
 /// Provides permission lookup for authorization purposes.

@@ -1,4 +1,5 @@
 using MediatR;
+using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Models;
 using Serilog;
 

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Propentro.Application.Common.Interfaces.Authentication;
 using Serilog;
 
 namespace Propentro.Infrastructure.Authorization;

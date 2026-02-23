@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using Dapper;
 using Microsoft.AspNetCore.Http;
+using Propentro.Application.Common.Interfaces.Authentication;
 using Serilog;
 
 namespace Propentro.Infrastructure.Authentication;

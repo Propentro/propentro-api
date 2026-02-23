@@ -1,3 +1,4 @@
+using Propentro.Application.Common.Interfaces.Authentication;
 using Serilog.Context;
 
 namespace Propentro.Api.Middleware;

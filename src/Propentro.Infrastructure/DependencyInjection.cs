@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using Propentro.Application.Common.Interfaces.Authentication;
+using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Infrastructure.Authentication;
 using Propentro.Infrastructure.Authorization;
 using Propentro.Infrastructure.Caching;

@@ -1,6 +1,7 @@
 using Dapper;
+using Propentro.Application.Common.Interfaces.Authorization;
 
-namespace Propentro.Infrastructure.Services;
+namespace Propentro.Infrastructure.Authorization;
 
 /// <summary>
 /// Provides permission lookup for authorization purposes.

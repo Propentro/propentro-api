@@ -1,5 +1,6 @@
 using System.Text;
 using Dapper;
+using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Models;
 using Propentro.Contracts.Contacts;
 

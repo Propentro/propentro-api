@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Domain.Common;
 using Propentro.Domain.Common.Interfaces;
 using Serilog;

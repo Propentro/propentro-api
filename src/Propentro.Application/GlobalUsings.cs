@@ -8,7 +8,6 @@ global using Propentro.Application.Common.Interfaces.Messaging;
 global using Propentro.Application.Common.Interfaces.Persistence;
 
 // Identity
-global using Propentro.Application.Common.Interfaces.Identity;
 
 // Caching
 global using Propentro.Application.Common.Interfaces.Caching;

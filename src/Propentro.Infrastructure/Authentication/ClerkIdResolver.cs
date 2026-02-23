@@ -1,6 +1,7 @@
 using Dapper;
+using Propentro.Application.Common.Interfaces.Authentication;
 
-namespace Propentro.Infrastructure.Services;
+namespace Propentro.Infrastructure.Authentication;
 
 /// <summary>
 /// Resolves Clerk authentication provider IDs to internal database IDs.
