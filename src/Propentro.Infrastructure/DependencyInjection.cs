@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Propentro.Infrastructure.Authorization;
 using Propentro.Infrastructure.Caching;
-using Propentro.Infrastructure.Outbox;
 using Propentro.Infrastructure.Persistence;
 using Propentro.Infrastructure.Services;
 using Propentro.Infrastructure.Webhooks;
@@ -135,8 +134,6 @@ public static class DependencyInjection
 
     private static IServiceCollection AddOutbox(this IServiceCollection services)
     {
-        services.AddScoped<OutboxProcessor>();
-        services.AddHostedService<OutboxWorkerService>();
 
         return services;
     }
