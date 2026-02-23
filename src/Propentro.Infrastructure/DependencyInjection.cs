@@ -29,10 +29,10 @@ public static class DependencyInjection
         services.AddDatabase(configuration);
         services.AddCaching(configuration);
         services.AddIdentityServices();
-        services.AddApplicationServices();
+        services.AddCoreInfraServices();
         services.AddPermissionAuthorization();
         services.AddClerkAuthentication(configuration);
-        AddBackgroundJobs(services, configuration);
+        services.AddOutbox(configuration);
         services.AddWebhooks(configuration);
 
         return services;
@@ -97,7 +97,7 @@ public static class DependencyInjection
         return services;
     }
 
-    private static IServiceCollection AddApplicationServices(this IServiceCollection services)
+    private static IServiceCollection AddCoreInfraServices(this IServiceCollection services)
     {
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
         services.AddSingleton<IBlobStorageService, BlobStorageService>();
@@ -137,7 +137,9 @@ public static class DependencyInjection
         return services;
     }
 
-    private static void AddBackgroundJobs(IServiceCollection services, IConfiguration configuration)
+    private static IServiceCollection AddOutbox(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
         services.Configure<OutboxOptions>(configuration.GetSection("Outbox"));
 
@@ -146,6 +148,8 @@ public static class DependencyInjection
         services.AddQuartzHostedService(options => options.WaitForJobsToComplete = true);
 
         services.ConfigureOptions<ProcessOutboxMessagesJobSetup>();
+
+        return services;
     }
 
     private static IServiceCollection AddClerkAuthentication(

@@ -128,6 +128,14 @@ public sealed partial class AppDbContext(
         var now = dateTime.UtcNow;
         var userId = userContext.UserId;
 
+        ApplyAuditFields(now, userId);
+        PersistDomainEventsToOutbox(now, userId);
+
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void ApplyAuditFields(DateTimeOffset now, Guid userId)
+    {
         foreach (var entry in ChangeTracker.Entries())
         {
             if (entry is { Entity: IOrganizationScoped scoped, State: EntityState.Added })
@@ -150,7 +158,10 @@ public sealed partial class AppDbContext(
                 }
             }
         }
+    }
 
+    private void PersistDomainEventsToOutbox(DateTimeOffset now, Guid userId)
+    {
         // Collect domain events from aggregate roots
         var domainEvents = ChangeTracker.Entries<AggregateRoot>()
             .SelectMany(e => e.Entity.DomainEvents)
@@ -184,13 +195,8 @@ public sealed partial class AppDbContext(
         foreach (var entry in ChangeTracker.Entries<AggregateRoot>())
             entry.Entity.ClearDomainEvents();
 
-        // Save business data + outbox messages atomically
-        var result = await base.SaveChangesAsync(cancellationToken);
-
         if (domainEvents.Count > 0)
             Log.Debug("Persisted {EventCount} domain events to outbox", domainEvents.Count);
-
-        return result;
     }
 
     /// <summary>

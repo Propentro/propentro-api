@@ -664,6 +664,47 @@ Logging → QueryCaching → Validation → UnitOfWork → Handler
 
 `QueryCachingBehavior` runs **before** `ValidationBehavior`, so cache hits skip validation entirely for optimal performance.
 
+### Cache Invalidation Strategy
+
+**Start simple: invalidate in the handler that modifies data.**
+
+When only 1-2 handlers modify the same cached data, invalidate directly in the handler:
+
+```csharp
+// In CreateContactHandler
+dbContext.Contacts.Add(contact);
+await cache.RemoveByPatternAsync($"org:{currentUser.OrganizationId}:contacts:*");
+```
+
+**Extract to INotificationHandler when cache invalidation repeats across 3+ handlers.**
+
+When Create, Update, Archive, Unarchive, Delete all need to invalidate the same cache,
+extract to avoid duplication and missed invalidations:
+
+```csharp
+// Single handler covers all contact mutations
+public class InvalidateContactCacheHandler : INotificationHandler<ContactChangedEvent>
+{
+    public Task Handle(ContactChangedEvent e, CancellationToken ct)
+        => cache.RemoveByPatternAsync($"org:{e.OrganizationId}:contacts:*", ct);
+}
+```
+
+**Rule of thumb:** Handler-first, extract when it repeats. Don't pre-optimize.
+
+### Side-Effect Patterns
+
+Two mechanisms for handling side-effects from domain events:
+
+| Mechanism | Runs When | Use For | Guarantee |
+|-----------|-----------|---------|-----------|
+| Handler code / MediatR INotificationHandler | During HTTP request (sync) | Cache invalidation, in-memory updates, activity logs (same DB) | None — if request crashes, side-effect is lost |
+| Outbox (background job) | After request completes (async) | Email, webhooks, external API calls, notifications | Guaranteed — persisted to DB, retried on failure |
+
+**Current state:** Outbox persists domain events but has no handler dispatch yet. All async side-effects will be routed through the outbox when needed.
+
+**Decision guide:** "Will the user's request feel slow if this fails or takes time?" → Outbox. "Is this fast and in-process?" → Handler directly.
+
 ## Testing Guidelines
 
 ### Unit Tests (Domain/Application)
@@ -805,7 +846,7 @@ The `/me` endpoint is the reference implementation. All future endpoints should 
 
 ## Outbox Pattern
 
-Domain events are persisted to the `outbox_messages` table atomically with business data, then processed asynchronously by the `OutboxWorkerService`.
+Domain events are persisted to the `outbox_messages` table atomically with business data, then processed asynchronously by `ProcessOutboxMessagesJob` (Quartz background job).
 
 ### Pipeline Flow
 
@@ -815,8 +856,8 @@ Handler raises event → entity.MarkAs{Action}(orgId)
     → UnitOfWorkBehavior → SaveChangesAsync
     → AppDbContext collects DomainEvents, serializes to OutboxMessage
     → Saved atomically with business data
-    → OutboxWorkerService picks up via polling (every 10 seconds)
-    → OutboxProcessor → IOutboxEventHandler.HandleAsync()
+    → ProcessOutboxMessagesJob polls pending messages
+    → Marks completed (handler dispatch to be added when first async side-effect is needed)
 ```
 
 ### Event Type Naming
@@ -831,25 +872,22 @@ Format: `{aggregate}.{action}` (lowercase, dot-separated)
 
 Derived automatically in `AppDbContext.DeriveEventType()` from the record name.
 
-### IOutboxEventHandler Convention
+### ProcessOutboxMessagesJob
 
-```csharp
-public sealed class ContactCreatedOutboxHandler : IOutboxEventHandler
-{
-    public string EventType => "contact.created";  // matches outbox event_type column
+The Quartz job (`[DisallowConcurrentExecution]`) processes outbox messages:
 
-    public Task HandleAsync(OutboxMessage message, CancellationToken ct)
-    {
-        // Process the event (e.g., create notifications)
-        return Task.CompletedTask;
-    }
-}
-```
+1. **Query**: Selects `pending` messages where `next_retry_at IS NULL OR next_retry_at <= now()`, ordered by `created_at`, limited by `BatchSize`, using `FOR UPDATE SKIP LOCKED`
+2. **Processing**: Each message is processed in its own mini-transaction (independent failure isolation)
+3. **Status lifecycle**: `pending` → `completed` | `failed`
+   - Success → `status = 'completed'`, `processed_at = now`
+   - Failure → `retry_count++`, exponential backoff (`2^retryCount` seconds for `next_retry_at`), `last_error` set
+   - Max retries exceeded → `status = 'failed'`, `processed_at = now`
 
-- Register handlers in `Infrastructure/DependencyInjection.cs` → `AddOutbox()`
-- Handlers are resolved by `EventType` match (case-insensitive)
-- Unmatched event types are marked completed with a debug log
-- Each message is processed within its own DB transaction (`FOR UPDATE SKIP LOCKED`)
+**Current state:** No handler dispatch yet — messages are marked completed immediately. Handler dispatch will be added when the first async side-effect (email, webhook, external API) is needed.
+
+### Outbox Configuration
+
+Configured via `Outbox` section in appsettings and registered in `Infrastructure/DependencyInjection.cs` → `AddOutbox()`.
 
 ## Webhook Handler Conventions
 
