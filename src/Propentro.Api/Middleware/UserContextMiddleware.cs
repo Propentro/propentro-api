@@ -10,22 +10,22 @@ namespace Propentro.Api.Middleware;
 /// </summary>
 public sealed class UserContextMiddleware(RequestDelegate next)
 {
-    public async Task InvokeAsync(HttpContext context, ICurrentUser currentUser)
+    public async Task InvokeAsync(HttpContext context, IUserContext userContext)
     {
         // Initialize user context (resolves external IDs to internal IDs)
-        if (currentUser is ICurrentUserInitializer initializer && !initializer.IsInitialized)
+        if (userContext is IUserContextInitializer initializer && !initializer.IsInitialized)
         {
             await initializer.InitializeAsync(context.RequestAborted);
         }
 
         // Push resolved IDs to log context for structured logging
-        var userId = currentUser.IsAuthenticated
-            ? currentUser.UserId.ToString()
+        var userId = userContext.IsAuthenticated
+            ? userContext.UserId.ToString()
             : "anonymous";
-        var organizationId = currentUser.IsAuthenticated && currentUser.OrganizationId != Guid.Empty
-            ? currentUser.OrganizationId.ToString()
+        var organizationId = userContext.IsAuthenticated && userContext.OrganizationId != Guid.Empty
+            ? userContext.OrganizationId.ToString()
             : "none";
-        var externalUserId = currentUser.ExternalUserId ?? "none";
+        var externalUserId = userContext.ExternalUserId ?? "none";
 
         using (LogContext.PushProperty("UserId", userId))
         using (LogContext.PushProperty("OrganizationId", organizationId))

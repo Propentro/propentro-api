@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using Propentro.Infrastructure.Authentication;
 using Propentro.Infrastructure.Authorization;
 using Propentro.Infrastructure.Caching;
 using Propentro.Infrastructure.Persistence;
@@ -82,9 +83,9 @@ public static class DependencyInjection
         services.AddSingleton<IExternalIdResolver>(sp => sp.GetRequiredService<ClerkIdResolver>());
 
         // CurrentUserService - Scoped (per-request identity orchestration + org membership check)
-        services.AddScoped<CurrentUserService>();
-        services.AddScoped<ICurrentUser>(sp => sp.GetRequiredService<CurrentUserService>());
-        services.AddScoped<ICurrentUserInitializer>(sp => sp.GetRequiredService<CurrentUserService>());
+        services.AddScoped<UserContextContextContext>();
+        services.AddScoped<IUserContext>(sp => sp.GetRequiredService<UserContextContextContext>());
+        services.AddScoped<IUserContextInitializer>(sp => sp.GetRequiredService<UserContextContextContext>());
 
         // PermissionService - Scoped (depends on ICacheService)
         services.AddScoped<IPermissionService, PermissionService>();

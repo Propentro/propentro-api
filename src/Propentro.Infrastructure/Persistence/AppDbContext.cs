@@ -15,7 +15,7 @@ namespace Propentro.Infrastructure.Persistence;
 /// </summary>
 public sealed partial class AppDbContext(
     DbContextOptions<AppDbContext> options,
-    ICurrentUser currentUser,
+    IUserContext userContext,
     IDateTimeProvider dateTime) : DbContext(options), IAppDbContext
 {
     private static readonly JsonSerializerOptions _jsonOptions = new()
@@ -83,7 +83,7 @@ public sealed partial class AppDbContext(
     /// Current organization ID for global query filter.
     /// EF Core rebinds this per query since it's a DbContext member access.
     /// </summary>
-    internal Guid CurrentOrganizationId => currentUser.OrganizationId;
+    internal Guid CurrentOrganizationId => userContext.OrganizationId;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -122,12 +122,12 @@ public sealed partial class AppDbContext(
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var now = dateTime.UtcNow;
-        var userId = currentUser.UserId;
+        var userId = userContext.UserId;
 
         foreach (var entry in ChangeTracker.Entries())
         {
             if (entry is { Entity: IOrganizationScoped scoped, State: EntityState.Added })
-                scoped.OrganizationId = currentUser.OrganizationId;
+                scoped.OrganizationId = userContext.OrganizationId;
 
             if (entry.Entity is IAuditableEntity auditable)
             {

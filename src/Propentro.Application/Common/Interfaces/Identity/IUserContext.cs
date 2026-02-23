@@ -4,7 +4,7 @@ namespace Propentro.Application.Common.Interfaces.Identity;
 /// Provides access to the current authenticated user's context.
 /// This service is scoped per-request and extracts user information from JWT claims.
 /// </summary>
-public interface ICurrentUser
+public interface IUserContext
 {
     /// <summary>
     /// Internal Organization ID from the database (Guid).
@@ -58,7 +58,7 @@ public interface ICurrentUser
 /// Extended interface for services that need to initialize user context asynchronously.
 /// Used internally by middleware to properly resolve user IDs without blocking.
 /// </summary>
-public interface ICurrentUserInitializer
+public interface IUserContextInitializer
 {
     /// <summary>
     /// Initializes the user context by resolving external IDs to internal IDs.

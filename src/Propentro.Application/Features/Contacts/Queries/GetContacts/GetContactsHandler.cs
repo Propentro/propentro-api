@@ -7,7 +7,7 @@ namespace Propentro.Application.Features.Contacts.Queries.GetContacts;
 
 public sealed class GetContactsHandler(
     IDbConnectionFactory db,
-    ICurrentUser currentUser) : IQueryHandler<GetContactsQuery, PagedResult<ContactListItemResponse>>
+    IUserContext userContext) : IQueryHandler<GetContactsQuery, PagedResult<ContactListItemResponse>>
 {
     public async Task<Result<PagedResult<ContactListItemResponse>>> Handle(
         GetContactsQuery request,
@@ -18,7 +18,7 @@ public sealed class GetContactsHandler(
 
         var whereClause = new StringBuilder("WHERE c.organization_id = @OrganizationId AND c.is_active = true");
         var parameters = new DynamicParameters();
-        parameters.Add("OrganizationId", currentUser.OrganizationId);
+        parameters.Add("OrganizationId", userContext.OrganizationId);
 
         if (request.Role is not null)
         {
@@ -104,7 +104,7 @@ public sealed class GetContactsHandler(
 
         var allRoles = (await connection.QueryAsync<ContactRoleRow>(
             rolesSql,
-            new { ContactIds = contactIds.ToArray(), currentUser.OrganizationId }))
+            new { ContactIds = contactIds.ToArray(), userContext.OrganizationId }))
             .GroupBy(r => r.ContactId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(r => r.Role).Order().ToList());
 

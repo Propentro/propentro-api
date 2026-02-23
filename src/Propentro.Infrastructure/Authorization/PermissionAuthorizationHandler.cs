@@ -38,7 +38,7 @@ public sealed class PermissionAuthorizationHandler(
 
         // At this point ActiveUserAuthorizationHandler has already verified
         // that CurrentUser is authenticated with valid UserId and OrganizationId
-        var currentUser = httpContext.RequestServices.GetRequiredService<ICurrentUser>();
+        var currentUser = httpContext.RequestServices.GetRequiredService<IUserContext>();
 
         // Get user's permissions from cache/database
         var userPermissions = await permissionService.GetUserPermissionsAsync(

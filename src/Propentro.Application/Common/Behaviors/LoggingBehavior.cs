@@ -7,7 +7,7 @@ namespace Propentro.Application.Common.Behaviors;
 /// MediatR pipeline behavior that logs request execution with timing.
 /// </summary>
 public sealed class LoggingBehavior<TRequest, TResponse>(
-    ICurrentUser currentUser) : IPipelineBehavior<TRequest, TResponse>
+    IUserContext userContext) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
     public async Task<TResponse> Handle(
@@ -20,8 +20,8 @@ public sealed class LoggingBehavior<TRequest, TResponse>(
         Log.Information(
             "[START] {RequestName} | User: {UserId} | Org: {OrgId}",
             requestName,
-            currentUser.UserId,
-            currentUser.OrganizationId);
+            userContext.UserId,
+            userContext.OrganizationId);
 
         var stopwatch = Stopwatch.StartNew();
         var response = await next(cancellationToken);

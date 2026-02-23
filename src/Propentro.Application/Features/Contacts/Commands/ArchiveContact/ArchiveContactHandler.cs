@@ -6,7 +6,7 @@ namespace Propentro.Application.Features.Contacts.Commands.ArchiveContact;
 
 public sealed class ArchiveContactHandler(
     IAppDbContext dbContext,
-    ICurrentUser currentUser,
+    IUserContext userContext,
     IDateTimeProvider dateTime) : ICommandHandler<ArchiveContactCommand>
 {
     public async Task<Result> Handle(ArchiveContactCommand request, CancellationToken cancellationToken)
@@ -22,7 +22,7 @@ public sealed class ArchiveContactHandler(
 
         contact.IsArchived = true;
         contact.ArchivedAt = dateTime.UtcNow;
-        contact.ArchivedById = currentUser.UserId;
+        contact.ArchivedById = userContext.UserId;
 
         dbContext.Activities.Add(new Activity("contact", contact.Id, "archived")
         {

@@ -6,7 +6,7 @@ namespace Propentro.Application.Features.Contacts.Queries.GetContactById;
 
 public sealed class GetContactByIdHandler(
     IDbConnectionFactory db,
-    ICurrentUser currentUser) : IQueryHandler<GetContactByIdQuery, ContactResponse>
+    IUserContext userContext) : IQueryHandler<GetContactByIdQuery, ContactResponse>
 {
     public async Task<Result<ContactResponse>> Handle(GetContactByIdQuery request, CancellationToken cancellationToken)
     {
@@ -56,7 +56,7 @@ public sealed class GetContactByIdHandler(
 
         var contactResult = await connection.QueryFirstOrDefaultAsync<ContactQueryResult>(
             contactSql,
-            new { request.Id, currentUser.OrganizationId });
+            new { request.Id, userContext.OrganizationId });
 
         if (contactResult is null)
             return ContactErrors.NotFoundById(request.Id);
@@ -72,7 +72,7 @@ public sealed class GetContactByIdHandler(
 
         var roles = (await connection.QueryAsync<string>(
             rolesSql,
-            new { request.Id, currentUser.OrganizationId }))
+            new { request.Id, userContext.OrganizationId }))
             .Order().ToList();
 
         ContactAddressResponse? address = null;

@@ -7,7 +7,7 @@ namespace Propentro.Application.Features.Contacts.Commands.CreateContact;
 public sealed class CreateContactHandler(
     IAppDbContext dbContext,
     IDbConnectionFactory db,
-    ICurrentUser currentUser) : ICommandHandler<CreateContactCommand, string>
+    IUserContext userContext) : ICommandHandler<CreateContactCommand, string>
 {
     public async Task<Result<string>> Handle(CreateContactCommand request, CancellationToken cancellationToken)
     {
@@ -26,7 +26,7 @@ public sealed class CreateContactHandler(
 
             var existingCount = await connection.ExecuteScalarAsync<int>(
                 duplicateCheckSql,
-                new { request.Email, currentUser.OrganizationId });
+                new { request.Email, userContext.OrganizationId });
 
             if (existingCount > 0)
                 return ContactErrors.DuplicateEmail;

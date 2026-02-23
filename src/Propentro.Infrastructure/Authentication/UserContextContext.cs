@@ -4,16 +4,16 @@ using Dapper;
 using Microsoft.AspNetCore.Http;
 using Serilog;
 
-namespace Propentro.Infrastructure.Services;
+namespace Propentro.Infrastructure.Authentication;
 
 /// <summary>
 /// Provides access to the current authenticated user's context.
 /// Orchestrates identity resolution and organization membership verification.
 /// </summary>
-public sealed class CurrentUserService(
+public sealed class UserContextContextContext(
     IHttpContextAccessor httpContextAccessor,
     IExternalIdResolver idResolver,
-    IDbConnectionFactory db) : ICurrentUser, ICurrentUserInitializer
+    IDbConnectionFactory db) : IUserContext, IUserContextInitializer
 {
     private Guid _userId = Guid.Empty;
     private Guid _organizationId = Guid.Empty;

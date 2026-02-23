@@ -7,7 +7,7 @@ namespace Propentro.Application.Features.Activities.Queries.GetActivities;
 
 public sealed class GetActivitiesHandler(
     IDbConnectionFactory db,
-    ICurrentUser currentUser) : IQueryHandler<GetActivitiesQuery, PagedResult<ActivityResponse>>
+    IUserContext userContext) : IQueryHandler<GetActivitiesQuery, PagedResult<ActivityResponse>>
 {
     public async Task<Result<PagedResult<ActivityResponse>>> Handle(
         GetActivitiesQuery request,
@@ -25,7 +25,7 @@ public sealed class GetActivitiesHandler(
 
         var contactId = await connection.QueryFirstOrDefaultAsync<Guid?>(
             contactCheckSql,
-            new { request.ContactId, currentUser.OrganizationId });
+            new { request.ContactId, userContext.OrganizationId });
 
         if (contactId is null)
             return ActivityErrors.ContactNotFound;
@@ -41,7 +41,7 @@ public sealed class GetActivitiesHandler(
 
         var totalCount = await connection.ExecuteScalarAsync<int>(
             countSql,
-            new { EntityId = contactId.Value, currentUser.OrganizationId });
+            new { EntityId = contactId.Value, userContext.OrganizationId });
 
         var offset = (request.Page - 1) * request.PageSize;
 
@@ -68,7 +68,7 @@ public sealed class GetActivitiesHandler(
 
         var rows = (await connection.QueryAsync<ActivityQueryResult>(
             dataSql,
-            new { EntityId = contactId.Value, currentUser.OrganizationId, Offset = offset, PageSize = request.PageSize }))
+            new { EntityId = contactId.Value, userContext.OrganizationId, Offset = offset, PageSize = request.PageSize }))
             .ToList();
 
         var items = rows.Select(r => new ActivityResponse(
