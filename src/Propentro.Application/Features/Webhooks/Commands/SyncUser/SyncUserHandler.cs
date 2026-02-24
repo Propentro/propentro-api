@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Models;
 using Propentro.Domain.Common;
+using Propentro.Domain.Entities.Identity.Events;
 
 namespace Propentro.Application.Features.Webhooks.Commands.SyncUser;
 
@@ -33,6 +34,8 @@ public sealed class SyncUserHandler(IAppDbContext dbContext) : ICommandHandler<S
             };
 
             dbContext.Users.Add(user);
+            dbContext.AddOutboxEvent(new UserCreatedEvent(user.Id, Guid.Empty));
+
             Log.Information("Created user {PublicId} for external ID {ExternalId}",
                 user.PublicId, request.ExternalId);
         }

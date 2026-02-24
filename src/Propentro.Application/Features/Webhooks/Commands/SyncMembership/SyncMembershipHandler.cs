@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Models;
+using Propentro.Domain.Entities.Identity.Events;
 
 namespace Propentro.Application.Features.Webhooks.Commands.SyncMembership;
 
@@ -73,6 +74,7 @@ public sealed class SyncMembershipHandler(
                 Status = "active"
             };
             dbContext.OrganizationUsers.Add(membership);
+            dbContext.AddOutboxEvent(new MembershipCreatedEvent(user.Id, org.Id));
 
             Log.Information("Created membership for user {UserPublicId} in org {OrgPublicId}",
                 user.PublicId, org.PublicId);

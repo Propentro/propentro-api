@@ -24,6 +24,8 @@ public sealed class AppDbContext(
         WriteIndented = false
     };
 
+    private readonly List<IDomainEvent> _pendingEvents = [];
+
     // Organization & User Management
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<User> Users => Set<User>();
@@ -159,37 +161,44 @@ public sealed class AppDbContext(
         }
     }
 
+    /// <inheritdoc />
+    public void AddOutboxEvent(IDomainEvent domainEvent) => _pendingEvents.Add(domainEvent);
+
     private void PersistDomainEventsToOutbox(Guid userId)
     {
-        var domainEvents = ChangeTracker.Entries<AggregateRoot>()
-            .SelectMany(e => e.Entity.DomainEvents)
-            .ToList();
-
-        foreach (var domainEvent in domainEvents)
+        // Collect events from AggregateRoot entities (automatic)
+        foreach (var entry in ChangeTracker.Entries<AggregateRoot>())
         {
-            var eventType = domainEvent.EventType;
-            var aggregateType = eventType[..eventType.IndexOf('.')];
-
-            var outboxMessage = new OutboxMessage
-            {
-                Id = Guid.CreateVersion7(),
-                OrganizationId = domainEvent.OrganizationId,
-                EventType = eventType,
-                AggregateType = aggregateType,
-                AggregateId = domainEvent.AggregateId,
-                Payload = JsonSerializer.Serialize<object>(domainEvent, _jsonOptions),
-                Status = "pending",
-                CreatedAt = domainEvent.OccurredAt,
-                CreatedById = userId != Guid.Empty ? userId : null
-            };
-
-            OutboxMessages.Add(outboxMessage);
+            _pendingEvents.AddRange(entry.Entity.DomainEvents);
+            entry.Entity.ClearDomainEvents();
         }
 
-        foreach (var entry in ChangeTracker.Entries<AggregateRoot>())
-            entry.Entity.ClearDomainEvents();
+        if (_pendingEvents.Count == 0)
+            return;
 
-        if (domainEvents.Count > 0)
-            Log.Debug("Persisted {EventCount} domain events to outbox", domainEvents.Count);
+        // Persist all events (both manual and AggregateRoot) to outbox
+        foreach (var domainEvent in _pendingEvents)
+            OutboxMessages.Add(CreateOutboxMessage(domainEvent, userId));
+
+        Log.Debug("Persisted {EventCount} domain events to outbox", _pendingEvents.Count);
+        _pendingEvents.Clear();
+    }
+
+    private static OutboxMessage CreateOutboxMessage(IDomainEvent domainEvent, Guid userId)
+    {
+        string eventType = domainEvent.EventType;
+
+        return new OutboxMessage
+        {
+            Id = Guid.CreateVersion7(),
+            OrganizationId = domainEvent.OrganizationId,
+            EventType = eventType,
+            AggregateType = eventType[..eventType.IndexOf('.')],
+            AggregateId = domainEvent.AggregateId,
+            Payload = JsonSerializer.Serialize<object>(domainEvent, _jsonOptions),
+            Status = "pending",
+            CreatedAt = domainEvent.OccurredAt,
+            CreatedById = userId != Guid.Empty ? userId : null
+        };
     }
 }

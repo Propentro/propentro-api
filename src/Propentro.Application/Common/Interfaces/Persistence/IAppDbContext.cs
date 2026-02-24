@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Propentro.Domain.Common.Interfaces;
 using Activity = Propentro.Domain.Entities.Activities.Activity;
 
 namespace Propentro.Application.Common.Interfaces.Persistence;
@@ -73,6 +74,13 @@ public interface IAppDbContext
     /// Used for transaction management in UnitOfWork pattern.
     /// </summary>
     DatabaseFacade Database { get; }
+
+    /// <summary>
+    /// Enqueues a domain event to the outbox for async processing.
+    /// Use this for entities that don't extend AggregateRoot (e.g., Identity entities)
+    /// where events can't be collected automatically via the change tracker.
+    /// </summary>
+    void AddOutboxEvent(IDomainEvent domainEvent);
 
     /// <summary>
     /// Saves all changes made in this context to the database.

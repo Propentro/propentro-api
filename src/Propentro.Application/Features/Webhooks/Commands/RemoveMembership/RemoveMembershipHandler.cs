@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Models;
+using Propentro.Domain.Entities.Identity.Events;
 
 namespace Propentro.Application.Features.Webhooks.Commands.RemoveMembership;
 
@@ -61,6 +62,7 @@ public sealed class RemoveMembershipHandler(
 
         if (membership is not null)
         {
+            dbContext.AddOutboxEvent(new MembershipRemovedEvent(user.Id, org.Id));
             dbContext.OrganizationUsers.Remove(membership);
             Log.Information("Removed membership for user {UserPublicId} from org {OrgPublicId}",
                 user.PublicId, org.PublicId);
