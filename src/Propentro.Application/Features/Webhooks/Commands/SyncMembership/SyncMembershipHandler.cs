@@ -140,6 +140,7 @@ public sealed class SyncMembershipHandler(
     {
         "org:organisation_owner" => "Owner",
         "org:organisation_manager" => "Manager",
-        "org:organisation_viewer" => "Viewer"
+        "org:organisation_viewer" => "Viewer",
+        _ => "Viewer" // Default to least privileged role
     };
 }
