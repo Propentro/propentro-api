@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Serilog;
 
-namespace Propentro.Infrastructure.Services;
+namespace Propentro.Infrastructure.Storage;
 
 /// <summary>
 /// Blob storage service for Cloudflare R2 (S3-compatible API).

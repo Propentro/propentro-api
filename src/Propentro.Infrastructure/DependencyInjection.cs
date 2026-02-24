@@ -14,7 +14,7 @@ using Propentro.Infrastructure.Caching;
 using Propentro.Infrastructure.Clock;
 using Propentro.Infrastructure.Outbox;
 using Propentro.Infrastructure.Persistence;
-using Propentro.Infrastructure.Services;
+using Propentro.Infrastructure.Storage;
 using Propentro.Infrastructure.Webhooks;
 using Quartz;
 
