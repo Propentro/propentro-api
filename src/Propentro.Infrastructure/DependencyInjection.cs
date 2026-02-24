@@ -26,16 +26,16 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.Configure<CacheOptions>(configuration.GetSection(CacheOptions.SectionName));
-
         services.AddDatabase(configuration);
         services.AddCaching(configuration);
         services.AddIdentityServices();
-        services.AddCoreInfraServices();
         services.AddPermissionAuthorization();
         services.AddClerkAuthentication(configuration);
         services.AddOutbox(configuration);
         services.AddWebhooks(configuration);
+
+        services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+        services.AddSingleton<IBlobStorageService, BlobStorageService>();
 
         return services;
     }
@@ -84,25 +84,14 @@ public static class DependencyInjection
 
     private static IServiceCollection AddIdentityServices(this IServiceCollection services)
     {
-        // ClerkIdResolver - Singleton (stateless, pure ID resolution)
         services.AddSingleton<ClerkIdResolver>();
         services.AddSingleton<IExternalIdResolver>(sp => sp.GetRequiredService<ClerkIdResolver>());
 
-        // CurrentUserService - Scoped (per-request identity orchestration + org membership check)
         services.AddScoped<UserContext>();
         services.AddScoped<IUserContext>(sp => sp.GetRequiredService<UserContext>());
         services.AddScoped<IUserContextInitializer>(sp => sp.GetRequiredService<UserContext>());
 
-        // PermissionService - Scoped (depends on ICacheService)
         services.AddScoped<IPermissionService, PermissionService>();
-
-        return services;
-    }
-
-    private static IServiceCollection AddCoreInfraServices(this IServiceCollection services)
-    {
-        services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
-        services.AddSingleton<IBlobStorageService, BlobStorageService>();
 
         return services;
     }
@@ -114,9 +103,6 @@ public static class DependencyInjection
 
         services.AddAuthorization(options =>
         {
-            // Default policy applies to ALL endpoints with .RequireAuthorization():
-            // 1. RequireAuthenticatedUser → JWT must be valid (DenyAnonymousAuthorizationRequirement)
-            // 2. ActiveUserRequirement   → User and Org must be resolved to active internal IDs
             options.DefaultPolicy = new AuthorizationPolicyBuilder()
                 .RequireAuthenticatedUser()
                 .AddRequirements(new ActiveUserRequirement())
@@ -126,15 +112,46 @@ public static class DependencyInjection
         return services;
     }
 
-    private static IServiceCollection AddWebhooks(
+    private static IServiceCollection AddClerkAuthentication(
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Only register if webhook secret is configured
-        if (!string.IsNullOrWhiteSpace(configuration["Clerk:WebhookSecret"]))
-            services.AddSingleton<ClerkWebhookVerifier>();
+        var clerkAuthority = configuration["Clerk:Authority"]
+            ?? throw new InvalidOperationException("Clerk:Authority not configured");
 
-        services.AddSingleton<WebhookIdempotencyStore>();
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.Authority = clerkAuthority;
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateAudience = false,
+                    ValidateIssuer = true,
+                    ValidIssuer = clerkAuthority,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.FromMinutes(1),
+                    NameClaimType = ClaimTypes.NameIdentifier
+                };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnAuthenticationFailed = context =>
+                    {
+                        Serilog.Log.Warning(
+                            context.Exception,
+                            "JWT authentication failed: {ErrorMessage}",
+                            context.Exception.Message);
+                        return Task.CompletedTask;
+                    },
+                    OnTokenValidated = context =>
+                    {
+                        Serilog.Log.Debug(
+                            "JWT token validated for user: {UserId}",
+                            context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+                        return Task.CompletedTask;
+                    }
+                };
+            });
 
         return services;
     }
@@ -169,61 +186,14 @@ public static class DependencyInjection
         return services;
     }
 
-    private static IServiceCollection AddClerkAuthentication(
+    private static IServiceCollection AddWebhooks(
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var clerkAuthority = configuration["Clerk:Authority"];
-        if (string.IsNullOrWhiteSpace(clerkAuthority))
-            throw new InvalidOperationException("Clerk:Authority not configured");
+        if (!string.IsNullOrWhiteSpace(configuration["Clerk:WebhookSecret"]))
+            services.AddSingleton<ClerkWebhookVerifier>();
 
-        // Audience is typically the Clerk publishable key or the frontend application URL
-        // If not configured, audience validation is disabled (common for Clerk)
-        var clerkAudience = configuration["Clerk:Audience"];
-        var validateAudience = !string.IsNullOrEmpty(clerkAudience);
-
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                options.Authority = clerkAuthority;
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    // Audience validation - Clerk JWTs may not have an audience claim
-                    ValidateAudience = validateAudience,
-                    ValidAudience = clerkAudience,
-
-                    // Issuer validation - Clerk's JWKS URL
-                    ValidateIssuer = true,
-                    ValidIssuer = clerkAuthority,
-
-                    // Lifetime validation
-                    ValidateLifetime = true,
-                    ClockSkew = TimeSpan.FromMinutes(1),
-
-                    // Map the Clerk user ID claim
-                    NameClaimType = ClaimTypes.NameIdentifier
-                };
-
-                // Events for debugging authentication issues
-                options.Events = new JwtBearerEvents
-                {
-                    OnAuthenticationFailed = context =>
-                    {
-                        Serilog.Log.Warning(
-                            context.Exception,
-                            "JWT authentication failed: {ErrorMessage}",
-                            context.Exception.Message);
-                        return Task.CompletedTask;
-                    },
-                    OnTokenValidated = context =>
-                    {
-                        Serilog.Log.Debug(
-                            "JWT token validated for user: {UserId}",
-                            context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-                        return Task.CompletedTask;
-                    }
-                };
-            });
+        services.AddSingleton<WebhookIdempotencyStore>();
 
         return services;
     }
