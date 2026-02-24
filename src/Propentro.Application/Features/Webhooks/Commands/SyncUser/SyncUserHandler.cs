@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Models;
 using Propentro.Domain.Common;
-using Serilog;
 
 namespace Propentro.Application.Features.Webhooks.Commands.SyncUser;
 

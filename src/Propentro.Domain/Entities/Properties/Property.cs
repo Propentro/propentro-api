@@ -1,5 +1,6 @@
 using Propentro.Domain.Common;
 using Propentro.Domain.Entities.Addresses;
+using Propentro.Domain.Entities.Properties.Events;
 using Propentro.Domain.Entities.Units;
 
 namespace Propentro.Domain.Entities.Properties;
@@ -36,4 +37,7 @@ public sealed class Property : AggregateRoot
         Name = name;
         Category = category;
     }
+
+    public void MarkAsCreated(Guid organizationId) => RaiseDomainEvent(new PropertyCreatedEvent(Id, organizationId));
+    public void MarkAsUpdated(Guid organizationId) => RaiseDomainEvent(new PropertyUpdatedEvent(Id, organizationId));
 }

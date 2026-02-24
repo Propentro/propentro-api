@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Models;
-using Serilog;
 
 namespace Propentro.Application.Features.Webhooks.Commands.DeactivateUser;
 

@@ -7,13 +7,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Interfaces.Authorization;
+using Propentro.Application.Common.Interfaces.Messaging;
 using Propentro.Infrastructure.Authentication;
 using Propentro.Infrastructure.Authorization;
 using Propentro.Infrastructure.Caching;
 using Propentro.Infrastructure.Clock;
 using Propentro.Infrastructure.Outbox;
 using Propentro.Infrastructure.Persistence;
-using Propentro.Infrastructure.Services;
+using Propentro.Infrastructure.Storage;
 using Propentro.Infrastructure.Webhooks;
 using Quartz;
 
@@ -25,16 +26,18 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.Configure<CacheOptions>(configuration.GetSection(CacheOptions.SectionName));
-
         services.AddDatabase(configuration);
         services.AddCaching(configuration);
         services.AddIdentityServices();
-        services.AddCoreInfraServices();
         services.AddPermissionAuthorization();
         services.AddClerkAuthentication(configuration);
         services.AddOutbox(configuration);
         services.AddWebhooks(configuration);
+
+        services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+
+        services.Configure<BlobStorageOptions>(configuration.GetSection(BlobStorageOptions.SectionName));
+        services.AddSingleton<IBlobStorageService, BlobStorageService>();
 
         return services;
     }
@@ -56,25 +59,19 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var cacheOptions = configuration
-            .GetSection(CacheOptions.SectionName)
-            .Get<CacheOptions>() ?? new CacheOptions();
+        services.Configure<CachingOptions>(configuration.GetSection(CachingOptions.SectionName));
 
-        if (cacheOptions.Provider == CacheProvider.Redis
-            && !string.IsNullOrWhiteSpace(cacheOptions.RedisConnectionString))
+        var redisConnectionString = configuration.GetConnectionString("Redis");
+
+        if (!string.IsNullOrWhiteSpace(redisConnectionString))
         {
             services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(
-                StackExchange.Redis.ConnectionMultiplexer.Connect(cacheOptions.RedisConnectionString));
+                StackExchange.Redis.ConnectionMultiplexer.Connect(redisConnectionString));
             services.AddSingleton<ICacheService, RedisCacheService>();
         }
         else
         {
-            // Fallback to in-memory cache for development or single-instance deployments
-            services.AddMemoryCache(options =>
-            {
-                options.SizeLimit = cacheOptions.MemoryCacheSizeLimit;
-                options.ExpirationScanFrequency = cacheOptions.MemoryCacheExpirationScanFrequency;
-            });
+            services.AddMemoryCache();
             services.AddSingleton<ICacheService, MemoryCacheService>();
         }
 
@@ -83,25 +80,14 @@ public static class DependencyInjection
 
     private static IServiceCollection AddIdentityServices(this IServiceCollection services)
     {
-        // ClerkIdResolver - Singleton (stateless, pure ID resolution)
         services.AddSingleton<ClerkIdResolver>();
         services.AddSingleton<IExternalIdResolver>(sp => sp.GetRequiredService<ClerkIdResolver>());
 
-        // CurrentUserService - Scoped (per-request identity orchestration + org membership check)
         services.AddScoped<UserContext>();
         services.AddScoped<IUserContext>(sp => sp.GetRequiredService<UserContext>());
         services.AddScoped<IUserContextInitializer>(sp => sp.GetRequiredService<UserContext>());
 
-        // PermissionService - Scoped (depends on ICacheService)
         services.AddScoped<IPermissionService, PermissionService>();
-
-        return services;
-    }
-
-    private static IServiceCollection AddCoreInfraServices(this IServiceCollection services)
-    {
-        services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
-        services.AddSingleton<IBlobStorageService, BlobStorageService>();
 
         return services;
     }
@@ -113,9 +99,6 @@ public static class DependencyInjection
 
         services.AddAuthorization(options =>
         {
-            // Default policy applies to ALL endpoints with .RequireAuthorization():
-            // 1. RequireAuthenticatedUser → JWT must be valid (DenyAnonymousAuthorizationRequirement)
-            // 2. ActiveUserRequirement   → User and Org must be resolved to active internal IDs
             options.DefaultPolicy = new AuthorizationPolicyBuilder()
                 .RequireAuthenticatedUser()
                 .AddRequirements(new ActiveUserRequirement())
@@ -125,46 +108,12 @@ public static class DependencyInjection
         return services;
     }
 
-    private static IServiceCollection AddWebhooks(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        // Only register if webhook secret is configured
-        if (!string.IsNullOrWhiteSpace(configuration["Clerk:WebhookSecret"]))
-            services.AddSingleton<ClerkWebhookVerifier>();
-
-        services.AddSingleton<WebhookIdempotencyStore>();
-
-        return services;
-    }
-
-    private static IServiceCollection AddOutbox(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.Configure<OutboxOptions>(configuration.GetSection(OutboxOptions.SectionName));
-
-        services.AddQuartz();
-
-        services.AddQuartzHostedService(options => options.WaitForJobsToComplete = true);
-
-        services.ConfigureOptions<ProcessOutboxMessagesJobSetup>();
-
-        return services;
-    }
-
     private static IServiceCollection AddClerkAuthentication(
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var clerkAuthority = configuration["Clerk:Authority"];
-        if (string.IsNullOrWhiteSpace(clerkAuthority))
-            throw new InvalidOperationException("Clerk:Authority not configured");
-
-        // Audience is typically the Clerk publishable key or the frontend application URL
-        // If not configured, audience validation is disabled (common for Clerk)
-        var clerkAudience = configuration["Clerk:Audience"];
-        var validateAudience = !string.IsNullOrEmpty(clerkAudience);
+        var clerkAuthority = configuration["Clerk:Authority"]
+            ?? throw new InvalidOperationException("Clerk:Authority not configured");
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -172,23 +121,14 @@ public static class DependencyInjection
                 options.Authority = clerkAuthority;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    // Audience validation - Clerk JWTs may not have an audience claim
-                    ValidateAudience = validateAudience,
-                    ValidAudience = clerkAudience,
-
-                    // Issuer validation - Clerk's JWKS URL
+                    ValidateAudience = false,
                     ValidateIssuer = true,
                     ValidIssuer = clerkAuthority,
-
-                    // Lifetime validation
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.FromMinutes(1),
-
-                    // Map the Clerk user ID claim
                     NameClaimType = ClaimTypes.NameIdentifier
                 };
 
-                // Events for debugging authentication issues
                 options.Events = new JwtBearerEvents
                 {
                     OnAuthenticationFailed = context =>
@@ -208,6 +148,48 @@ public static class DependencyInjection
                     }
                 };
             });
+
+        return services;
+    }
+
+    private static IServiceCollection AddOutbox(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.Configure<OutboxOptions>(configuration.GetSection(OutboxOptions.SectionName));
+
+        services.AddQuartz();
+
+        services.AddQuartzHostedService(options => options.WaitForJobsToComplete = true);
+
+        services.ConfigureOptions<ProcessOutboxMessagesJobSetup>();
+
+        services.AddOutboxEventHandlers();
+
+        return services;
+    }
+
+    private static IServiceCollection AddOutboxEventHandlers(this IServiceCollection services)
+    {
+        var handlerTypes = typeof(IOutboxEventHandler).Assembly
+            .GetTypes()
+            .Where(t => t is { IsAbstract: false, IsInterface: false }
+                        && t.IsAssignableTo(typeof(IOutboxEventHandler)));
+
+        foreach (var type in handlerTypes)
+            services.AddSingleton(typeof(IOutboxEventHandler), type);
+
+        return services;
+    }
+
+    private static IServiceCollection AddWebhooks(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        if (!string.IsNullOrWhiteSpace(configuration["Clerk:WebhookSecret"]))
+            services.AddSingleton<ClerkWebhookVerifier>();
+
+        services.AddSingleton<WebhookIdempotencyStore>();
 
         return services;
     }

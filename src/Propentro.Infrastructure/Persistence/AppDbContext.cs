@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Domain.Common;
@@ -14,7 +13,7 @@ namespace Propentro.Infrastructure.Persistence;
 /// Entity Framework Core database context with automatic organization scoping,
 /// soft delete filtering, audit field management, and outbox-based domain event persistence.
 /// </summary>
-public sealed partial class AppDbContext(
+public sealed class AppDbContext(
     DbContextOptions<AppDbContext> options,
     IUserContext userContext,
     IDateTimeProvider dateTime) : DbContext(options), IAppDbContext
@@ -129,7 +128,7 @@ public sealed partial class AppDbContext(
         var userId = userContext.UserId;
 
         ApplyAuditFields(now, userId);
-        PersistDomainEventsToOutbox(now, userId);
+        PersistDomainEventsToOutbox(userId);
 
         return await base.SaveChangesAsync(cancellationToken);
     }
@@ -160,122 +159,37 @@ public sealed partial class AppDbContext(
         }
     }
 
-    private void PersistDomainEventsToOutbox(DateTimeOffset now, Guid userId)
+    private void PersistDomainEventsToOutbox(Guid userId)
     {
-        // Collect domain events from aggregate roots
         var domainEvents = ChangeTracker.Entries<AggregateRoot>()
             .SelectMany(e => e.Entity.DomainEvents)
             .ToList();
 
-        // Serialize domain events to outbox messages (committed atomically with business data)
         foreach (var domainEvent in domainEvents)
         {
-            var eventTypeName = DeriveEventType(domainEvent);
-            var aggregateType = DeriveAggregateType(domainEvent);
-            var aggregateId = ExtractAggregateId(domainEvent);
-            var organizationId = ExtractOrganizationId(domainEvent);
+            var eventType = domainEvent.EventType;
+            var aggregateType = eventType[..eventType.IndexOf('.')];
 
             var outboxMessage = new OutboxMessage
             {
                 Id = Guid.CreateVersion7(),
-                OrganizationId = organizationId,
-                EventType = eventTypeName,
+                OrganizationId = domainEvent.OrganizationId,
+                EventType = eventType,
                 AggregateType = aggregateType,
-                AggregateId = aggregateId,
+                AggregateId = domainEvent.AggregateId,
                 Payload = JsonSerializer.Serialize<object>(domainEvent, _jsonOptions),
                 Status = "pending",
-                CreatedAt = now,
+                CreatedAt = domainEvent.OccurredAt,
                 CreatedById = userId != Guid.Empty ? userId : null
             };
 
             OutboxMessages.Add(outboxMessage);
         }
 
-        // Clear domain events on entities before save
         foreach (var entry in ChangeTracker.Entries<AggregateRoot>())
             entry.Entity.ClearDomainEvents();
 
         if (domainEvents.Count > 0)
             Log.Debug("Persisted {EventCount} domain events to outbox", domainEvents.Count);
     }
-
-    /// <summary>
-    /// Derives the event type string from a domain event.
-    /// Convention: "aggregate.action" (e.g., ContactCreatedEvent → "contact.created")
-    /// </summary>
-    private static string DeriveEventType(IDomainEvent domainEvent)
-    {
-        var typeName = domainEvent.GetType().Name;
-
-        // Remove "Event" suffix
-        if (typeName.EndsWith("Event", StringComparison.Ordinal))
-            typeName = typeName[..^5];
-
-        // Split PascalCase into parts and convert to lowercase dot-separated
-        var parts = PascalCaseSplitRegex().Split(typeName);
-        var filtered = parts.Where(p => !string.IsNullOrEmpty(p)).Select(p => p.ToLowerInvariant()).ToArray();
-
-        // Convention: last part is the action (created, updated, activated), rest is the aggregate
-        return filtered.Length >= 2
-            ? $"{string.Join("_", filtered[..^1])}.{filtered[^1]}"
-            : string.Join(".", filtered);
-    }
-
-    /// <summary>
-    /// Derives the aggregate type from a domain event.
-    /// Convention: first part of the event name (e.g., ContactCreatedEvent → "contact")
-    /// </summary>
-    private static string DeriveAggregateType(IDomainEvent domainEvent)
-    {
-        var typeName = domainEvent.GetType().Name;
-
-        if (typeName.EndsWith("Event", StringComparison.Ordinal))
-            typeName = typeName[..^5];
-
-        var parts = PascalCaseSplitRegex().Split(typeName);
-        var filtered = parts.Where(p => !string.IsNullOrEmpty(p)).Select(p => p.ToLowerInvariant()).ToArray();
-
-        // Aggregate type is everything except the last word (the action)
-        return filtered.Length >= 2
-            ? string.Join("_", filtered[..^1])
-            : filtered.Length > 0 ? filtered[0] : "unknown";
-    }
-
-    /// <summary>
-    /// Extracts the aggregate ID from a domain event via reflection.
-    /// Looks for properties ending with "Id" that are Guid type (excluding OrganizationId).
-    /// </summary>
-    private static Guid ExtractAggregateId(IDomainEvent domainEvent)
-    {
-        var eventType = domainEvent.GetType();
-        var idProperty = eventType.GetProperties()
-            .FirstOrDefault(p =>
-                p.PropertyType == typeof(Guid) &&
-                p.Name.EndsWith("Id", StringComparison.Ordinal) &&
-                p.Name != "OrganizationId");
-
-        if (idProperty is not null)
-            return (Guid)idProperty.GetValue(domainEvent)!;
-
-        Log.Warning("Could not extract aggregate ID from {EventType}", eventType.Name);
-        return Guid.Empty;
-    }
-
-    /// <summary>
-    /// Extracts the organization ID from a domain event via reflection.
-    /// </summary>
-    private static Guid ExtractOrganizationId(IDomainEvent domainEvent)
-    {
-        var eventType = domainEvent.GetType();
-        var orgProperty = eventType.GetProperty("OrganizationId");
-
-        if (orgProperty is not null && orgProperty.PropertyType == typeof(Guid))
-            return (Guid)orgProperty.GetValue(domainEvent)!;
-
-        Log.Warning("Could not extract OrganizationId from {EventType}", eventType.Name);
-        return Guid.Empty;
-    }
-
-    [GeneratedRegex("(?=[A-Z])")]
-    private static partial Regex PascalCaseSplitRegex();
 }
