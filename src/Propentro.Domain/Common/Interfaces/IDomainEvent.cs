@@ -1,8 +1,8 @@
-using MediatR;
-
 namespace Propentro.Domain.Common.Interfaces;
 
-public interface IDomainEvent : INotification
+public interface IDomainEvent
 {
+    Guid AggregateId { get; }
+    Guid OrganizationId { get; }
     DateTimeOffset OccurredAt { get; }
 }

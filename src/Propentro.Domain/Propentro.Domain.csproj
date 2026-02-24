@@ -5,8 +5,4 @@
     <NoWarn>$(NoWarn);CA2227;CA1711;CA1716;CA1030;CA1062</NoWarn>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="MediatR" />
-  </ItemGroup>
-
 </Project>

@@ -76,11 +76,16 @@ src/
 │   └── DependencyInjection.cs
 │
 ├── Propentro.Domain/              # Domain entities and logic
-│   ├── Common/                    # Entity, AggregateRoot, ValueObject, PublicIdGenerator
-│   ├── Entities/                  # Domain entities (Property, Unit, Lease, Contact, Activity, etc.)
+│   ├── Common/                    # Entity, AggregateRoot, DomainEvent, ValueObject, PublicIdGenerator
+│   ├── Entities/                  # Domain entities with co-located Events/ folders
+│   │   ├── Contacts/
+│   │   │   ├── Contact.cs
+│   │   │   └── Events/            # ContactCreatedEvent, ContactUpdatedEvent, etc.
+│   │   └── Properties/
+│   │       ├── Property.cs
+│   │       └── Events/            # PropertyCreatedEvent, PropertyUpdatedEvent, etc.
 │   ├── ValueObjects/              # Money, DateRange
-│   ├── Enums/                     # LeaseStatus, UnitType, etc.
-│   └── Events/                    # Domain events
+│   └── Enums/                     # LeaseStatus, UnitType, etc.
 │
 ├── Propentro.Infrastructure/      # External concerns
 │   ├── Persistence/
@@ -182,7 +187,7 @@ public record CreateUnitCommand(
 // Command handler
 public class CreateUnitHandler(
     IAppDbContext dbContext,
-    ICurrentUser currentUser
+    IUserContext currentUser
 ) : ICommandHandler<CreateUnitCommand, string>
 {
     public async Task<Result<string>> Handle(
@@ -227,7 +232,7 @@ public record GetUnitByIdQuery(string Id) : IQuery<UnitDetailDto>;
 // Query handler (uses Dapper)
 public class GetUnitByIdHandler(
     IDbConnectionFactory db,
-    ICurrentUser currentUser
+    IUserContext currentUser
 ) : IQueryHandler<GetUnitByIdQuery, UnitDetailDto>
 {
     public async Task<Result<UnitDetailDto>> Handle(
@@ -592,7 +597,7 @@ var result = await connection.QueryAsync<UnitDto>(sql, new { currentUser.Organiz
 
 The application uses implicit organization-scoped multi-tenancy:
 
-1. **Current user** extracted from JWT claims via `ICurrentUser`
+1. **Current user** extracted from JWT claims via `IUserContext`
 2. **Global query filters** automatically scope all `IOrganizationScoped` entities by referencing `AppDbContext.CurrentOrganizationId` via lambda closures
 3. **SaveChangesAsync** automatically sets `OrganizationId` on new entities
 4. **Dapper queries** must include `organization_id = @OrganizationId` filter manually
@@ -609,7 +614,7 @@ const string sql = """
     """;
 ```
 
-**How global filters work:** `AppDbContext` exposes `CurrentOrganizationId` which delegates to `ICurrentUser.OrganizationId`. Each entity has an explicit `HasQueryFilter` call in `ApplyGlobalFilters()` that references `CurrentOrganizationId`. EF Core rebinds this DbContext property per query, ensuring correct tenant isolation. When adding a new entity, add the corresponding `HasQueryFilter` line in `AppDbContext.ApplyGlobalFilters()`.
+**How global filters work:** `AppDbContext` exposes `CurrentOrganizationId` which delegates to `IUserContext.OrganizationId`. Each entity has an explicit `HasQueryFilter` call in `ApplyGlobalFilters()` that references `CurrentOrganizationId`. EF Core rebinds this DbContext property per query, ensuring correct tenant isolation. When adding a new entity, add the corresponding `HasQueryFilter` line in `AppDbContext.ApplyGlobalFilters()`.
 
 ## Caching
 
@@ -666,44 +671,28 @@ Logging → QueryCaching → Validation → UnitOfWork → Handler
 
 ### Cache Invalidation Strategy
 
-**Start simple: invalidate in the handler that modifies data.**
-
-When only 1-2 handlers modify the same cached data, invalidate directly in the handler:
+Cache invalidation is done directly in handlers. Since it's a single line,
+repeating across Create/Update/Archive/Delete handlers is acceptable and explicit:
 
 ```csharp
-// In CreateContactHandler
-dbContext.Contacts.Add(contact);
 await cache.RemoveByPatternAsync($"org:{currentUser.OrganizationId}:contacts:*");
 ```
 
-**Extract to INotificationHandler when cache invalidation repeats across 3+ handlers.**
-
-When Create, Update, Archive, Unarchive, Delete all need to invalidate the same cache,
-extract to avoid duplication and missed invalidations:
-
-```csharp
-// Single handler covers all contact mutations
-public class InvalidateContactCacheHandler : INotificationHandler<ContactChangedEvent>
-{
-    public Task Handle(ContactChangedEvent e, CancellationToken ct)
-        => cache.RemoveByPatternAsync($"org:{e.OrganizationId}:contacts:*", ct);
-}
-```
-
-**Rule of thumb:** Handler-first, extract when it repeats. Don't pre-optimize.
+Do NOT use domain events or MediatR notifications for cache invalidation.
+Events are reserved for async outbox side-effects only.
 
 ### Side-Effect Patterns
 
-Two mechanisms for handling side-effects from domain events:
+| Concern | Where | Transaction | Guarantee |
+|---------|-------|-------------|-----------|
+| Activity log | Handler (direct write) | Same transaction | Atomic with business data |
+| Cache invalidation | Handler (direct call) | After save, before response | Best-effort (stale cache auto-expires) |
+| Email/webhook/push | Outbox (domain event) | Async background job | Guaranteed delivery with retry |
 
-| Mechanism | Runs When | Use For | Guarantee |
-|-----------|-----------|---------|-----------|
-| Handler code / MediatR INotificationHandler | During HTTP request (sync) | Cache invalidation, in-memory updates, activity logs (same DB) | None — if request crashes, side-effect is lost |
-| Outbox (background job) | After request completes (async) | Email, webhooks, external API calls, notifications | Guaranteed — persisted to DB, retried on failure |
-
-**Current state:** Outbox persists domain events but has no handler dispatch yet. All async side-effects will be routed through the outbox when needed.
-
-**Decision guide:** "Will the user's request feel slow if this fails or takes time?" → Outbox. "Is this fast and in-process?" → Handler directly.
+**Decision guide:**
+- "Must be atomic with the business operation?" → Direct write in handler
+- "Is it a single line and acceptable to repeat?" → Direct call in handler
+- "Needs guaranteed delivery or is slow/external?" → Domain event → Outbox
 
 ## Testing Guidelines
 
@@ -713,7 +702,7 @@ Two mechanisms for handling side-effects from domain events:
 public class CreateUnitHandlerTests
 {
     private readonly IAppDbContext _dbContext = Substitute.For<IAppDbContext>();
-    private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly IUserContext _currentUser = Substitute.For<IUserContext>();
     private readonly CreateUnitHandler _handler;
 
     public CreateUnitHandlerTests()
@@ -762,14 +751,16 @@ public class UnitIntegrationTests : IAsyncLifetime
 
 1. Create entity in `Domain/Entities/` extending `AggregateRoot` (or `OrganizationEntity`)
 2. Add constructor with prefix: `public MyEntity(...) : base("mye") { ... }`
-3. Add `DbSet` in `AppDbContext`
-4. Add `HasQueryFilter` in `AppDbContext.ApplyGlobalFilters()`
-5. Create configuration in `Infrastructure/Persistence/Configurations/`
-6. Create Request/Response types in `Contracts/[Feature]/`
-7. Create Commands/Queries in `Application/Features/[Feature]/`
-8. Create Endpoints in `Api/Endpoints/`
-9. Register endpoints in `EndpointExtensions.MapApiEndpoints()`
-10. Add migration: `dotnet ef migrations add Add{Entity}`
+3. Create `Events/` folder under entity folder with domain events
+4. Add `MarkAs{Action}` methods to entity for each event
+5. Add `DbSet` in `AppDbContext`
+6. Add `HasQueryFilter` in `AppDbContext.ApplyGlobalFilters()`
+7. Create configuration in `Infrastructure/Persistence/Configurations/`
+8. Create Request/Response types in `Contracts/[Feature]/`
+9. Create Commands/Queries in `Application/Features/[Feature]/`
+10. Create Endpoints in `Api/Endpoints/`
+11. Register endpoints in `EndpointExtensions.MapApiEndpoints()`
+12. Add migration: `dotnet ef migrations add Add{Entity}`
 
 ### Adding a New Command
 
@@ -778,6 +769,9 @@ public class UnitIntegrationTests : IAsyncLifetime
 3. Create `{Verb}{Entity}Validator.cs` with FluentValidation rules
 4. Add request type to `Contracts/[Feature]/`
 5. Map endpoint in `Api/Endpoints/{Entity}Endpoints.cs`
+6. Add activity log write if the action should appear in timeline
+7. Add cache invalidation if entity has cached queries
+8. Add domain event (`MarkAs{Action}`) if async side-effects are needed
 
 ### Adding a New Query
 
@@ -852,12 +846,12 @@ Domain events are persisted to the `outbox_messages` table atomically with busin
 
 ```
 Handler raises event → entity.MarkAs{Action}(orgId)
-    → RaiseDomainEvent(new {Entity}{Action}Event(Id, OrgId))
+    → RaiseDomainEvent(new ContactCreatedEvent(Id, OrganizationId))
     → UnitOfWorkBehavior → SaveChangesAsync
-    → AppDbContext collects DomainEvents, serializes to OutboxMessage
+    → AppDbContext collects DomainEvents from AggregateRoots
+    → Serializes to OutboxMessage (using explicit AggregateId/OrganizationId from DomainEvent base)
     → Saved atomically with business data
-    → ProcessOutboxMessagesJob polls pending messages
-    → Marks completed (handler dispatch to be added when first async side-effect is needed)
+    → ProcessOutboxMessagesJob polls and dispatches
 ```
 
 ### Event Type Naming
@@ -920,37 +914,97 @@ The webhook endpoint is the **only Clerk-aware code**. It translates Clerk event
 - UnitOfWork pattern respected (no `SaveChangesAsync` in handlers)
 - `ExternalId` + `AuthProvider` tuple for all lookups (auth-provider agnostic)
 
-## Domain Event Conventions
+## Domain Events (Outbox-Only)
 
-### Naming
+Domain events are **exclusively asynchronous**. They are persisted to the outbox table atomically
+with business data and processed by the background job. There is NO synchronous MediatR dispatch.
 
-- Event records: `{Entity}{Action}Event` (e.g., `ContactCreatedEvent`, `PropertyUpdatedEvent`)
-- Located in `Domain/Events/`
-- Implement `IDomainEvent` (which extends `INotification`)
+### Architecture Decision
 
-### Required Properties
+| Concern | Mechanism | Transaction |
+|---------|-----------|-------------|
+| Activity log | Direct write in handler | Same transaction |
+| Cache invalidation | Direct call in handler | Post-save (handler code) |
+| Email/notification | Domain event → Outbox | Async, background job |
+| Webhook dispatch | Domain event → Outbox | Async, background job |
 
-Every domain event must include:
-- **Aggregate ID** (`Guid`) — the internal ID of the entity that raised the event
-- **OrganizationId** (`Guid`) — for multi-tenant isolation in the outbox
+**Why no synchronous events?**
+- Cache invalidation is a single line — repeating it across handlers is acceptable
+- Activity logs are part of the business operation and must be atomic
+- Event infrastructure is reserved for guaranteed-delivery async side-effects
+
+### Base Types
+
+```csharp
+// Interface — no MediatR dependency
+public interface IDomainEvent
+{
+    Guid AggregateId { get; }
+    Guid OrganizationId { get; }
+    DateTimeOffset OccurredAt { get; }
+}
+
+// Base record — all events inherit from this
+public abstract record DomainEvent(Guid AggregateId, Guid OrganizationId) : IDomainEvent
+{
+    public DateTimeOffset OccurredAt { get; } = DateTimeOffset.UtcNow;
+}
+```
+
+### Event Location Convention
+
+Events live inside their feature's entity folder:
+
+```
+Domain/Entities/Contacts/Events/ContactCreatedEvent.cs
+Domain/Entities/Properties/Events/PropertyCreatedEvent.cs
+```
+
+NOT in a top-level `Domain/Events/` folder.
+
+### Event Record Pattern
+
+```csharp
+public record ContactCreatedEvent(Guid ContactId, Guid OrganizationId)
+    : DomainEvent(ContactId, OrganizationId);
+```
 
 ### Raising Events
 
-Events are raised via `entity.MarkAs{Action}(organizationId)` methods on aggregate roots:
-
 ```csharp
-// In entity class
+// In entity (MarkAs{Action} methods)
 public void MarkAsCreated(Guid organizationId)
-{
-    RaiseDomainEvent(new ContactCreatedEvent(Id, organizationId));
-}
+    => RaiseDomainEvent(new ContactCreatedEvent(Id, organizationId));
 
-// In command handler (after adding to DbContext)
+// In handler — call AFTER adding to DbContext
 dbContext.Contacts.Add(contact);
 contact.MarkAsCreated(currentUser.OrganizationId);
 ```
 
-**Call `MarkAs{Action}` after adding the entity to the DbContext** so the change tracker picks it up during `SaveChangesAsync`.
+### Handler-Level Side Effects
+
+Cache invalidation and activity logs are NOT event-driven. They are direct calls in the handler:
+
+```csharp
+public async Task<Result<string>> Handle(CreateContactCommand request, CancellationToken ct)
+{
+    var contact = new Contact(displayName, request.Kind);
+    dbContext.Contacts.Add(contact);
+
+    // Activity log — same transaction (UnitOfWork commits both)
+    var activity = new Activity("contact", contact.Id, "system_event");
+    activity.Title = "Contact created";
+    dbContext.Activities.Add(activity);
+
+    // Domain event — outbox (async side-effects)
+    contact.MarkAsCreated(currentUser.OrganizationId);
+
+    // Cache invalidation — direct call
+    await cache.RemoveByPatternAsync($"org:{currentUser.OrganizationId}:contacts:*");
+
+    return contact.PublicId;
+}
+```
 
 ## Troubleshooting
 

@@ -172,8 +172,8 @@ public sealed partial class AppDbContext(
         {
             var eventTypeName = DeriveEventType(domainEvent);
             var aggregateType = DeriveAggregateType(domainEvent);
-            var aggregateId = ExtractAggregateId(domainEvent);
-            var organizationId = ExtractOrganizationId(domainEvent);
+            var aggregateId = domainEvent.AggregateId;
+            var organizationId = domainEvent.OrganizationId;
 
             var outboxMessage = new OutboxMessage
             {
@@ -239,41 +239,6 @@ public sealed partial class AppDbContext(
         return filtered.Length >= 2
             ? string.Join("_", filtered[..^1])
             : filtered.Length > 0 ? filtered[0] : "unknown";
-    }
-
-    /// <summary>
-    /// Extracts the aggregate ID from a domain event via reflection.
-    /// Looks for properties ending with "Id" that are Guid type (excluding OrganizationId).
-    /// </summary>
-    private static Guid ExtractAggregateId(IDomainEvent domainEvent)
-    {
-        var eventType = domainEvent.GetType();
-        var idProperty = eventType.GetProperties()
-            .FirstOrDefault(p =>
-                p.PropertyType == typeof(Guid) &&
-                p.Name.EndsWith("Id", StringComparison.Ordinal) &&
-                p.Name != "OrganizationId");
-
-        if (idProperty is not null)
-            return (Guid)idProperty.GetValue(domainEvent)!;
-
-        Log.Warning("Could not extract aggregate ID from {EventType}", eventType.Name);
-        return Guid.Empty;
-    }
-
-    /// <summary>
-    /// Extracts the organization ID from a domain event via reflection.
-    /// </summary>
-    private static Guid ExtractOrganizationId(IDomainEvent domainEvent)
-    {
-        var eventType = domainEvent.GetType();
-        var orgProperty = eventType.GetProperty("OrganizationId");
-
-        if (orgProperty is not null && orgProperty.PropertyType == typeof(Guid))
-            return (Guid)orgProperty.GetValue(domainEvent)!;
-
-        Log.Warning("Could not extract OrganizationId from {EventType}", eventType.Name);
-        return Guid.Empty;
     }
 
     [GeneratedRegex("(?=[A-Z])")]
