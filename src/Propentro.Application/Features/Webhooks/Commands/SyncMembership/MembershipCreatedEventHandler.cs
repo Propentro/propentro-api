@@ -14,7 +14,7 @@ public sealed class MembershipCreatedEventHandler(
 
     public async Task HandleAsync(string payload, CancellationToken cancellationToken = default)
     {
-        var domainEvent = JsonSerializer.Deserialize<MembershipCreatedEvent>(payload);
+        var domainEvent = JsonSerializer.Deserialize<MembershipCreatedEvent>(payload, OutboxJsonOptions.Instance);
 
         Log.Information("Handling {EventType} for user {UserId} in org {OrganizationId}",
             EventType, domainEvent!.UserId, domainEvent.OrganizationId);

@@ -9,7 +9,7 @@ public sealed class ContactCreatedEventHandler : IOutboxEventHandler
 
     public Task HandleAsync(string payload, CancellationToken cancellationToken = default)
     {
-        var domainEvent = JsonSerializer.Deserialize<ContactCreatedEvent>(payload);
+        var domainEvent = JsonSerializer.Deserialize<ContactCreatedEvent>(payload, OutboxJsonOptions.Instance);
 
         Log.Information("Handling {EventType} for contact {ContactId}", EventType, domainEvent!.ContactId);
 
