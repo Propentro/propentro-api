@@ -129,55 +129,68 @@ internal static class WebhookEndpoints
             case "user.created":
             case "user.updated":
                 var email = GetPrimaryEmail(data);
-                if (data.Id is not null && email is not null)
+                if (data.Id is null || email is null)
                 {
-                    await sender.Send(new SyncUserCommand(
-                        data.Id, _authProvider, email, data.FirstName, data.LastName), ct);
+                    Log.Warning("Skipping {EventType}: missing Id or email in payload", webhookEvent.Type);
+                    break;
                 }
+                await sender.Send(new SyncUserCommand(
+                    data.Id, _authProvider, email, data.FirstName, data.LastName), ct);
                 break;
 
             case "user.deleted":
-                if (data.Id is not null)
+                if (data.Id is null)
                 {
-                    await sender.Send(new DeactivateUserCommand(data.Id, _authProvider), ct);
+                    Log.Warning("Skipping user.deleted: missing Id in payload");
+                    break;
                 }
+                await sender.Send(new DeactivateUserCommand(data.Id, _authProvider), ct);
                 break;
 
             case "organization.created":
             case "organization.updated":
-                if (data.Id is not null && data.Name is not null && data.Slug is not null)
+                if (data.Id is null || data.Name is null || data.Slug is null)
                 {
-                    await sender.Send(new SyncOrganizationCommand(
-                        data.Id, _authProvider, data.Name, data.Slug, data.LogoUrl), ct);
+                    Log.Warning("Skipping {EventType}: missing Id, Name, or Slug in payload", webhookEvent.Type);
+                    break;
                 }
+                await sender.Send(new SyncOrganizationCommand(
+                    data.Id, _authProvider, data.Name, data.Slug, data.LogoUrl), ct);
                 break;
 
             case "organization.deleted":
-                if (data.Id is not null)
+                if (data.Id is null)
                 {
-                    await sender.Send(new DeactivateOrganizationCommand(data.Id, _authProvider), ct);
+                    Log.Warning("Skipping organization.deleted: missing Id in payload");
+                    break;
                 }
+                await sender.Send(new DeactivateOrganizationCommand(data.Id, _authProvider), ct);
                 break;
 
             case "organizationMembership.created":
             case "organizationMembership.updated":
                 var orgId = data.Organization?.Id;
                 var userId = data.PublicUserData?.UserId;
-                if (orgId is not null && userId is not null && data.Role is not null)
+                if (orgId is null || userId is null || data.Role is null)
                 {
-                    await sender.Send(new SyncMembershipCommand(
-                        orgId, userId, _authProvider, data.Role), ct);
+                    Log.Warning("Skipping {EventType}: missing Organization.Id, UserId, or Role in payload",
+                        webhookEvent.Type);
+                    break;
                 }
+                await sender.Send(new SyncMembershipCommand(
+                    orgId, userId, _authProvider, data.Role), ct);
                 break;
 
             case "organizationMembership.deleted":
                 var delOrgId = data.Organization?.Id;
                 var delUserId = data.PublicUserData?.UserId;
-                if (delOrgId is not null && delUserId is not null)
+                if (delOrgId is null || delUserId is null)
                 {
-                    await sender.Send(new RemoveMembershipCommand(
-                        delOrgId, delUserId, _authProvider), ct);
+                    Log.Warning("Skipping organizationMembership.deleted: missing Organization.Id or UserId in payload");
+                    break;
                 }
+                await sender.Send(new RemoveMembershipCommand(
+                    delOrgId, delUserId, _authProvider), ct);
                 break;
 
             default:

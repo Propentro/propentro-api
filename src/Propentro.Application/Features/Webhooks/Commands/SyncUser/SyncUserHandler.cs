@@ -41,7 +41,6 @@ public sealed class SyncUserHandler(IAppDbContext dbContext) : ICommandHandler<S
             user.Email = request.Email;
             user.FirstName = request.FirstName;
             user.LastName = request.LastName;
-            user.IsActive = true;
 
             Log.Information("Updated user {PublicId} for external ID {ExternalId}",
                 user.PublicId, request.ExternalId);
