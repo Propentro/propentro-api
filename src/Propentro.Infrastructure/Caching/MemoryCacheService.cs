@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 
 namespace Propentro.Infrastructure.Caching;
 
@@ -9,10 +10,11 @@ namespace Propentro.Infrastructure.Caching;
 /// Thread-safe and suitable for single-instance deployments.
 /// </summary>
 public sealed class MemoryCacheService(
-    IMemoryCache cache) : ICacheService, IDisposable
+    IMemoryCache cache,
+    IOptions<CachingOptions> cachingOptions) : ICacheService, IDisposable
 {
-    private const string _keyPrefix = "propentro:";
-    private static readonly TimeSpan _defaultExpiration = TimeSpan.FromMinutes(5);
+    private readonly string _keyPrefix = cachingOptions.Value.KeyPrefix;
+    private readonly TimeSpan _defaultExpiration = cachingOptions.Value.DefaultExpiration;
     private readonly ConcurrentDictionary<string, byte> _keys = new();
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
     private bool _disposed;
@@ -125,7 +127,7 @@ public sealed class MemoryCacheService(
         return Task.FromResult(cache.TryGetValue(prefixedKey, out _));
     }
 
-    private static string GetPrefixedKey(string key) => $"{_keyPrefix}{key}";
+    private string GetPrefixedKey(string key) => $"{_keyPrefix}{key}";
 
     private void OnCacheEntryEvicted(object key, object? value, EvictionReason reason, object? state)
     {

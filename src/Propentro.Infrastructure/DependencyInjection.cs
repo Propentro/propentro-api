@@ -59,6 +59,8 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        services.Configure<CachingOptions>(configuration.GetSection(CachingOptions.SectionName));
+
         var redisConnectionString = configuration.GetConnectionString("Redis");
 
         if (!string.IsNullOrWhiteSpace(redisConnectionString))

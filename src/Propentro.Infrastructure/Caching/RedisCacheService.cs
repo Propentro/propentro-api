@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 
 namespace Propentro.Infrastructure.Caching;
@@ -11,10 +12,11 @@ namespace Propentro.Infrastructure.Caching;
 /// For cross-instance protection, consider RedLock distributed locking.
 /// </summary>
 public sealed class RedisCacheService(
-    IConnectionMultiplexer redis) : ICacheService, IAsyncDisposable
+    IConnectionMultiplexer redis,
+    IOptions<CachingOptions> cachingOptions) : ICacheService, IAsyncDisposable
 {
-    private const string _keyPrefix = "propentro:";
-    private static readonly TimeSpan _defaultExpiration = TimeSpan.FromMinutes(5);
+    private readonly string _keyPrefix = cachingOptions.Value.KeyPrefix;
+    private readonly TimeSpan _defaultExpiration = cachingOptions.Value.DefaultExpiration;
     private readonly IDatabase _database = redis.GetDatabase();
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
     private readonly JsonSerializerOptions _jsonOptions = new()
@@ -126,7 +128,7 @@ public sealed class RedisCacheService(
         return await _database.KeyExistsAsync(prefixedKey);
     }
 
-    private static string GetPrefixedKey(string key) => $"{_keyPrefix}{key}";
+    private string GetPrefixedKey(string key) => $"{_keyPrefix}{key}";
 
     private string Serialize<T>(T value) =>
         JsonSerializer.Serialize(value, _jsonOptions);
