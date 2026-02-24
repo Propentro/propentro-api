@@ -35,6 +35,8 @@ public static class DependencyInjection
         services.AddWebhooks(configuration);
 
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+
+        services.Configure<BlobStorageOptions>(configuration.GetSection(BlobStorageOptions.SectionName));
         services.AddSingleton<IBlobStorageService, BlobStorageService>();
 
         return services;

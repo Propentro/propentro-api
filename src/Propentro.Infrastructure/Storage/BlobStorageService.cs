@@ -1,4 +1,6 @@
-using Microsoft.Extensions.Configuration;
+using Amazon.S3;
+using Amazon.S3.Model;
+using Microsoft.Extensions.Options;
 using Serilog;
 
 namespace Propentro.Infrastructure.Storage;
@@ -7,12 +9,27 @@ namespace Propentro.Infrastructure.Storage;
 /// Blob storage service for Cloudflare R2 (S3-compatible API).
 /// Configure R2 credentials in appsettings.json under "BlobStorage" section.
 /// </summary>
-public sealed class BlobStorageService(IConfiguration configuration) : IBlobStorageService
+public sealed class BlobStorageService : IBlobStorageService, IDisposable
 {
-    private readonly string _bucketName = configuration["BlobStorage:BucketName"] ?? "propentro";
-    private readonly string _accountId = configuration["BlobStorage:AccountId"] ?? string.Empty;
+    private readonly AmazonS3Client _s3;
+    private readonly string _bucketName;
 
-    public Task<string> UploadAsync(
+    public BlobStorageService(IOptions<BlobStorageOptions> options)
+    {
+        var config = options.Value;
+        _bucketName = config.BucketName;
+
+        _s3 = new AmazonS3Client(
+            config.AccessKeyId,
+            config.SecretAccessKey,
+            new AmazonS3Config
+            {
+                ServiceURL = config.Endpoint,
+                ForcePathStyle = true
+            });
+    }
+
+    public async Task<string> UploadAsync(
         Stream content,
         string fileName,
         string contentType,
@@ -27,31 +44,56 @@ public sealed class BlobStorageService(IConfiguration configuration) : IBlobStor
             "Uploading blob {BlobName} to bucket {BucketName} with content type {ContentType}",
             blobName, _bucketName, contentType);
 
-        // TODO: Implement R2 upload using AWS SDK for .NET (S3-compatible)
-        return Task.FromResult(blobName);
+        var request = new PutObjectRequest
+        {
+            BucketName = _bucketName,
+            Key = blobName,
+            InputStream = content,
+            ContentType = contentType
+        };
+
+        await _s3.PutObjectAsync(request, cancellationToken);
+
+        return blobName;
     }
 
-    public Task<Stream?> DownloadAsync(string blobName, CancellationToken cancellationToken = default)
+    public async Task<Stream?> DownloadAsync(string blobName, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(blobName);
 
         Log.Information("Downloading blob {BlobName} from bucket {BucketName}", blobName, _bucketName);
 
-        // TODO: Implement R2 download using AWS SDK for .NET
-        return Task.FromResult<Stream?>(null);
+        try
+        {
+            var response = await _s3.GetObjectAsync(_bucketName, blobName, cancellationToken);
+            return response.ResponseStream;
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode is System.Net.HttpStatusCode.NotFound)
+        {
+            Log.Warning("Blob {BlobName} not found in bucket {BucketName}", blobName, _bucketName);
+            return null;
+        }
     }
 
-    public Task<bool> DeleteAsync(string blobName, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(string blobName, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(blobName);
 
         Log.Information("Deleting blob {BlobName} from bucket {BucketName}", blobName, _bucketName);
 
-        // TODO: Implement R2 delete using AWS SDK for .NET
-        return Task.FromResult(true);
+        try
+        {
+            await _s3.DeleteObjectAsync(_bucketName, blobName, cancellationToken);
+            return true;
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode is System.Net.HttpStatusCode.NotFound)
+        {
+            Log.Warning("Blob {BlobName} not found for deletion in bucket {BucketName}", blobName, _bucketName);
+            return false;
+        }
     }
 
-    public Task<string> GetPresignedUrlAsync(
+    public async Task<string> GetPresignedUrlAsync(
         string blobName,
         TimeSpan expiry,
         CancellationToken cancellationToken = default)
@@ -60,17 +102,35 @@ public sealed class BlobStorageService(IConfiguration configuration) : IBlobStor
 
         Log.Information("Generating presigned URL for blob {BlobName} with expiry {Expiry}", blobName, expiry);
 
-        // TODO: Implement R2 presigned URL generation
-        return Task.FromResult($"https://{_accountId}.r2.cloudflarestorage.com/{_bucketName}/{blobName}");
+        var request = new GetPreSignedUrlRequest
+        {
+            BucketName = _bucketName,
+            Key = blobName,
+            Expires = DateTime.UtcNow.Add(expiry),
+            Verb = HttpVerb.GET
+        };
+
+        string url = await _s3.GetPreSignedURLAsync(request);
+
+        return url;
     }
 
-    public Task<bool> ExistsAsync(string blobName, CancellationToken cancellationToken = default)
+    public async Task<bool> ExistsAsync(string blobName, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(blobName);
 
         Log.Debug("Checking existence of blob {BlobName} in bucket {BucketName}", blobName, _bucketName);
 
-        // TODO: Implement R2 existence check
-        return Task.FromResult(false);
+        try
+        {
+            await _s3.GetObjectMetadataAsync(_bucketName, blobName, cancellationToken);
+            return true;
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode is System.Net.HttpStatusCode.NotFound)
+        {
+            return false;
+        }
     }
+
+    public void Dispose() => _s3.Dispose();
 }
