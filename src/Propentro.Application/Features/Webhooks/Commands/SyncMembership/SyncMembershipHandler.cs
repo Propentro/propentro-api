@@ -25,9 +25,10 @@ public sealed class SyncMembershipHandler(
 
         if (org is null)
         {
-            Log.Warning("Cannot sync membership: organization not found for external ID {ExternalOrgId}",
-                request.ExternalOrgId);
-            return Result.Success();
+            // Org may not be committed yet (race condition) — throw so Clerk retries
+            throw new InvalidOperationException(
+                $"Organization not found for external ID '{request.ExternalOrgId}'. " +
+                "This may be a race condition — Clerk will retry.");
         }
 
         if (!org.IsActive)
@@ -44,9 +45,10 @@ public sealed class SyncMembershipHandler(
 
         if (user is null)
         {
-            Log.Warning("Cannot sync membership: user not found for external ID {ExternalUserId}",
-                request.ExternalUserId);
-            return Result.Success();
+            // User may not be committed yet (race condition) — throw so Clerk retries
+            throw new InvalidOperationException(
+                $"User not found for external ID '{request.ExternalUserId}'. " +
+                "This may be a race condition — Clerk will retry.");
         }
 
         if (!user.IsActive)

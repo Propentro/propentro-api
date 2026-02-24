@@ -3,7 +3,6 @@ using MediatR;
 using Propentro.Application.Features.Webhooks.Commands.DeactivateOrganization;
 using Propentro.Application.Features.Webhooks.Commands.DeactivateUser;
 using Propentro.Application.Features.Webhooks.Commands.RemoveMembership;
-using Propentro.Application.Features.Webhooks.Commands.SyncInvitation;
 using Propentro.Application.Features.Webhooks.Commands.SyncMembership;
 using Propentro.Application.Features.Webhooks.Commands.SyncOrganization;
 using Propentro.Application.Features.Webhooks.Commands.SyncUser;
@@ -178,17 +177,6 @@ internal static class WebhookEndpoints
                 {
                     await sender.Send(new RemoveMembershipCommand(
                         delOrgId, delUserId, _authProvider), ct);
-                }
-                break;
-
-            case "organizationInvitation.created":
-            case "organizationInvitation.accepted":
-            case "organizationInvitation.revoked":
-                var invOrgId = data.Organization?.Id;
-                if (invOrgId is not null && data.EmailAddress is not null)
-                {
-                    await sender.Send(new SyncInvitationCommand(
-                        invOrgId, data.EmailAddress, _authProvider, data.Status ?? "unknown"), ct);
                 }
                 break;
 
