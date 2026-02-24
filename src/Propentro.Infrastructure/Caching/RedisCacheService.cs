@@ -13,8 +13,8 @@ namespace Propentro.Infrastructure.Caching;
 public sealed class RedisCacheService(
     IConnectionMultiplexer redis) : ICacheService, IAsyncDisposable
 {
-    private const string KeyPrefix = "propentro:";
-    private static readonly TimeSpan DefaultExpiration = TimeSpan.FromMinutes(5);
+    private const string _keyPrefix = "propentro:";
+    private static readonly TimeSpan _defaultExpiration = TimeSpan.FromMinutes(5);
     private readonly IDatabase _database = redis.GetDatabase();
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
     private readonly JsonSerializerOptions _jsonOptions = new()
@@ -45,7 +45,7 @@ public sealed class RedisCacheService(
         if (value is null) return;
 
         var prefixedKey = GetPrefixedKey(key);
-        var actualExpiration = expiration ?? DefaultExpiration;
+        var actualExpiration = expiration ?? _defaultExpiration;
         var serialized = Serialize(value);
 
         await _database.StringSetAsync(prefixedKey, serialized, actualExpiration);
@@ -126,7 +126,7 @@ public sealed class RedisCacheService(
         return await _database.KeyExistsAsync(prefixedKey);
     }
 
-    private static string GetPrefixedKey(string key) => $"{KeyPrefix}{key}";
+    private static string GetPrefixedKey(string key) => $"{_keyPrefix}{key}";
 
     private string Serialize<T>(T value) =>
         JsonSerializer.Serialize(value, _jsonOptions);

@@ -11,8 +11,8 @@ namespace Propentro.Infrastructure.Caching;
 public sealed class MemoryCacheService(
     IMemoryCache cache) : ICacheService, IDisposable
 {
-    private const string KeyPrefix = "propentro:";
-    private static readonly TimeSpan DefaultExpiration = TimeSpan.FromMinutes(5);
+    private const string _keyPrefix = "propentro:";
+    private static readonly TimeSpan _defaultExpiration = TimeSpan.FromMinutes(5);
     private readonly ConcurrentDictionary<string, byte> _keys = new();
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
     private bool _disposed;
@@ -38,7 +38,7 @@ public sealed class MemoryCacheService(
         if (value is null) return Task.CompletedTask;
 
         var prefixedKey = GetPrefixedKey(key);
-        var actualExpiration = expiration ?? DefaultExpiration;
+        var actualExpiration = expiration ?? _defaultExpiration;
 
         var cacheEntryOptions = new MemoryCacheEntryOptions()
             .SetAbsoluteExpiration(actualExpiration)
@@ -125,7 +125,7 @@ public sealed class MemoryCacheService(
         return Task.FromResult(cache.TryGetValue(prefixedKey, out _));
     }
 
-    private static string GetPrefixedKey(string key) => $"{KeyPrefix}{key}";
+    private static string GetPrefixedKey(string key) => $"{_keyPrefix}{key}";
 
     private void OnCacheEntryEvicted(object key, object? value, EvictionReason reason, object? state)
     {
