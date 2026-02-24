@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Propentro.Domain.Entities;
-using Activity = Propentro.Domain.Entities.Activity;
+using Activity = Propentro.Domain.Entities.Activities.Activity;
 
 namespace Propentro.Application.Common.Interfaces.Persistence;
 
@@ -22,11 +21,6 @@ public interface IAppDbContext
     DbSet<Unit> Units { get; }
     DbSet<Address> Addresses { get; }
 
-    // Lease Management
-    DbSet<Lease> Leases { get; }
-    DbSet<LeaseUnit> LeaseUnits { get; }
-    DbSet<LeaseContact> LeaseContacts { get; }
-
     // Contacts
     DbSet<Contact> Contacts { get; }
     DbSet<ContactRole> ContactRoles { get; }
@@ -39,18 +33,16 @@ public interface IAppDbContext
 
     // Documents
     DbSet<Document> Documents { get; }
+    DbSet<DocumentVersion> DocumentVersions { get; }
     DbSet<PropertyDocument> PropertyDocuments { get; }
     DbSet<UnitDocument> UnitDocuments { get; }
-    DbSet<LeaseDocument> LeaseDocuments { get; }
 
     // Compliance
     DbSet<PropertyCompliance> PropertyCompliances { get; }
     DbSet<UnitCompliance> UnitCompliances { get; }
-    DbSet<LeaseCompliance> LeaseCompliances { get; }
     DbSet<ComplianceType> ComplianceTypes { get; }
     DbSet<PropertyComplianceDocument> PropertyComplianceDocuments { get; }
     DbSet<UnitComplianceDocument> UnitComplianceDocuments { get; }
-    DbSet<LeaseComplianceDocument> LeaseComplianceDocuments { get; }
 
     // Amenities
     DbSet<PropertyAmenity> PropertyAmenities { get; }
@@ -66,10 +58,15 @@ public interface IAppDbContext
     // Notifications
     DbSet<Notification> Notifications { get; }
     DbSet<NotificationPreference> NotificationPreferences { get; }
-    DbSet<NotificationTemplate> NotificationTemplates { get; }
 
     // Lookup Tables
     DbSet<Currency> Currencies { get; }
+    DbSet<Country> Countries { get; }
+    DbSet<PropertyPurpose> PropertyPurposes { get; }
+    DbSet<PropertyType> PropertyTypes { get; }
+
+    // Outbox
+    DbSet<OutboxMessage> OutboxMessages { get; }
 
     /// <summary>
     /// Provides access to database-related information and operations.

@@ -1,8 +1,6 @@
-using Propentro.Contracts.Contacts;
-
 namespace Propentro.Application.Features.Contacts.Commands.UpdateContact;
 
-public sealed record UpdateContactCommand(
+public record UpdateContactCommand(
     string ContactId,
     string? FirstName,
     string? LastName,
@@ -19,4 +17,12 @@ public sealed record UpdateContactCommand(
     string? TaxNumber,
     string? TaxCountry,
     string? Note,
-    UpdateContactAddressRequest? Address) : ICommand;
+    UpdateContactAddressDto? Address) : ICommand;
+
+public record UpdateContactAddressDto(
+    string? Line1,
+    string? Line2,
+    string? City,
+    string? Region,
+    string? PostalCode,
+    string? CountryCode);

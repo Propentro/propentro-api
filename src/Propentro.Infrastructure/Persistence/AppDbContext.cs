@@ -1,23 +1,29 @@
-using MediatR;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Domain.Common;
 using Propentro.Domain.Common.Interfaces;
-using Propentro.Domain.Entities;
-using Activity = Propentro.Domain.Entities.Activity;
-using Unit = Propentro.Domain.Entities.Unit;
+using Serilog;
+using Activity = Propentro.Domain.Entities.Activities.Activity;
+using Unit = Propentro.Domain.Entities.Units.Unit;
 
 namespace Propentro.Infrastructure.Persistence;
 
 /// <summary>
 /// Entity Framework Core database context with automatic organization scoping,
-/// soft delete filtering, audit field management, and domain event publishing.
+/// soft delete filtering, audit field management, and outbox-based domain event persistence.
 /// </summary>
 public sealed class AppDbContext(
     DbContextOptions<AppDbContext> options,
-    ICurrentUser currentUser,
-    IDateTimeProvider dateTime,
-    IPublisher publisher) : DbContext(options), IAppDbContext
+    IUserContext userContext,
+    IDateTimeProvider dateTime) : DbContext(options), IAppDbContext
 {
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = false
+    };
+
     // Organization & User Management
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<User> Users => Set<User>();
@@ -28,11 +34,6 @@ public sealed class AppDbContext(
     public DbSet<Property> Properties => Set<Property>();
     public DbSet<Unit> Units => Set<Unit>();
     public DbSet<Address> Addresses => Set<Address>();
-
-    // Lease Management
-    public DbSet<Lease> Leases => Set<Lease>();
-    public DbSet<LeaseUnit> LeaseUnits => Set<LeaseUnit>();
-    public DbSet<LeaseContact> LeaseContacts => Set<LeaseContact>();
 
     // Contacts
     public DbSet<Contact> Contacts => Set<Contact>();
@@ -46,18 +47,16 @@ public sealed class AppDbContext(
 
     // Documents
     public DbSet<Document> Documents => Set<Document>();
+    public DbSet<DocumentVersion> DocumentVersions => Set<DocumentVersion>();
     public DbSet<PropertyDocument> PropertyDocuments => Set<PropertyDocument>();
     public DbSet<UnitDocument> UnitDocuments => Set<UnitDocument>();
-    public DbSet<LeaseDocument> LeaseDocuments => Set<LeaseDocument>();
 
     // Compliance
     public DbSet<PropertyCompliance> PropertyCompliances => Set<PropertyCompliance>();
     public DbSet<UnitCompliance> UnitCompliances => Set<UnitCompliance>();
-    public DbSet<LeaseCompliance> LeaseCompliances => Set<LeaseCompliance>();
     public DbSet<ComplianceType> ComplianceTypes => Set<ComplianceType>();
     public DbSet<PropertyComplianceDocument> PropertyComplianceDocuments => Set<PropertyComplianceDocument>();
     public DbSet<UnitComplianceDocument> UnitComplianceDocuments => Set<UnitComplianceDocument>();
-    public DbSet<LeaseComplianceDocument> LeaseComplianceDocuments => Set<LeaseComplianceDocument>();
 
     // Amenities
     public DbSet<PropertyAmenity> PropertyAmenities => Set<PropertyAmenity>();
@@ -73,16 +72,21 @@ public sealed class AppDbContext(
     // Notifications
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
-    public DbSet<NotificationTemplate> NotificationTemplates => Set<NotificationTemplate>();
 
     // Lookup Tables
     public DbSet<Currency> Currencies => Set<Currency>();
+    public DbSet<Country> Countries => Set<Country>();
+    public DbSet<PropertyPurpose> PropertyPurposes => Set<PropertyPurpose>();
+    public DbSet<PropertyType> PropertyTypes => Set<PropertyType>();
+
+    // Outbox
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     /// <summary>
     /// Current organization ID for global query filter.
     /// EF Core rebinds this per query since it's a DbContext member access.
     /// </summary>
-    internal Guid CurrentOrganizationId => currentUser.OrganizationId;
+    internal Guid CurrentOrganizationId => userContext.OrganizationId;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -95,14 +99,11 @@ public sealed class AppDbContext(
         // Organization-scoped + soft-delete
         builder.Entity<Property>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
         builder.Entity<Unit>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
-        builder.Entity<Lease>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
         builder.Entity<Contact>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
         builder.Entity<Address>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
         builder.Entity<Document>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
         builder.Entity<PropertyCompliance>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
         builder.Entity<UnitCompliance>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
-        builder.Entity<LeaseCompliance>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
-
         // Organization-scoped only
         builder.Entity<Notification>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
         builder.Entity<PropertyContactRole>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId);
@@ -117,17 +118,27 @@ public sealed class AppDbContext(
         builder.Entity<Organization>().HasQueryFilter(e => e.IsActive);
         builder.Entity<Role>().HasQueryFilter(e => e.IsActive);
         builder.Entity<SystemAdministrator>().HasQueryFilter(e => e.IsActive);
+
+        // No global query filter for OutboxMessage — outbox worker needs cross-tenant access
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var now = dateTime.UtcNow;
-        var userId = currentUser.UserId;
+        var userId = userContext.UserId;
 
+        ApplyAuditFields(now, userId);
+        PersistDomainEventsToOutbox(userId);
+
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void ApplyAuditFields(DateTimeOffset now, Guid userId)
+    {
         foreach (var entry in ChangeTracker.Entries())
         {
             if (entry is { Entity: IOrganizationScoped scoped, State: EntityState.Added })
-                scoped.OrganizationId = currentUser.OrganizationId;
+                scoped.OrganizationId = userContext.OrganizationId;
 
             if (entry.Entity is IAuditableEntity auditable)
             {
@@ -146,19 +157,39 @@ public sealed class AppDbContext(
                 }
             }
         }
+    }
 
+    private void PersistDomainEventsToOutbox(Guid userId)
+    {
         var domainEvents = ChangeTracker.Entries<AggregateRoot>()
             .SelectMany(e => e.Entity.DomainEvents)
             .ToList();
 
-        var result = await base.SaveChangesAsync(cancellationToken);
+        foreach (var domainEvent in domainEvents)
+        {
+            var eventType = domainEvent.EventType;
+            var aggregateType = eventType[..eventType.IndexOf('.')];
 
-        foreach (var @event in domainEvents)
-            await publisher.Publish(@event, cancellationToken);
+            var outboxMessage = new OutboxMessage
+            {
+                Id = Guid.CreateVersion7(),
+                OrganizationId = domainEvent.OrganizationId,
+                EventType = eventType,
+                AggregateType = aggregateType,
+                AggregateId = domainEvent.AggregateId,
+                Payload = JsonSerializer.Serialize<object>(domainEvent, _jsonOptions),
+                Status = "pending",
+                CreatedAt = domainEvent.OccurredAt,
+                CreatedById = userId != Guid.Empty ? userId : null
+            };
+
+            OutboxMessages.Add(outboxMessage);
+        }
 
         foreach (var entry in ChangeTracker.Entries<AggregateRoot>())
             entry.Entity.ClearDomainEvents();
 
-        return result;
+        if (domainEvents.Count > 0)
+            Log.Debug("Persisted {EventCount} domain events to outbox", domainEvents.Count);
     }
 }

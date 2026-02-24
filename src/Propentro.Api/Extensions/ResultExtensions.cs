@@ -21,6 +21,13 @@ internal static class ResultExtensions
             ? Results.Created(locationFactory(result.Value!), new { Id = result.Value })
             : result.Error.ToHttpResult();
 
+    public static IResult ToCreatedResult<T>(
+        this Result<T> result,
+        string location) =>
+        result.IsSuccess
+            ? Results.Created(location, new { Id = result.Value })
+            : result.Error.ToHttpResult();
+
     public static IResult ToHttpResult(this Error error)
     {
         var statusCode = error.Type switch

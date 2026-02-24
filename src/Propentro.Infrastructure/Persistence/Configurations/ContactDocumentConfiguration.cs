@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Propentro.Domain.Entities;
 
 namespace Propentro.Infrastructure.Persistence.Configurations;
 
@@ -19,7 +18,7 @@ public sealed class ContactDocumentConfiguration : IEntityTypeConfiguration<Cont
         builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
         builder.HasOne(e => e.Contact)
-            .WithMany()
+            .WithMany(c => c.ContactDocuments)
             .HasForeignKey(e => e.ContactId)
             .OnDelete(DeleteBehavior.Cascade);
 

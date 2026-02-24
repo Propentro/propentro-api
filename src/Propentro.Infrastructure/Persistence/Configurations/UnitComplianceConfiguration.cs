@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Propentro.Domain.Entities;
 
 namespace Propentro.Infrastructure.Persistence.Configurations;
 
@@ -28,7 +27,7 @@ public sealed class UnitComplianceConfiguration : IEntityTypeConfiguration<UnitC
         builder.Property(e => e.UpdatedById).HasColumnName("updated_by_id");
 
         builder.HasOne(e => e.Unit)
-            .WithMany()
+            .WithMany(u => u.Compliances)
             .HasForeignKey(e => e.UnitId)
             .OnDelete(DeleteBehavior.Cascade);
 

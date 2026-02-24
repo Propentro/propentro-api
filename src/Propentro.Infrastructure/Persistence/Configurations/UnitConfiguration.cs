@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Propentro.Domain.Entities;
 
 namespace Propentro.Infrastructure.Persistence.Configurations;
 
@@ -23,7 +22,7 @@ public sealed class UnitConfiguration : IEntityTypeConfiguration<Unit>
         builder.Property(e => e.UnitType).HasColumnName("unit_type").IsRequired();
         builder.Property(e => e.OwnershipType).HasColumnName("ownership_type");
         builder.Property(e => e.RentalMode).HasColumnName("rental_mode").IsRequired().HasDefaultValue("long_term");
-        builder.Property(e => e.Status).HasColumnName("status").IsRequired().HasDefaultValue("available");
+        builder.Property(e => e.OccupancyStatus).HasColumnName("occupancy_status").IsRequired().HasDefaultValue("void");
         builder.Property(e => e.Floor).HasColumnName("floor");
         builder.Property(e => e.UnitNumber).HasColumnName("unit_number");
         builder.Property(e => e.BuildingSection).HasColumnName("building_section");

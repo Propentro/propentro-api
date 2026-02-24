@@ -29,11 +29,6 @@ public static class ContactErrors
         "One or more roles are invalid.",
         ErrorType.Validation);
 
-    public static readonly Error HasActiveLeases = new(
-        "Contact.HasActiveLeases",
-        "Cannot delete contact with active leases.",
-        ErrorType.Conflict);
-
     public static readonly Error DuplicateEmail = new(
         "Contact.DuplicateEmail",
         "A contact with this email already exists.",
