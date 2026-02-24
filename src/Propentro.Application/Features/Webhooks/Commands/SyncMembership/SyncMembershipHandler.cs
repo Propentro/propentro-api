@@ -138,8 +138,8 @@ public sealed class SyncMembershipHandler(
 
     private static string MapClerkRole(string clerkRole) => clerkRole switch
     {
-        "org:admin" => "Owner",
-        "org:member" => "Manager",
-        _ => "Viewer"
+        "org:organisation_owner" => "Owner",
+        "org:organisation_manager" => "Manager",
+        "org:organisation_viewer" => "Viewer"
     };
 }
