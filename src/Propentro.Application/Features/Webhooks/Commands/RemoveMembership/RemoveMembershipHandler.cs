@@ -43,6 +43,7 @@ public sealed class RemoveMembershipHandler(
 
         // Remove role assignments
         var roles = await dbContext.OrganizationUserRoles
+            .IgnoreQueryFilters()
             .Where(our => our.OrganizationId == org.Id && our.UserId == user.Id)
             .ToListAsync(cancellationToken);
 
@@ -51,6 +52,7 @@ public sealed class RemoveMembershipHandler(
 
         // Remove membership
         var membership = await dbContext.OrganizationUsers
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(
                 ou => ou.OrganizationId == org.Id && ou.UserId == user.Id,
                 cancellationToken);

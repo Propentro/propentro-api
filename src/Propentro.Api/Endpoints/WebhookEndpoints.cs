@@ -43,14 +43,15 @@ internal static class WebhookEndpoints
         using var reader = new StreamReader(request.Body, leaveOpen: true);
         var body = await reader.ReadToEndAsync(ct);
 
+        // Extract Svix headers once
+        var svixId = request.Headers["svix-id"].FirstOrDefault();
+        var svixTimestamp = request.Headers["svix-timestamp"].FirstOrDefault();
+        var svixSignature = request.Headers["svix-signature"].FirstOrDefault();
+
         // Verify signature — verifier may not be registered if WebhookSecret is not configured
         var verifier = request.HttpContext.RequestServices.GetService<ClerkWebhookVerifier>();
         if (verifier is not null)
         {
-            var svixId = request.Headers["svix-id"].FirstOrDefault();
-            var svixTimestamp = request.Headers["svix-timestamp"].FirstOrDefault();
-            var svixSignature = request.Headers["svix-signature"].FirstOrDefault();
-
             if (!verifier.Verify(svixId, svixTimestamp, svixSignature, body))
             {
                 Log.Warning("Clerk webhook signature verification failed");
@@ -78,19 +79,24 @@ internal static class WebhookEndpoints
             return Results.BadRequest();
 
         // Idempotency check using Clerk's event ID (from svix-id header)
-        var eventId = request.Headers["svix-id"].FirstOrDefault() ?? Guid.NewGuid().ToString();
-        if (!idempotencyStore.TryMarkProcessed(eventId))
+        if (string.IsNullOrEmpty(svixId))
         {
-            Log.Information("Duplicate Clerk webhook event {EventId}, skipping", eventId);
+            Log.Warning("Missing svix-id header, cannot ensure idempotency");
+            return Results.BadRequest();
+        }
+
+        if (!idempotencyStore.TryMarkProcessed(svixId))
+        {
+            Log.Information("Duplicate Clerk webhook event {EventId}, skipping", svixId);
             return Results.Ok();
         }
 
         // Route event to appropriate handler
         using (LogContext.PushProperty("WebhookEventType", webhookEvent.Type))
-        using (LogContext.PushProperty("WebhookEventId", eventId))
+        using (LogContext.PushProperty("WebhookEventId", svixId))
         {
             Log.Information("Processing Clerk webhook event {EventType} (id: {EventId})",
-                webhookEvent.Type, eventId);
+                webhookEvent.Type, svixId);
 
             try
             {
@@ -100,10 +106,10 @@ internal static class WebhookEndpoints
             {
                 Log.Error(ex,
                     "Failed to process Clerk webhook event {EventType} (id: {EventId})",
-                    webhookEvent.Type, eventId);
+                    webhookEvent.Type, svixId);
 
                 // Remove idempotency entry so Clerk can retry this event
-                idempotencyStore.TryRemoveProcessed(eventId);
+                idempotencyStore.TryRemoveProcessed(svixId);
 
                 return Results.StatusCode(StatusCodes.Status500InternalServerError);
             }

@@ -51,6 +51,7 @@ public sealed class SyncOrganizationHandler(IAppDbContext dbContext) : ICommandH
 
             org.Name = request.Name;
             org.Slug = request.Slug;
+            // TODO: org.LogoUrl = request.LogoUrl — requires adding LogoUrl property to Organization entity + migration
 
             Log.Information("Updated organization {PublicId} for external ID {ExternalId}",
                 org.PublicId, request.ExternalId);

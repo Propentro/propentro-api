@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Models;
 
 namespace Propentro.Application.Features.Webhooks.Commands.SyncMembership;
@@ -11,7 +12,8 @@ namespace Propentro.Application.Features.Webhooks.Commands.SyncMembership;
 /// </summary>
 public sealed class SyncMembershipHandler(
     IAppDbContext dbContext,
-    IDateTimeProvider dateTimeProvider) : ICommandHandler<SyncMembershipCommand>
+    IDateTimeProvider dateTimeProvider,
+    IPermissionService permissionService) : ICommandHandler<SyncMembershipCommand>
 {
     public async Task<Result> Handle(SyncMembershipCommand request, CancellationToken cancellationToken)
     {
@@ -55,6 +57,7 @@ public sealed class SyncMembershipHandler(
 
         // Upsert organization_users
         var membership = await dbContext.OrganizationUsers
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(
                 ou => ou.OrganizationId == org.Id && ou.UserId == user.Id,
                 cancellationToken);
@@ -79,12 +82,16 @@ public sealed class SyncMembershipHandler(
 
         // Map Clerk role to system role
         string systemRoleName = MapClerkRole(request.Role);
-        await SyncRoleAsync(org.Id, user.Id, systemRoleName, cancellationToken);
+        bool roleChanged = await SyncRoleAsync(org.Id, user.Id, systemRoleName, cancellationToken);
+
+        // Invalidate permission cache when role changes
+        if (roleChanged)
+            await permissionService.InvalidatePermissionsCacheAsync(user.Id, org.Id, cancellationToken);
 
         return Result.Success();
     }
 
-    private async Task SyncRoleAsync(
+    private async Task<bool> SyncRoleAsync(
         Guid orgId, Guid userId, string roleName, CancellationToken ct)
     {
         var role = await dbContext.Roles
@@ -94,17 +101,18 @@ public sealed class SyncMembershipHandler(
         if (role is null)
         {
             Log.Warning("System role {RoleName} not found, skipping role assignment", roleName);
-            return;
+            return false;
         }
 
         // Remove existing roles for this user in this org
         var existingRoles = await dbContext.OrganizationUserRoles
+            .IgnoreQueryFilters()
             .Where(our => our.OrganizationId == orgId && our.UserId == userId)
             .ToListAsync(ct);
 
         // Check if the role is already assigned
         if (existingRoles.Any(r => r.RoleId == role.Id))
-            return;
+            return false;
 
         // Remove old roles and add the new one
         foreach (var existingRole in existingRoles)
@@ -120,6 +128,8 @@ public sealed class SyncMembershipHandler(
 
         Log.Information("Assigned role {RoleName} to user {UserId} in org {OrgId}",
             roleName, userId, orgId);
+
+        return true;
     }
 
     private static string MapClerkRole(string clerkRole) => clerkRole switch
