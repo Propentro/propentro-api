@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Options;
 
 namespace Propentro.Infrastructure.Caching;
 
@@ -10,10 +9,10 @@ namespace Propentro.Infrastructure.Caching;
 /// Thread-safe and suitable for single-instance deployments.
 /// </summary>
 public sealed class MemoryCacheService(
-    IMemoryCache cache,
-    IOptions<CacheOptions> options) : ICacheService, IDisposable
+    IMemoryCache cache) : ICacheService, IDisposable
 {
-    private readonly CacheOptions _options = options.Value;
+    private const string KeyPrefix = "propentro:";
+    private static readonly TimeSpan DefaultExpiration = TimeSpan.FromMinutes(5);
     private readonly ConcurrentDictionary<string, byte> _keys = new();
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
     private bool _disposed;
@@ -39,7 +38,7 @@ public sealed class MemoryCacheService(
         if (value is null) return Task.CompletedTask;
 
         var prefixedKey = GetPrefixedKey(key);
-        var actualExpiration = expiration ?? _options.DefaultExpiration;
+        var actualExpiration = expiration ?? DefaultExpiration;
 
         var cacheEntryOptions = new MemoryCacheEntryOptions()
             .SetAbsoluteExpiration(actualExpiration)
@@ -126,8 +125,7 @@ public sealed class MemoryCacheService(
         return Task.FromResult(cache.TryGetValue(prefixedKey, out _));
     }
 
-    private string GetPrefixedKey(string key) =>
-        string.IsNullOrEmpty(_options.KeyPrefix) ? key : $"{_options.KeyPrefix}{key}";
+    private static string GetPrefixedKey(string key) => $"{KeyPrefix}{key}";
 
     private void OnCacheEntryEvicted(object key, object? value, EvictionReason reason, object? state)
     {

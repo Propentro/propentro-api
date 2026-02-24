@@ -57,25 +57,17 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var cacheOptions = configuration
-            .GetSection(CacheOptions.SectionName)
-            .Get<CacheOptions>() ?? new CacheOptions();
+        var redisConnectionString = configuration.GetConnectionString("Redis");
 
-        if (cacheOptions.Provider == CacheProvider.Redis
-            && !string.IsNullOrWhiteSpace(cacheOptions.RedisConnectionString))
+        if (!string.IsNullOrWhiteSpace(redisConnectionString))
         {
             services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(
-                StackExchange.Redis.ConnectionMultiplexer.Connect(cacheOptions.RedisConnectionString));
+                StackExchange.Redis.ConnectionMultiplexer.Connect(redisConnectionString));
             services.AddSingleton<ICacheService, RedisCacheService>();
         }
         else
         {
-            // Fallback to in-memory cache for development or single-instance deployments
-            services.AddMemoryCache(options =>
-            {
-                options.SizeLimit = cacheOptions.MemoryCacheSizeLimit;
-                options.ExpirationScanFrequency = cacheOptions.MemoryCacheExpirationScanFrequency;
-            });
+            services.AddMemoryCache();
             services.AddSingleton<ICacheService, MemoryCacheService>();
         }
 
