@@ -1,5 +1,4 @@
 using Propentro.Application.Common.Models;
-using Serilog;
 
 namespace Propentro.Application.Features.Webhooks.Commands.SyncInvitation;
 

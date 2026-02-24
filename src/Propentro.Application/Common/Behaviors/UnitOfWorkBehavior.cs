@@ -1,6 +1,5 @@
 using MediatR;
 using Propentro.Application.Common.Models;
-using Serilog;
 
 namespace Propentro.Application.Common.Behaviors;
 

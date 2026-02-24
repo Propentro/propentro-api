@@ -17,6 +17,9 @@ global using Propentro.Application.Common.Interfaces.Caching;
 // Time
 global using Propentro.Application.Common.Interfaces.Time;
 
+// Logging
+global using Serilog;
+
 // Domain Entities (feature-based sub-namespaces)
 global using Propentro.Domain.Entities.Addresses;
 global using Propentro.Domain.Entities.Contacts;

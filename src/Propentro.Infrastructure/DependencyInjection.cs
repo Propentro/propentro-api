@@ -7,6 +7,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Interfaces.Authorization;
+using Propentro.Application.Common.Interfaces.Messaging;
+using Propentro.Application.Features.Contacts.Commands.ArchiveContact;
+using Propentro.Application.Features.Contacts.Commands.CreateContact;
+using Propentro.Application.Features.Contacts.Commands.DeleteContact;
+using Propentro.Application.Features.Contacts.Commands.UnarchiveContact;
+using Propentro.Application.Features.Contacts.Commands.UpdateContact;
+using Propentro.Domain.Entities.Contacts.Events;
 using Propentro.Infrastructure.Authentication;
 using Propentro.Infrastructure.Authorization;
 using Propentro.Infrastructure.Caching;
@@ -149,6 +156,20 @@ public static class DependencyInjection
         services.AddQuartzHostedService(options => options.WaitForJobsToComplete = true);
 
         services.ConfigureOptions<ProcessOutboxMessagesJobSetup>();
+
+        services.AddOutboxEventHandlers();
+
+        return services;
+    }
+
+    private static IServiceCollection AddOutboxEventHandlers(this IServiceCollection services)
+    {
+        // Contact event handlers
+        services.AddSingleton<IOutboxEventHandler<ContactCreatedEvent>, ContactCreatedEventHandler>();
+        services.AddSingleton<IOutboxEventHandler<ContactUpdatedEvent>, ContactUpdatedEventHandler>();
+        services.AddSingleton<IOutboxEventHandler<ContactArchivedEvent>, ContactArchivedEventHandler>();
+        services.AddSingleton<IOutboxEventHandler<ContactUnarchivedEvent>, ContactUnarchivedEventHandler>();
+        services.AddSingleton<IOutboxEventHandler<ContactDeletedEvent>, ContactDeletedEventHandler>();
 
         return services;
     }
