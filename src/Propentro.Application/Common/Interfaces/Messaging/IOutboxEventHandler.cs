@@ -1,8 +1,7 @@
-using Propentro.Domain.Common.Interfaces;
-
 namespace Propentro.Application.Common.Interfaces.Messaging;
 
-public interface IOutboxEventHandler<in TEvent> where TEvent : IDomainEvent
+public interface IOutboxEventHandler
 {
-    Task HandleAsync(TEvent domainEvent, CancellationToken cancellationToken = default);
+    string EventType { get; }
+    Task HandleAsync(string payload, CancellationToken cancellationToken = default);
 }

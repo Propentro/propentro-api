@@ -1,5 +1,6 @@
 using Dapper;
 using Microsoft.Extensions.Options;
+using Propentro.Application.Common.Interfaces.Messaging;
 using Quartz;
 using Serilog;
 
@@ -9,9 +10,12 @@ namespace Propentro.Infrastructure.Outbox;
 internal sealed class ProcessOutboxMessagesJob(
     IDbConnectionFactory dbConnectionFactory,
     IDateTimeProvider dateTimeProvider,
-    IOptions<OutboxOptions> outboxOptions) : IJob
+    IOptions<OutboxOptions> outboxOptions,
+    IEnumerable<IOutboxEventHandler> eventHandlers) : IJob
 {
     private readonly int _batchSize = outboxOptions.Value.BatchSize;
+    private readonly Dictionary<string, IOutboxEventHandler> _handlers =
+        eventHandlers.ToDictionary(h => h.EventType);
 
     public async Task Execute(IJobExecutionContext context)
     {
@@ -22,7 +26,7 @@ internal sealed class ProcessOutboxMessagesJob(
 
         var messages = await connection.QueryAsync<OutboxMessageRow>(
             """
-            SELECT id, event_type, retry_count, max_retries
+            SELECT id, event_type, payload, retry_count, max_retries
             FROM outbox_messages
             WHERE status = 'pending'
               AND (next_retry_at IS NULL OR next_retry_at <= now())
@@ -58,8 +62,10 @@ internal sealed class ProcessOutboxMessagesJob(
 
         try
         {
-            // TODO: Add handler dispatch here when first async side-effect is needed
-            // For now, just mark as completed.
+            if (_handlers.TryGetValue(message.EventType, out var handler))
+                await handler.HandleAsync(message.Payload, cancellationToken);
+            else
+                Log.Warning("No handler registered for outbox event type {EventType}", message.EventType);
 
             var now = dateTimeProvider.UtcNow;
 
@@ -153,6 +159,7 @@ internal sealed class ProcessOutboxMessagesJob(
     {
         public Guid Id { get; init; }
         public string EventType { get; init; } = null!;
+        public string Payload { get; init; } = null!;
         public int RetryCount { get; init; }
         public int MaxRetries { get; init; }
     }
