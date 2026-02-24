@@ -8,10 +8,12 @@ using Microsoft.IdentityModel.Tokens;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Interfaces.Messaging;
+using Propentro.Application.Common.Interfaces.Email;
 using Propentro.Infrastructure.Authentication;
 using Propentro.Infrastructure.Authorization;
 using Propentro.Infrastructure.Caching;
 using Propentro.Infrastructure.Clock;
+using Propentro.Infrastructure.Email;
 using Propentro.Infrastructure.Outbox;
 using Propentro.Infrastructure.Persistence;
 using Propentro.Infrastructure.Storage;
@@ -33,6 +35,7 @@ public static class DependencyInjection
         services.AddClerkAuthentication(configuration);
         services.AddOutbox(configuration);
         services.AddWebhooks(configuration);
+        services.AddEmail(configuration);
 
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
@@ -190,6 +193,21 @@ public static class DependencyInjection
             services.AddSingleton<ClerkWebhookVerifier>();
 
         services.AddSingleton<WebhookIdempotencyStore>();
+
+        return services;
+    }
+
+    private static IServiceCollection AddEmail(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+
+        services.AddHttpClient<IEmailService, ResendEmailService>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.resend.com");
+        })
+        .AddStandardResilienceHandler();
 
         return services;
     }
