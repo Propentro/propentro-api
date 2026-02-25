@@ -18,6 +18,11 @@ Propentro is a property management API built with **.NET 10.0** following **Clea
 | Logging | Serilog (static `Log` class) |
 | Testing | xUnit, FluentAssertions, NSubstitute, Testcontainers |
 | Caching | Redis (default), MemoryCache (fallback) via ICacheService abstraction |
+| Email | Resend (via HTTP client with Polly resilience) |
+| Storage | S3-compatible (Cloudflare R2) via AWSSDK.S3 |
+| Background Jobs | Quartz.NET 3.15 (outbox processing) |
+| Resilience | Polly (via Microsoft.Extensions.Http.Resilience) |
+| Observability | OpenTelemetry (OTLP exporter, ASP.NET Core + HTTP + Runtime instrumentation) |
 
 ## Architecture
 
@@ -63,37 +68,62 @@ src/
 ├── Propentro.Application/         # Business logic layer
 │   ├── Common/
 │   │   ├── Interfaces/            # ICommand, IQuery, ICachedQuery, IAppDbContext, etc.
+│   │   │   ├── Authentication/    # IUserContext, IUserContextInitializer, IExternalIdResolver
+│   │   │   ├── Authorization/     # IPermissionService
+│   │   │   ├── Caching/           # ICacheService
+│   │   │   ├── Email/             # IEmailService, EmailMessage
+│   │   │   ├── Messaging/         # ICommand, IQuery, ICachedQuery, IOutboxEventHandler, OutboxJsonOptions
+│   │   │   ├── Persistence/       # IAppDbContext, IDbConnectionFactory
+│   │   │   ├── Storage/           # IBlobStorageService
+│   │   │   └── Time/              # IDateTimeProvider
 │   │   ├── Behaviors/             # MediatR pipeline behaviors
+│   │   ├── Email/                 # EmailTemplates (Welcome, MembershipAdded, MembershipRemoved)
+│   │   ├── Errors/                # CommonErrors (Unauthorized, Forbidden, ValidationFailed, etc.)
 │   │   └── Models/                # Result<T>, Error, PagedResult<T>
 │   ├── Features/
 │   │   ├── Me/                    # Current user profile
 │   │   ├── Contacts/              # Contact management (tenants, owners, suppliers)
 │   │   ├── Activities/            # Timeline activities (notes, phone calls, events)
+│   │   ├── Webhooks/              # Clerk webhook command handlers (SyncUser, SyncOrg, etc.)
 │   │   └── [Feature]/
-│   │       ├── Commands/          # Create, Update, Delete handlers
+│   │       ├── Commands/          # Create, Update, Delete handlers + outbox event handlers
 │   │       ├── Queries/           # Get, List handlers
 │   │       └── [Feature]Errors.cs # Centralized error definitions
 │   └── DependencyInjection.cs
 │
 ├── Propentro.Domain/              # Domain entities and logic
-│   ├── Common/                    # Entity, AggregateRoot, DomainEvent, ValueObject, PublicIdGenerator
+│   ├── Common/                    # Entity, AggregateRoot, OrganizationEntity, DomainEvent, ValueObject, PublicIdGenerator
+│   │   └── Interfaces/            # IDomainEvent, IOrganizationScoped, IAuditableEntity, ISoftDeletable, IHasPublicId
 │   ├── Entities/                  # Domain entities with co-located Events/ folders
-│   │   ├── Contacts/
-│   │   │   ├── Contact.cs
-│   │   │   └── Events/            # ContactCreatedEvent, ContactUpdatedEvent, etc.
-│   │   └── Properties/
-│   │       ├── Property.cs
-│   │       └── Events/            # PropertyCreatedEvent, PropertyUpdatedEvent, etc.
+│   │   ├── Activities/            # Activity
+│   │   ├── Addresses/             # Address
+│   │   ├── Contacts/              # Contact, ContactRole, ContactDocument
+│   │   │   └── Events/            # ContactCreatedEvent, ContactUpdatedEvent, ContactArchivedEvent, etc.
+│   │   ├── Documents/             # Document, DocumentVersion
+│   │   ├── Identity/              # User, Organization, OrganizationUser, OrganizationUserRole, Role, RolePermission, SystemAdministrator
+│   │   │   └── Events/            # MembershipCreatedEvent, MembershipRemovedEvent
+│   │   ├── Lookups/               # AmenityType, ComplianceType, Currency, Country, Permission
+│   │   ├── Notifications/         # Notification, NotificationPreference
+│   │   ├── Outbox/                # OutboxMessage
+│   │   ├── Properties/            # Property, PropertyType, PropertyPurpose, PropertyAmenity, PropertyCompliance, PropertyComplianceDocument, PropertyContactRole, PropertyDocument
+│   │   │   └── Events/            # PropertyCreatedEvent, PropertyUpdatedEvent
+│   │   └── Units/                 # Unit, UnitAmenity, UnitCompliance, UnitComplianceDocument, UnitContactRole, UnitDocument
 │   ├── ValueObjects/              # Money, DateRange
-│   └── Enums/                     # LeaseStatus, UnitType, etc.
+│   └── Enums/                     # UnitType, UnitStatus, UsageType, RentalMode, FurnishedStatus, ComplianceStatus, DocumentType
 │
 ├── Propentro.Infrastructure/      # External concerns
+│   ├── Authentication/            # UserContext, ClerkIdResolver, ExternalIdResolver
+│   ├── Authorization/             # PermissionService, PermissionAuthorizationHandler, ActiveUserAuthorizationHandler
+│   ├── Caching/                   # RedisCacheService, MemoryCacheService, CachingOptions
+│   ├── Clock/                     # DateTimeProvider (IDateTimeProvider implementation)
+│   ├── Email/                     # ResendEmailService, EmailOptions
+│   ├── Outbox/                    # ProcessOutboxMessagesJob, OutboxOptions, ProcessOutboxMessagesJobSetup
 │   ├── Persistence/
-│   │   ├── AppDbContext.cs        # EF Core context with global filters
+│   │   ├── AppDbContext.cs        # EF Core context with global filters and domain event collection
 │   │   └── Configurations/        # Entity type configurations
-│   ├── Services/                  # CurrentUser, Permission, DateTime, BlobStorage
-│   ├── Authorization/             # Permission-based auth handlers
-│   ├── Caching/                   # ICacheService (Redis default, MemoryCache fallback)
+│   ├── Resilience/                # ResiliencePolicies (Polly)
+│   ├── Storage/                   # BlobStorageService, BlobStorageOptions (S3-compatible)
+│   ├── Webhooks/                  # ClerkWebhookVerifier, WebhookIdempotencyStore
 │   └── DependencyInjection.cs
 │
 └── Propentro.Contracts/           # Shared request/response types
@@ -102,8 +132,7 @@ src/
 tests/
 ├── Propentro.Domain.Tests/        # Entity and value object tests
 ├── Propentro.Application.Tests/   # Handler and validator tests
-├── Propentro.Api.Tests/           # Endpoint and middleware tests
-└── Propentro.Integration.Tests/   # Full stack tests with Testcontainers
+└── Propentro.Api.Tests/           # Endpoint and middleware tests
 ```
 
 ## Development Workflows
@@ -158,17 +187,19 @@ dotnet ef database update --project src/Propentro.Infrastructure --startup-proje
 The middleware pipeline in `Program.cs` follows this exact order:
 
 ```
-Request → ExceptionHandler → Serilog Logging → CORS → Rate Limiter
-        → Authentication → Authorization → UserContextMiddleware
-        → Health Checks / API Endpoints → Response
+Request → ExceptionHandler → Serilog Logging → [Scalar/OpenApi (dev only)]
+        → CORS → Rate Limiter → Authentication → UserContextMiddleware
+        → Authorization → Health Checks / API Endpoints → Response
 ```
 
 **Key points:**
 - Authentication runs before `UserContextMiddleware` so JWT claims are available
-- `UserContextMiddleware` resolves Clerk external IDs to internal IDs and pushes context to Serilog
-- CORS is configured from `Cors:AllowedOrigins` in appsettings
+- `UserContextMiddleware` runs AFTER Authentication and BEFORE Authorization — resolves Clerk external IDs to internal IDs and enriches Serilog LogContext with tenant context
+- `ActiveUserAuthorizationHandler` depends on `UserContextMiddleware` having initialized the user context
+- CORS is configured from `Cors:AllowedOrigins` in appsettings (empty/missing origins block all cross-origin requests)
 - Rate limiting: fixed window, 100 requests/minute
 - Health check at `/health` (anonymous, no auth required)
+- Scalar API reference at `/scalar/v1` in development only
 
 ## Key Patterns & Conventions
 
@@ -306,7 +337,11 @@ return unit.PublicId;  // Implicit conversion
 
 ### Domain Entity Pattern
 
+Most business entities extend `OrganizationEntity` (which provides audit fields, soft delete, and org scoping). Use `AggregateRoot` for entities that raise domain events:
+
 ```csharp
+// OrganizationEntity base class provides: OrganizationId, CreatedAt, CreatedById,
+// UpdatedAt, UpdatedById, IsActive — all set automatically by AppDbContext
 public class Unit : AggregateRoot
 {
     public Guid PropertyId { get; set; }
@@ -326,11 +361,17 @@ public class Unit : AggregateRoot
 }
 ```
 
+**Entity hierarchy:**
+- `Entity` → base with `Id` (Guid v7) and `PublicId` (prefixed hex)
+- `OrganizationEntity : Entity` → adds `OrganizationId`, audit fields (`IAuditableEntity`), soft delete (`ISoftDeletable`)
+- `AggregateRoot : OrganizationEntity` → adds domain event support (`RaiseDomainEvent`)
+
 **Key domain conventions:**
 - `Id` (Guid v7) - internal identifier, auto-generated in `Entity(prefix)` constructor
 - `PublicId` (prefixed hex: `prp_a3f9c12d8e4b`) - user-facing, generated client-side by `PublicIdGenerator`
 - Both IDs are available immediately after construction - no need to wait for database
-- Each entity defines its prefix via `base("prefix")`: `prp`, `unt`, `lse`, `cnt`, `act`, `adr`, `doc`, `docv`, `usr`, `org`, `rol`, `sadm`
+- Each entity defines its prefix via `base("prefix")`: `prp`, `unt`, `cnt`, `act`, `adr`, `doc`, `docv`, `ntf`, `pcm`, `ucm`, `usr`, `org`, `rol`, `sadm`
+- Lookup/reference entities (Country, Currency, Permission, AmenityType, ComplianceType, PropertyType, PropertyPurpose) do not use PublicId prefixes
 - Parameterless constructor is for EF Core only (no ID generation)
 
 ### API Endpoint Pattern
@@ -392,7 +433,7 @@ public sealed partial class GetContactByIdValidator : AbstractValidator<GetConta
 }
 ```
 
-Entity prefixes: `prp`, `unt`, `lse`, `cnt`, `act`, `adr`, `doc`, `docv`, `usr`, `org`, `rol`, `sadm`
+Entity prefixes: `prp`, `unt`, `cnt`, `act`, `adr`, `doc`, `docv`, `ntf`, `pcm`, `ucm`, `usr`, `org`, `rol`, `sadm`
 
 ### Pagination Validation
 
@@ -490,6 +531,8 @@ The following CA rules are suppressed in `.editorconfig` to avoid false positive
 | Response | `{Entity}Response` / `{Entity}ListItemResponse` | `ContactResponse`, `ContactListItemResponse` |
 | Request | `{Verb}{Entity}Request` | `CreateContactRequest` |
 | Error class | `{Entity}Errors` | `UnitErrors` |
+| Domain event | `{Entity}{Action}Event` | `ContactCreatedEvent` |
+| Outbox handler | `{Entity}{Action}EventHandler` | `ContactCreatedEventHandler` |
 
 ### Logging Conventions
 
@@ -620,18 +663,21 @@ const string sql = """
 
 ### Cache Provider Selection
 
-The cache provider is configured via `Caching:Provider` in appsettings:
+The cache provider is selected based on the `ConnectionStrings:Redis` value:
 
-- **Redis** (default for production): Used when `Provider = "Redis"` and `RedisConnectionString` is set. Suitable for multi-instance deployments.
-- **Memory** (fallback): Used when `Provider = "Memory"` or Redis connection string is empty. Suitable for development and single-instance deployments.
+- **Redis** (default for production): Used when `ConnectionStrings:Redis` is set and non-empty. Suitable for multi-instance deployments.
+- **Memory** (fallback): Used when Redis connection string is empty or missing. Suitable for development and single-instance deployments.
+
+Additional caching options are configured via `CachingOptions` (`Caching` section):
 
 ```json
 {
+  "ConnectionStrings": {
+    "Redis": "localhost:6379"
+  },
   "Caching": {
-    "Provider": "Redis",
-    "RedisConnectionString": "localhost:6379",
-    "DefaultExpiration": "00:05:00",
-    "KeyPrefix": "propentro:"
+    "KeyPrefix": "propentro:",
+    "DefaultExpiration": "00:05:00"
   }
 }
 ```
@@ -693,6 +739,47 @@ Events are reserved for async outbox side-effects only.
 - "Must be atomic with the business operation?" → Direct write in handler
 - "Is it a single line and acceptable to repeat?" → Direct call in handler
 - "Needs guaranteed delivery or is slow/external?" → Domain event → Outbox
+
+## Email
+
+### Resend Integration
+
+Email is sent via the Resend API through `IEmailService` → `ResendEmailService`:
+
+- **Configuration**: `Email:ApiKey` and `Email:FromAddress` in appsettings
+- **Resilience**: HTTP client uses `AddStandardResilienceHandler()` (Polly) for retries
+- **Graceful degradation**: If API key is not configured, logs a warning and returns success (does not fail the request)
+- **Templates**: `EmailTemplates` class provides pre-built HTML/text templates:
+  - `WelcomeEmail(firstName)` — sent when a user is first synced
+  - `MembershipAddedEmail(firstName, orgName)` — sent when user joins an organization
+  - `MembershipRemovedEmail(firstName, orgName)` — sent when user is removed from an organization
+
+### Email via Outbox
+
+Emails are sent from outbox event handlers (async, guaranteed delivery):
+
+```csharp
+public sealed class MembershipCreatedEventHandler : IOutboxEventHandler
+{
+    public string EventType => "membership.created";
+
+    public async Task HandleAsync(string payload, CancellationToken ct)
+    {
+        var evt = JsonSerializer.Deserialize<MembershipCreatedEvent>(payload, OutboxJsonOptions.Instance);
+        var content = EmailTemplates.MembershipAddedEmail(firstName, orgName);
+        await emailService.SendAsync(new EmailMessage(email, content.Subject, content.HtmlBody, content.TextBody), ct);
+    }
+}
+```
+
+## Blob Storage
+
+S3-compatible blob storage via `IBlobStorageService` → `BlobStorageService`:
+
+- **Provider**: Cloudflare R2 (or any S3-compatible service)
+- **Configuration**: `BlobStorage` section in appsettings (`BucketName`, `AccessKey`, `SecretKey`, `ServiceUrl`)
+- **Operations**: `UploadAsync`, `DownloadAsync`, `DeleteAsync`, `GetPresignedUrlAsync`, `ExistsAsync`
+- **Naming**: Files are stored with GUID-prefixed blob names for uniqueness
 
 ## Testing Guidelines
 
@@ -772,6 +859,7 @@ public class UnitIntegrationTests : IAsyncLifetime
 6. Add activity log write if the action should appear in timeline
 7. Add cache invalidation if entity has cached queries
 8. Add domain event (`MarkAs{Action}`) if async side-effects are needed
+9. If domain event added: create `IOutboxEventHandler` implementation co-located with the command
 
 ### Adding a New Query
 
@@ -789,9 +877,14 @@ public class UnitIntegrationTests : IAsyncLifetime
 | `global.json` | .NET SDK version pinning (10.0.102) |
 | `.editorconfig` | Code style rules and naming conventions |
 | `Application/DependencyInjection.cs` | MediatR and validator registration |
-| `Infrastructure/DependencyInjection.cs` | DB, auth, caching, services registration |
-| `Infrastructure/Persistence/AppDbContext.cs` | EF Core context with global filters and domain events |
+| `Application/Common/Interfaces/Messaging/OutboxJsonOptions.cs` | Shared JSON options for outbox event serialization/deserialization |
+| `Application/Common/Email/EmailTemplates.cs` | HTML/text email templates (Welcome, MembershipAdded, MembershipRemoved) |
+| `Application/Common/Errors/CommonErrors.cs` | Shared error definitions (Unauthorized, Forbidden, ValidationFailed, Conflict, NotFound) |
+| `Infrastructure/DependencyInjection.cs` | DB, auth, caching, email, outbox, webhooks, storage registration |
+| `Infrastructure/Persistence/AppDbContext.cs` | EF Core context with global filters and domain event collection |
+| `Infrastructure/Outbox/ProcessOutboxMessagesJob.cs` | Quartz job for outbox message processing with retry |
 | `Domain/Common/PublicIdGenerator.cs` | Client-side prefixed PublicId generation |
+| `Domain/Common/OrganizationEntity.cs` | Base class for org-scoped entities (audit + soft delete) |
 | `Api/Program.cs` | Application bootstrap and middleware pipeline |
 | `Api/Endpoints/EndpointExtensions.cs` | Central endpoint registration |
 
@@ -856,15 +949,19 @@ Handler raises event → entity.MarkAs{Action}(orgId)
 
 ### Event Type Naming
 
-Format: `{aggregate}.{action}` (lowercase, dot-separated)
+Format: `{aggregate}.{action}` (lowercase, dot-separated). Defined explicitly as `override string EventType` on each domain event record:
 
 | Domain Event | Outbox EventType |
 |-------------|-----------------|
 | `ContactCreatedEvent` | `contact.created` |
+| `ContactUpdatedEvent` | `contact.updated` |
+| `ContactArchivedEvent` | `contact.archived` |
+| `ContactUnarchivedEvent` | `contact.unarchived` |
+| `ContactDeletedEvent` | `contact.deleted` |
 | `PropertyCreatedEvent` | `property.created` |
 | `PropertyUpdatedEvent` | `property.updated` |
-
-Derived automatically in `AppDbContext.DeriveEventType()` from the record name.
+| `MembershipCreatedEvent` | `membership.created` |
+| `MembershipRemovedEvent` | `membership.removed` |
 
 ### ProcessOutboxMessagesJob
 
@@ -877,7 +974,40 @@ The Quartz job (`[DisallowConcurrentExecution]`) processes outbox messages:
    - Failure → `retry_count++`, exponential backoff (`2^retryCount` seconds for `next_retry_at`), `last_error` set
    - Max retries exceeded → `status = 'failed'`, `processed_at = now`
 
-**Current state:** No handler dispatch yet — messages are marked completed immediately. Handler dispatch will be added when the first async side-effect (email, webhook, external API) is needed.
+### Outbox Event Handlers
+
+The `IOutboxEventHandler` interface is implemented per event type. Handlers are auto-discovered and registered via `AddOutboxEventHandlers()` in DI. Each handler specifies its `EventType` and receives the JSON payload:
+
+```csharp
+public sealed class ContactArchivedEventHandler : IOutboxEventHandler
+{
+    public string EventType => "contact.archived";
+
+    public Task HandleAsync(string payload, CancellationToken cancellationToken = default)
+    {
+        var domainEvent = JsonSerializer.Deserialize<ContactArchivedEvent>(payload, OutboxJsonOptions.Instance);
+        // Handle the event (send email, notify external systems, etc.)
+        return Task.CompletedTask;
+    }
+}
+```
+
+**Current handlers:**
+
+| Handler | EventType | Location |
+|---------|-----------|----------|
+| `ContactCreatedEventHandler` | `contact.created` | Features/Contacts/Commands/CreateContact/ |
+| `ContactUpdatedEventHandler` | `contact.updated` | Features/Contacts/Commands/UpdateContact/ |
+| `ContactArchivedEventHandler` | `contact.archived` | Features/Contacts/Commands/ArchiveContact/ |
+| `ContactUnarchivedEventHandler` | `contact.unarchived` | Features/Contacts/Commands/UnarchiveContact/ |
+| `ContactDeletedEventHandler` | `contact.deleted` | Features/Contacts/Commands/DeleteContact/ |
+| `MembershipCreatedEventHandler` | `membership.created` | Features/Webhooks/Commands/SyncMembership/ |
+| `MembershipRemovedEventHandler` | `membership.removed` | Features/Webhooks/Commands/RemoveMembership/ |
+
+**Key conventions:**
+- Use `OutboxJsonOptions.Instance` (camelCase) for deserialization — must match serialization in `AppDbContext`
+- Handlers are co-located with their corresponding command (not in a separate folder)
+- Unhandled event types are logged as warnings and the message is marked completed
 
 ### Outbox Configuration
 
@@ -904,7 +1034,6 @@ The webhook endpoint is the **only Clerk-aware code**. It translates Clerk event
 | `organization.deleted` | `DeactivateOrganizationCommand` |
 | `organizationMembership.created/updated` | `SyncMembershipCommand` |
 | `organizationMembership.deleted` | `RemoveMembershipCommand` |
-| `organizationInvitation.*` | `SyncInvitationCommand` |
 
 ### Handler Design Principles
 
@@ -939,6 +1068,7 @@ with business data and processed by the background job. There is NO synchronous 
 // Interface — no MediatR dependency
 public interface IDomainEvent
 {
+    string EventType { get; }
     Guid AggregateId { get; }
     Guid OrganizationId { get; }
     DateTimeOffset OccurredAt { get; }
@@ -947,6 +1077,7 @@ public interface IDomainEvent
 // Base record — all events inherit from this
 public abstract record DomainEvent(Guid AggregateId, Guid OrganizationId) : IDomainEvent
 {
+    public abstract string EventType { get; }
     public DateTimeOffset OccurredAt { get; } = DateTimeOffset.UtcNow;
 }
 ```
@@ -964,10 +1095,17 @@ NOT in a top-level `Domain/Events/` folder.
 
 ### Event Record Pattern
 
+Each event must define its `EventType` (used for outbox routing and handler dispatch):
+
 ```csharp
 public record ContactCreatedEvent(Guid ContactId, Guid OrganizationId)
-    : DomainEvent(ContactId, OrganizationId);
+    : DomainEvent(ContactId, OrganizationId)
+{
+    public override string EventType => "contact.created";
+}
 ```
+
+The `EventType` must match the `EventType` property on the corresponding `IOutboxEventHandler`.
 
 ### Raising Events
 

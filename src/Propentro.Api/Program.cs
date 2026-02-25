@@ -46,12 +46,19 @@ try
     {
         options.AddDefaultPolicy(policy =>
         {
-            var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+            var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                ?.Where(o => !string.IsNullOrWhiteSpace(o)).ToArray();
 
             if (origins is { Length: > 0 })
+            {
+                Log.Information("CORS allowed origins: {Origins}", origins);
                 policy.WithOrigins(origins).AllowCredentials();
+            }
             else
-                policy.AllowAnyOrigin();
+            {
+                Log.Warning("No CORS origins configured — all cross-origin requests will be blocked");
+                policy.SetIsOriginAllowed(_ => false);
+            }
 
             policy.AllowAnyMethod().AllowAnyHeader();
         });

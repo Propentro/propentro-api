@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using Serilog;
 using StackExchange.Redis;
 
 namespace Propentro.Infrastructure.Caching;
@@ -57,28 +58,42 @@ public sealed class RedisCacheService(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
-        var prefixedKey = GetPrefixedKey(key);
-        await _database.KeyDeleteAsync(prefixedKey);
+        try
+        {
+            var prefixedKey = GetPrefixedKey(key);
+            await _database.KeyDeleteAsync(prefixedKey);
+        }
+        catch (RedisConnectionException ex)
+        {
+            Log.Warning(ex, "Redis unavailable during cache removal for key {CacheKey} — skipping (best-effort)", key);
+        }
     }
 
     public async Task RemoveByPatternAsync(string pattern, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pattern);
 
-        var prefixedPattern = GetPrefixedKey(pattern);
-
-        // server.Keys() uses SCAN internally in StackExchange.Redis (lazy enumeration)
-        // This is production-safe and efficient for pattern-based key removal
-        var endpoints = redis.GetEndPoints();
-        foreach (var endpoint in endpoints)
+        try
         {
-            var server = redis.GetServer(endpoint);
-            var keys = server.Keys(pattern: prefixedPattern).ToArray();
+            var prefixedPattern = GetPrefixedKey(pattern);
 
-            if (keys.Length > 0)
+            // server.Keys() uses SCAN internally in StackExchange.Redis (lazy enumeration)
+            // This is production-safe and efficient for pattern-based key removal
+            var endpoints = redis.GetEndPoints();
+            foreach (var endpoint in endpoints)
             {
-                await _database.KeyDeleteAsync(keys);
+                var server = redis.GetServer(endpoint);
+                var keys = server.Keys(pattern: prefixedPattern).ToArray();
+
+                if (keys.Length > 0)
+                {
+                    await _database.KeyDeleteAsync(keys);
+                }
             }
+        }
+        catch (RedisConnectionException ex)
+        {
+            Log.Warning(ex, "Redis unavailable during cache removal for pattern {CachePattern} — skipping (best-effort)", pattern);
         }
     }
 

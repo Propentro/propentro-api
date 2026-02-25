@@ -180,7 +180,7 @@ public static class DependencyInjection
                         && t.IsAssignableTo(typeof(IOutboxEventHandler)));
 
         foreach (var type in handlerTypes)
-            services.AddSingleton(typeof(IOutboxEventHandler), type);
+            services.AddTransient(typeof(IOutboxEventHandler), type);
 
         return services;
     }

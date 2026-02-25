@@ -3,7 +3,6 @@ using MediatR;
 using Propentro.Application.Features.Webhooks.Commands.DeactivateOrganization;
 using Propentro.Application.Features.Webhooks.Commands.DeactivateUser;
 using Propentro.Application.Features.Webhooks.Commands.RemoveMembership;
-using Propentro.Application.Features.Webhooks.Commands.SyncInvitation;
 using Propentro.Application.Features.Webhooks.Commands.SyncMembership;
 using Propentro.Application.Features.Webhooks.Commands.SyncOrganization;
 using Propentro.Application.Features.Webhooks.Commands.SyncUser;
@@ -43,14 +42,15 @@ internal static class WebhookEndpoints
         using var reader = new StreamReader(request.Body, leaveOpen: true);
         var body = await reader.ReadToEndAsync(ct);
 
+        // Extract Svix headers once
+        var svixId = request.Headers["svix-id"].FirstOrDefault();
+        var svixTimestamp = request.Headers["svix-timestamp"].FirstOrDefault();
+        var svixSignature = request.Headers["svix-signature"].FirstOrDefault();
+
         // Verify signature — verifier may not be registered if WebhookSecret is not configured
         var verifier = request.HttpContext.RequestServices.GetService<ClerkWebhookVerifier>();
         if (verifier is not null)
         {
-            var svixId = request.Headers["svix-id"].FirstOrDefault();
-            var svixTimestamp = request.Headers["svix-timestamp"].FirstOrDefault();
-            var svixSignature = request.Headers["svix-signature"].FirstOrDefault();
-
             if (!verifier.Verify(svixId, svixTimestamp, svixSignature, body))
             {
                 Log.Warning("Clerk webhook signature verification failed");
@@ -78,19 +78,24 @@ internal static class WebhookEndpoints
             return Results.BadRequest();
 
         // Idempotency check using Clerk's event ID (from svix-id header)
-        var eventId = request.Headers["svix-id"].FirstOrDefault() ?? Guid.NewGuid().ToString();
-        if (!idempotencyStore.TryMarkProcessed(eventId))
+        if (string.IsNullOrEmpty(svixId))
         {
-            Log.Information("Duplicate Clerk webhook event {EventId}, skipping", eventId);
+            Log.Warning("Missing svix-id header, cannot ensure idempotency");
+            return Results.BadRequest();
+        }
+
+        if (!idempotencyStore.TryMarkProcessed(svixId))
+        {
+            Log.Information("Duplicate Clerk webhook event {EventId}, skipping", svixId);
             return Results.Ok();
         }
 
         // Route event to appropriate handler
         using (LogContext.PushProperty("WebhookEventType", webhookEvent.Type))
-        using (LogContext.PushProperty("WebhookEventId", eventId))
+        using (LogContext.PushProperty("WebhookEventId", svixId))
         {
             Log.Information("Processing Clerk webhook event {EventType} (id: {EventId})",
-                webhookEvent.Type, eventId);
+                webhookEvent.Type, svixId);
 
             try
             {
@@ -100,10 +105,10 @@ internal static class WebhookEndpoints
             {
                 Log.Error(ex,
                     "Failed to process Clerk webhook event {EventType} (id: {EventId})",
-                    webhookEvent.Type, eventId);
+                    webhookEvent.Type, svixId);
 
                 // Remove idempotency entry so Clerk can retry this event
-                idempotencyStore.TryRemoveProcessed(eventId);
+                idempotencyStore.TryRemoveProcessed(svixId);
 
                 return Results.StatusCode(StatusCodes.Status500InternalServerError);
             }
@@ -124,66 +129,68 @@ internal static class WebhookEndpoints
             case "user.created":
             case "user.updated":
                 var email = GetPrimaryEmail(data);
-                if (data.Id is not null && email is not null)
+                if (data.Id is null || email is null)
                 {
-                    await sender.Send(new SyncUserCommand(
-                        data.Id, _authProvider, email, data.FirstName, data.LastName), ct);
+                    Log.Warning("Skipping {EventType}: missing Id or email in payload", webhookEvent.Type);
+                    break;
                 }
+                await sender.Send(new SyncUserCommand(
+                    data.Id, _authProvider, email, data.FirstName, data.LastName), ct);
                 break;
 
             case "user.deleted":
-                if (data.Id is not null)
+                if (data.Id is null)
                 {
-                    await sender.Send(new DeactivateUserCommand(data.Id, _authProvider), ct);
+                    Log.Warning("Skipping user.deleted: missing Id in payload");
+                    break;
                 }
+                await sender.Send(new DeactivateUserCommand(data.Id, _authProvider), ct);
                 break;
 
             case "organization.created":
             case "organization.updated":
-                if (data.Id is not null && data.Name is not null && data.Slug is not null)
+                if (data.Id is null || data.Name is null || data.Slug is null)
                 {
-                    await sender.Send(new SyncOrganizationCommand(
-                        data.Id, _authProvider, data.Name, data.Slug, data.LogoUrl), ct);
+                    Log.Warning("Skipping {EventType}: missing Id, Name, or Slug in payload", webhookEvent.Type);
+                    break;
                 }
+                await sender.Send(new SyncOrganizationCommand(
+                    data.Id, _authProvider, data.Name, data.Slug, data.LogoUrl), ct);
                 break;
 
             case "organization.deleted":
-                if (data.Id is not null)
+                if (data.Id is null)
                 {
-                    await sender.Send(new DeactivateOrganizationCommand(data.Id, _authProvider), ct);
+                    Log.Warning("Skipping organization.deleted: missing Id in payload");
+                    break;
                 }
+                await sender.Send(new DeactivateOrganizationCommand(data.Id, _authProvider), ct);
                 break;
 
             case "organizationMembership.created":
             case "organizationMembership.updated":
                 var orgId = data.Organization?.Id;
                 var userId = data.PublicUserData?.UserId;
-                if (orgId is not null && userId is not null && data.Role is not null)
+                if (orgId is null || userId is null || data.Role is null)
                 {
-                    await sender.Send(new SyncMembershipCommand(
-                        orgId, userId, _authProvider, data.Role), ct);
+                    Log.Warning("Skipping {EventType}: missing Organization.Id, UserId, or Role in payload",
+                        webhookEvent.Type);
+                    break;
                 }
+                await sender.Send(new SyncMembershipCommand(
+                    orgId, userId, _authProvider, data.Role), ct);
                 break;
 
             case "organizationMembership.deleted":
                 var delOrgId = data.Organization?.Id;
                 var delUserId = data.PublicUserData?.UserId;
-                if (delOrgId is not null && delUserId is not null)
+                if (delOrgId is null || delUserId is null)
                 {
-                    await sender.Send(new RemoveMembershipCommand(
-                        delOrgId, delUserId, _authProvider), ct);
+                    Log.Warning("Skipping organizationMembership.deleted: missing Organization.Id or UserId in payload");
+                    break;
                 }
-                break;
-
-            case "organizationInvitation.created":
-            case "organizationInvitation.accepted":
-            case "organizationInvitation.revoked":
-                var invOrgId = data.Organization?.Id;
-                if (invOrgId is not null && data.EmailAddress is not null)
-                {
-                    await sender.Send(new SyncInvitationCommand(
-                        invOrgId, data.EmailAddress, _authProvider, data.Status ?? "unknown"), ct);
-                }
+                await sender.Send(new RemoveMembershipCommand(
+                    delOrgId, delUserId, _authProvider), ct);
                 break;
 
             default:

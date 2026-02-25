@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Models;
+using Propentro.Domain.Entities.Identity.Events;
 
 namespace Propentro.Application.Features.Webhooks.Commands.SyncMembership;
 
@@ -11,7 +13,8 @@ namespace Propentro.Application.Features.Webhooks.Commands.SyncMembership;
 /// </summary>
 public sealed class SyncMembershipHandler(
     IAppDbContext dbContext,
-    IDateTimeProvider dateTimeProvider) : ICommandHandler<SyncMembershipCommand>
+    IDateTimeProvider dateTimeProvider,
+    IPermissionService permissionService) : ICommandHandler<SyncMembershipCommand>
 {
     public async Task<Result> Handle(SyncMembershipCommand request, CancellationToken cancellationToken)
     {
@@ -23,9 +26,10 @@ public sealed class SyncMembershipHandler(
 
         if (org is null)
         {
-            Log.Warning("Cannot sync membership: organization not found for external ID {ExternalOrgId}",
-                request.ExternalOrgId);
-            return Result.Success();
+            // Org may not be committed yet (race condition) — throw so Clerk retries
+            throw new InvalidOperationException(
+                $"Organization not found for external ID '{request.ExternalOrgId}'. " +
+                "This may be a race condition — Clerk will retry.");
         }
 
         if (!org.IsActive)
@@ -42,9 +46,10 @@ public sealed class SyncMembershipHandler(
 
         if (user is null)
         {
-            Log.Warning("Cannot sync membership: user not found for external ID {ExternalUserId}",
-                request.ExternalUserId);
-            return Result.Success();
+            // User may not be committed yet (race condition) — throw so Clerk retries
+            throw new InvalidOperationException(
+                $"User not found for external ID '{request.ExternalUserId}'. " +
+                "This may be a race condition — Clerk will retry.");
         }
 
         if (!user.IsActive)
@@ -55,6 +60,7 @@ public sealed class SyncMembershipHandler(
 
         // Upsert organization_users
         var membership = await dbContext.OrganizationUsers
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(
                 ou => ou.OrganizationId == org.Id && ou.UserId == user.Id,
                 cancellationToken);
@@ -68,6 +74,7 @@ public sealed class SyncMembershipHandler(
                 Status = "active"
             };
             dbContext.OrganizationUsers.Add(membership);
+            dbContext.AddOutboxEvent(new MembershipCreatedEvent(user.Id, org.Id));
 
             Log.Information("Created membership for user {UserPublicId} in org {OrgPublicId}",
                 user.PublicId, org.PublicId);
@@ -79,12 +86,16 @@ public sealed class SyncMembershipHandler(
 
         // Map Clerk role to system role
         string systemRoleName = MapClerkRole(request.Role);
-        await SyncRoleAsync(org.Id, user.Id, systemRoleName, cancellationToken);
+        bool roleChanged = await SyncRoleAsync(org.Id, user.Id, systemRoleName, cancellationToken);
+
+        // Invalidate permission cache when role changes
+        if (roleChanged)
+            await permissionService.InvalidatePermissionsCacheAsync(user.Id, org.Id, cancellationToken);
 
         return Result.Success();
     }
 
-    private async Task SyncRoleAsync(
+    private async Task<bool> SyncRoleAsync(
         Guid orgId, Guid userId, string roleName, CancellationToken ct)
     {
         var role = await dbContext.Roles
@@ -94,17 +105,18 @@ public sealed class SyncMembershipHandler(
         if (role is null)
         {
             Log.Warning("System role {RoleName} not found, skipping role assignment", roleName);
-            return;
+            return false;
         }
 
         // Remove existing roles for this user in this org
         var existingRoles = await dbContext.OrganizationUserRoles
+            .IgnoreQueryFilters()
             .Where(our => our.OrganizationId == orgId && our.UserId == userId)
             .ToListAsync(ct);
 
         // Check if the role is already assigned
         if (existingRoles.Any(r => r.RoleId == role.Id))
-            return;
+            return false;
 
         // Remove old roles and add the new one
         foreach (var existingRole in existingRoles)
@@ -120,12 +132,15 @@ public sealed class SyncMembershipHandler(
 
         Log.Information("Assigned role {RoleName} to user {UserId} in org {OrgId}",
             roleName, userId, orgId);
+
+        return true;
     }
 
     private static string MapClerkRole(string clerkRole) => clerkRole switch
     {
-        "org:admin" => "Owner",
-        "org:member" => "Manager",
-        _ => "Viewer"
+        "org:organisation_owner" => "Owner",
+        "org:organisation_manager" => "Manager",
+        "org:organisation_viewer" => "Viewer",
+        _ => "Viewer" // Default to least privileged role
     };
 }

@@ -39,6 +39,7 @@ public sealed class DeactivateUserHandler(
 
         // 2. Disable all memberships
         var memberships = await dbContext.OrganizationUsers
+            .IgnoreQueryFilters()
             .Where(ou => ou.UserId == user.Id)
             .ToListAsync(cancellationToken);
 
@@ -49,6 +50,7 @@ public sealed class DeactivateUserHandler(
 
         // 3. Remove all role assignments
         var roleAssignments = await dbContext.OrganizationUserRoles
+            .IgnoreQueryFilters()
             .Where(our => our.UserId == user.Id)
             .ToListAsync(cancellationToken);
 

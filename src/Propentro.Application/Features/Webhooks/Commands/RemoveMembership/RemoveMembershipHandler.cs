@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Models;
+using Propentro.Domain.Entities.Identity.Events;
 
 namespace Propentro.Application.Features.Webhooks.Commands.RemoveMembership;
 
@@ -23,9 +24,10 @@ public sealed class RemoveMembershipHandler(
 
         if (org is null)
         {
-            Log.Warning("Cannot remove membership: organization not found for external ID {ExternalOrgId}",
-                request.ExternalOrgId);
-            return Result.Success();
+            // Org must exist for membership removal — throw so Clerk retries
+            throw new InvalidOperationException(
+                $"Organization not found for external ID '{request.ExternalOrgId}'. " +
+                "This may be a race condition — Clerk will retry.");
         }
 
         var user = await dbContext.Users
@@ -36,13 +38,15 @@ public sealed class RemoveMembershipHandler(
 
         if (user is null)
         {
-            Log.Warning("Cannot remove membership: user not found for external ID {ExternalUserId}",
-                request.ExternalUserId);
-            return Result.Success();
+            // User must exist for membership removal — throw so Clerk retries
+            throw new InvalidOperationException(
+                $"User not found for external ID '{request.ExternalUserId}'. " +
+                "This may be a race condition — Clerk will retry.");
         }
 
         // Remove role assignments
         var roles = await dbContext.OrganizationUserRoles
+            .IgnoreQueryFilters()
             .Where(our => our.OrganizationId == org.Id && our.UserId == user.Id)
             .ToListAsync(cancellationToken);
 
@@ -51,12 +55,14 @@ public sealed class RemoveMembershipHandler(
 
         // Remove membership
         var membership = await dbContext.OrganizationUsers
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(
                 ou => ou.OrganizationId == org.Id && ou.UserId == user.Id,
                 cancellationToken);
 
         if (membership is not null)
         {
+            dbContext.AddOutboxEvent(new MembershipRemovedEvent(user.Id, org.Id));
             dbContext.OrganizationUsers.Remove(membership);
             Log.Information("Removed membership for user {UserPublicId} from org {OrgPublicId}",
                 user.PublicId, org.PublicId);
