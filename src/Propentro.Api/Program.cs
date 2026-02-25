@@ -46,7 +46,8 @@ try
     {
         options.AddDefaultPolicy(policy =>
         {
-            var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+            var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                ?.Where(o => !string.IsNullOrWhiteSpace(o)).ToArray();
 
             if (origins is { Length: > 0 })
             {
