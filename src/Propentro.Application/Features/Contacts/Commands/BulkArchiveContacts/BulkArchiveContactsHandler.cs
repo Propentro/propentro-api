@@ -28,7 +28,8 @@ public sealed class BulkArchiveContactsHandler(
 
             var activity = new Activity("contact", contact.Id, "archived")
             {
-                Title = "Contact archived"
+                Title = "Contact archived",
+                Description = $"Contact \"{contact.DisplayName}\" was archived by {currentUser.FullName}.",
             };
             dbContext.Activities.Add(activity);
 

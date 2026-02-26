@@ -27,7 +27,8 @@ public sealed class BulkUnarchiveContactsHandler(
 
             var activity = new Activity("contact", contact.Id, "unarchived")
             {
-                Title = "Contact unarchived"
+                Title = "Contact unarchived",
+                Description = $"Contact \"{contact.DisplayName}\" was unarchived by {currentUser.FullName}.",
             };
             dbContext.Activities.Add(activity);
 
