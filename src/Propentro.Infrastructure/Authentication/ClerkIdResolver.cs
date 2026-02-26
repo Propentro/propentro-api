@@ -19,33 +19,33 @@ public sealed class ClerkIdResolver(IDbConnectionFactory db) : IExternalIdResolv
         await connection.OpenAsync(cancellationToken);
 
         // Npgsql does not support concurrent commands on a single connection
-        var (userId, publicUserId) = await ResolveUserAsync(connection, externalUserId);
+        var (userId, publicUserId, fullName) = await ResolveUserAsync(connection, externalUserId);
         var (orgId, publicOrgId) = await ResolveOrgAsync(connection, externalOrgId);
 
-        return new ResolvedIdentity(userId, publicUserId, orgId, publicOrgId);
+        return new ResolvedIdentity(userId, publicUserId, orgId, publicOrgId, fullName);
     }
 
-    private static async Task<(Guid UserId, string PublicUserId)> ResolveUserAsync(
+    private static async Task<(Guid UserId, string PublicUserId, string FullName)> ResolveUserAsync(
         System.Data.Common.DbConnection connection,
         string? externalUserId)
     {
         if (string.IsNullOrWhiteSpace(externalUserId))
-            return (Guid.Empty, string.Empty);
+            return (Guid.Empty, string.Empty, string.Empty);
 
         const string sql = """
-            SELECT id, public_id
+            SELECT id, public_id, first_name || ' ' || last_name AS full_name
             FROM users
             WHERE external_id = @ExternalId
               AND auth_provider = @AuthProvider
               AND is_active = true
             """;
 
-        var result = await connection.QueryFirstOrDefaultAsync<IdResult>(
+        var result = await connection.QueryFirstOrDefaultAsync<UserIdResult>(
             sql, new { ExternalId = externalUserId, AuthProvider = "clerk" });
 
         return result is null
-            ? (Guid.Empty, string.Empty)
-            : (result.Id, result.PublicId);
+            ? (Guid.Empty, string.Empty, string.Empty)
+            : (result.Id, result.PublicId, result.FullName);
     }
 
     private static async Task<(Guid OrgId, string PublicOrgId)> ResolveOrgAsync(
@@ -63,7 +63,7 @@ public sealed class ClerkIdResolver(IDbConnectionFactory db) : IExternalIdResolv
               AND is_active = true
             """;
 
-        var result = await connection.QueryFirstOrDefaultAsync<IdResult>(
+        var result = await connection.QueryFirstOrDefaultAsync<OrganisationIdResult>(
             sql, new { ExternalId = externalOrgId, AuthProvider = "clerk" });
 
         return result is null
@@ -71,5 +71,6 @@ public sealed class ClerkIdResolver(IDbConnectionFactory db) : IExternalIdResolv
             : (result.Id, result.PublicId);
     }
 
-    private sealed record IdResult(Guid Id, string PublicId);
+    private sealed record UserIdResult(Guid Id, string PublicId, string FullName = "");
+    private sealed record OrganisationIdResult(Guid Id, string PublicId);
 }

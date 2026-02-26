@@ -20,6 +20,7 @@ public sealed class UserContext(
     private Guid _organizationId = Guid.Empty;
     private string _publicUserId = string.Empty;
     private string _publicOrganizationId = string.Empty;
+    private string _fullName = string.Empty;
     private bool _isInitialized;
 
     private ClaimsPrincipal? User => httpContextAccessor.HttpContext?.User;
@@ -32,6 +33,7 @@ public sealed class UserContext(
     public Guid UserId => _userId;
     public string PublicUserId => _publicUserId;
     public string? Email => User?.FindFirstValue("email");
+    public string? FullName => _fullName;
     public bool IsAuthenticated => User?.Identity?.IsAuthenticated ?? false;
     public Guid OrganizationId => _organizationId;
     public string PublicOrganizationId => _publicOrganizationId;
@@ -55,6 +57,7 @@ public sealed class UserContext(
 
         _userId = identity.UserId;
         _publicUserId = identity.PublicUserId;
+        _fullName = identity.FullName;
 
         // Step 2: Verify user-org membership (auth provider agnostic)
         if (identity.UserId != Guid.Empty && identity.OrganizationId != Guid.Empty)

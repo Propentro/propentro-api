@@ -48,6 +48,11 @@ public interface IUserContext
     /// </summary>
     string? Email { get; }
 
+    /// <summary> User's full name from JWT claims.
+    /// Returns null if not available.
+    /// </summary>
+    string? FullName { get; }
+
     /// <summary>
     /// Indicates whether the current request is authenticated.
     /// </summary>
