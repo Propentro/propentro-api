@@ -8,13 +8,14 @@ using Propentro.Application.Features.Contacts.Commands.ConfirmContactDocumentUpl
 using Propentro.Application.Features.Contacts.Commands.InitiateContactDocumentUpload;
 using Propentro.Application.Features.Contacts.Commands.InitiateContactDocumentVersionUpload;
 using Propentro.Application.Features.Contacts.Commands.ArchiveContact;
-using Propentro.Application.Features.Contacts.Commands.AssignTag;
 using Propentro.Application.Features.Contacts.Commands.BulkArchiveContacts;
 using Propentro.Application.Features.Contacts.Commands.BulkUnarchiveContacts;
 using Propentro.Application.Features.Contacts.Commands.CreateContact;
 using Propentro.Application.Features.Contacts.Commands.DeleteContact;
 using Propentro.Application.Features.Contacts.Commands.RemoveContactDocument;
-using Propentro.Application.Features.Contacts.Commands.RemoveTag;
+using Propentro.Application.Features.Contacts.Commands.SetContactTags;
+using Propentro.Application.Features.Contacts.Commands.BulkTagContacts;
+using Propentro.Application.Features.Contacts.Commands.BulkUntagContacts;
 using Propentro.Application.Features.Contacts.Commands.UnarchiveContact;
 using Propentro.Application.Features.Contacts.Commands.UpdateContact;
 using Propentro.Application.Features.Contacts.Commands.UpdateContactDocument;
@@ -24,7 +25,6 @@ using Propentro.Application.Features.Contacts.Queries.GetContacts;
 using Propentro.Contracts.Activities;
 using Propentro.Contracts.Contacts;
 using Propentro.Contracts.Documents;
-using Propentro.Contracts.Tags;
 using Propentro.Infrastructure.Authorization;
 
 namespace Propentro.Api.Endpoints;
@@ -176,20 +176,27 @@ internal static class ContactEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         // Tags
-        group.MapPost("/{id}/tags", AssignContactTagAsync)
-            .WithName("AssignContactTag")
-            .WithSummary("Assign a tag to a contact")
+        group.MapPut("/{id}/tags", SetContactTagsAsync)
+            .WithName("SetContactTags")
+            .WithSummary("Set tags on a contact (declarative)")
             .WithMetadata(new RequirePermissionAttribute("contacts:write"))
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict);
+            .ProducesProblem(StatusCodes.Status400BadRequest);
 
-        group.MapDelete("/{id}/tags/{tagId}", RemoveContactTagAsync)
-            .WithName("RemoveContactTag")
-            .WithSummary("Remove a tag from a contact")
+        group.MapPost("/bulk-tag", BulkTagAsync)
+            .WithName("BulkTagContacts")
+            .WithSummary("Add tags to multiple contacts")
             .WithMetadata(new RequirePermissionAttribute("contacts:write"))
             .Produces(StatusCodes.Status204NoContent)
-            .ProducesProblem(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        group.MapPost("/bulk-untag", BulkUntagAsync)
+            .WithName("BulkUntagContacts")
+            .WithSummary("Remove tags from multiple contacts")
+            .WithMetadata(new RequirePermissionAttribute("contacts:write"))
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status400BadRequest);
     }
 
     private static async Task<IResult> GetContactsAsync(
@@ -474,23 +481,31 @@ internal static class ContactEndpoints
 
     // Tag handlers
 
-    private static async Task<IResult> AssignContactTagAsync(
+    private static async Task<IResult> SetContactTagsAsync(
         string id,
-        AssignTagRequest request,
+        SetContactTagsRequest request,
         ISender sender,
         CancellationToken ct)
     {
-        var result = await sender.Send(new AssignTagCommand(id, request.TagId), ct);
+        var result = await sender.Send(new SetContactTagsCommand(id, request.TagIds), ct);
         return result.ToHttpResult();
     }
 
-    private static async Task<IResult> RemoveContactTagAsync(
-        string id,
-        string tagId,
+    private static async Task<IResult> BulkTagAsync(
+        BulkContactTagsRequest request,
         ISender sender,
         CancellationToken ct)
     {
-        var result = await sender.Send(new RemoveTagCommand(id, tagId), ct);
+        var result = await sender.Send(new BulkTagContactsCommand(request.ContactIds, request.TagIds), ct);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> BulkUntagAsync(
+        BulkContactTagsRequest request,
+        ISender sender,
+        CancellationToken ct)
+    {
+        var result = await sender.Send(new BulkUntagContactsCommand(request.ContactIds, request.TagIds), ct);
         return result.ToHttpResult();
     }
 }

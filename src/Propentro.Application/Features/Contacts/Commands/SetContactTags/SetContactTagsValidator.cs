@@ -1,18 +1,23 @@
 using System.Text.RegularExpressions;
 using FluentValidation;
 
-namespace Propentro.Application.Features.Contacts.Commands.AssignTag;
+namespace Propentro.Application.Features.Contacts.Commands.SetContactTags;
 
-public sealed partial class AssignTagValidator : AbstractValidator<AssignTagCommand>
+public sealed partial class SetContactTagsValidator : AbstractValidator<SetContactTagsCommand>
 {
-    public AssignTagValidator()
+    public SetContactTagsValidator()
     {
         RuleFor(x => x.ContactId)
             .NotEmpty()
             .Must(id => ContactIdRegex().IsMatch(id))
             .WithMessage("Invalid contact ID format.");
 
-        RuleFor(x => x.TagId)
+        RuleFor(x => x.TagIds)
+            .NotNull()
+            .Must(ids => ids.Length <= 50)
+            .WithMessage("Cannot set more than 50 tags at once.");
+
+        RuleForEach(x => x.TagIds)
             .NotEmpty()
             .Must(id => TagIdRegex().IsMatch(id))
             .WithMessage("Invalid tag ID format.");
