@@ -25,48 +25,6 @@ public sealed class BlobStorageService : IBlobStorageService, IDisposable
             });
     }
 
-    public async Task UploadAsync(
-        string storageKey,
-        Stream content,
-        string contentType,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(storageKey);
-        ArgumentNullException.ThrowIfNull(content);
-
-        Log.Information(
-            "Uploading blob {StorageKey} to bucket {BucketName} with content type {ContentType}",
-            storageKey, _bucketName, contentType);
-
-        var request = new PutObjectRequest
-        {
-            BucketName = _bucketName,
-            Key = storageKey,
-            InputStream = content,
-            ContentType = contentType
-        };
-
-        await _s3.PutObjectAsync(request, cancellationToken);
-    }
-
-    public async Task<Stream?> DownloadAsync(string blobName, CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(blobName);
-
-        Log.Information("Downloading blob {BlobName} from bucket {BucketName}", blobName, _bucketName);
-
-        try
-        {
-            var response = await _s3.GetObjectAsync(_bucketName, blobName, cancellationToken);
-            return response.ResponseStream;
-        }
-        catch (AmazonS3Exception ex) when (ex.StatusCode is System.Net.HttpStatusCode.NotFound)
-        {
-            Log.Warning("Blob {BlobName} not found in bucket {BucketName}", blobName, _bucketName);
-            return null;
-        }
-    }
-
     public async Task<bool> DeleteAsync(string blobName, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(blobName);
