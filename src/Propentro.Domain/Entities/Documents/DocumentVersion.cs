@@ -20,4 +20,16 @@ public sealed class DocumentVersion : Entity
 
     // Navigation
     public Document Document { get; set; } = default!;
+
+    private DocumentVersion() { }
+
+    public DocumentVersion(Guid documentId, string originalName, string mimeType, long? fileSize)
+        : base(PublicIdPrefix)
+    {
+        DocumentId = documentId;
+        OriginalName = originalName;
+        MimeType = mimeType;
+        FileSize = fileSize;
+        CreatedAt = DateTimeOffset.UtcNow;
+    }
 }

@@ -28,4 +28,14 @@ public static class ContactDocumentErrors
         "ContactDocument.UnsupportedFileType",
         "The uploaded file type is not supported.",
         ErrorType.Validation);
+
+    public static readonly Error NoPendingVersion = new(
+        "ContactDocument.NoPendingVersion",
+        "No pending upload found for this document.",
+        ErrorType.NotFound);
+
+    public static readonly Error UploadNotCompleted = new(
+        "ContactDocument.UploadNotCompleted",
+        "The file has not been uploaded to storage yet.",
+        ErrorType.Validation);
 }

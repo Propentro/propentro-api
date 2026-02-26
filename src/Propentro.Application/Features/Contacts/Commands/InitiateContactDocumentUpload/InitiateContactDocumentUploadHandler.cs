@@ -2,29 +2,25 @@ using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Interfaces.Storage;
 using Propentro.Application.Common.Models;
+using Propentro.Contracts.Documents;
 
-namespace Propentro.Application.Features.Contacts.Commands.AddContactDocument;
+namespace Propentro.Application.Features.Contacts.Commands.InitiateContactDocumentUpload;
 
-public sealed class AddContactDocumentHandler(
+public sealed class InitiateContactDocumentUploadHandler(
     IAppDbContext dbContext,
     IUserContext currentUser,
     IBlobStorageService blobStorage,
-    ICacheService cache) : ICommandHandler<AddContactDocumentCommand, string>
+    ICacheService cache) : ICommandHandler<InitiateContactDocumentUploadCommand, ContactDocumentUploadResponse>
 {
-    public async Task<Result<string>> Handle(AddContactDocumentCommand request, CancellationToken cancellationToken)
+    public async Task<Result<ContactDocumentUploadResponse>> Handle(
+        InitiateContactDocumentUploadCommand request,
+        CancellationToken cancellationToken)
     {
         var contact = await dbContext.Contacts
             .FirstOrDefaultAsync(c => c.PublicId == request.ContactId, cancellationToken);
 
         if (contact is null)
             return ContactErrors.NotFoundById(request.ContactId);
-
-        // Upload file to blob storage
-        var storageKey = await blobStorage.UploadAsync(
-            request.FileContent,
-            request.FileName,
-            request.ContentType,
-            cancellationToken);
 
         // Create Document
         var document = new Document(request.Name, request.DocumentType)
@@ -34,22 +30,19 @@ public sealed class AddContactDocumentHandler(
         };
         dbContext.Documents.Add(document);
 
-        // Create DocumentVersion
-        var version = new DocumentVersion
+        // Create DocumentVersion with pending status
+        var version = new DocumentVersion(document.Id, request.FileName, request.ContentType, request.FileSize)
         {
-            Id = Guid.CreateVersion7(),
-            DocumentId = document.Id,
-            OriginalName = request.FileName,
-            MimeType = request.ContentType,
-            FileSize = request.FileSize,
-            StorageKey = storageKey,
             VersionNumber = 1,
-            Status = "uploaded",
-            UploadedById = currentUser.UserId,
-            CreatedAt = DateTimeOffset.UtcNow
+            Status = "pending",
+            UploadedById = currentUser.UserId
         };
+
+        // Storage key: {org.PublicId}/{doc.PublicId}/{docv.PublicId}
+        string storageKey = $"{currentUser.PublicOrganizationId}/{document.PublicId}/{version.PublicId}";
+        version.StorageKey = storageKey;
+
         dbContext.DocumentVersions.Add(version);
-        document.CurrentVersionId = version.Id;
 
         // Create ContactDocument link
         var contactDocument = new ContactDocument
@@ -62,8 +55,15 @@ public sealed class AddContactDocumentHandler(
         };
         dbContext.ContactDocuments.Add(contactDocument);
 
+        // Generate presigned upload URL (15 minutes)
+        string uploadUrl = await blobStorage.GetPresignedUploadUrlAsync(
+            storageKey,
+            request.ContentType,
+            TimeSpan.FromMinutes(15),
+            cancellationToken);
+
         await cache.RemoveByPatternAsync($"org:{currentUser.OrganizationId}:contacts:*", cancellationToken);
 
-        return document.PublicId;
+        return new ContactDocumentUploadResponse(document.PublicId, uploadUrl);
     }
 }

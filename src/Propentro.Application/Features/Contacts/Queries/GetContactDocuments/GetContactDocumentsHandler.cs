@@ -51,7 +51,7 @@ public sealed class GetContactDocumentsHandler(
             string? downloadUrl = null;
             if (row.StorageKey is not null)
             {
-                downloadUrl = await blobStorage.GetPresignedUrlAsync(
+                downloadUrl = await blobStorage.GetPresignedDownloadUrlAsync(
                     row.StorageKey,
                     TimeSpan.FromMinutes(15),
                     cancellationToken);

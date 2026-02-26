@@ -4,7 +4,9 @@ using Propentro.Application.Features.Activities.Commands.CreateActivity;
 using Propentro.Application.Features.Activities.Commands.DeleteActivity;
 using Propentro.Application.Features.Activities.Commands.UpdateActivity;
 using Propentro.Application.Features.Activities.Queries.GetActivities;
-using Propentro.Application.Features.Contacts.Commands.AddContactDocument;
+using Propentro.Application.Features.Contacts.Commands.ConfirmContactDocumentUpload;
+using Propentro.Application.Features.Contacts.Commands.InitiateContactDocumentUpload;
+using Propentro.Application.Features.Contacts.Commands.InitiateContactDocumentVersionUpload;
 using Propentro.Application.Features.Contacts.Commands.ArchiveContact;
 using Propentro.Application.Features.Contacts.Commands.AssignTag;
 using Propentro.Application.Features.Contacts.Commands.BulkArchiveContacts;
@@ -137,13 +139,27 @@ internal static class ContactEndpoints
             .Produces<IReadOnlyList<ContactDocumentResponse>>()
             .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapPost("/{id}/documents", AddContactDocumentAsync)
-            .WithName("AddContactDocument")
-            .WithSummary("Upload a document for a contact")
+        group.MapPost("/{id}/documents/initiate-upload", InitiateContactDocumentUploadAsync)
+            .WithName("InitiateContactDocumentUpload")
+            .WithSummary("Initiate a presigned document upload for a contact")
             .WithMetadata(new RequirePermissionAttribute("contacts:write"))
-            .Produces<object>(StatusCodes.Status201Created)
+            .Produces<ContactDocumentUploadResponse>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        group.MapPost("/{id}/documents/{documentId}/confirm-upload", ConfirmContactDocumentUploadAsync)
+            .WithName("ConfirmContactDocumentUpload")
+            .WithSummary("Confirm a document upload after client-side upload to storage")
+            .WithMetadata(new RequirePermissionAttribute("contacts:write"))
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        group.MapPost("/{id}/documents/{documentId}/initiate-version-upload", InitiateContactDocumentVersionUploadAsync)
+            .WithName("InitiateContactDocumentVersionUpload")
+            .WithSummary("Initiate a new version upload for an existing document")
+            .WithMetadata(new RequirePermissionAttribute("contacts:write"))
+            .Produces<ContactDocumentUploadResponse>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status400BadRequest)
-            .DisableAntiforgery();
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPatch("/{id}/documents/{documentId}", UpdateContactDocumentAsync)
             .WithName("UpdateContactDocument")
@@ -380,29 +396,52 @@ internal static class ContactEndpoints
         return result.ToHttpResult();
     }
 
-    private static async Task<IResult> AddContactDocumentAsync(
+    private static async Task<IResult> InitiateContactDocumentUploadAsync(
         string id,
-        IFormFile file,
-        string name,
-        string documentType,
-        string? description,
-        bool isPrimary,
+        InitiateContactDocumentUploadRequest request,
         ISender sender,
         CancellationToken ct)
     {
-        var command = new AddContactDocumentCommand(
+        var command = new InitiateContactDocumentUploadCommand(
             id,
-            name,
-            documentType,
-            description,
-            isPrimary,
-            file.OpenReadStream(),
-            file.FileName,
-            file.ContentType,
-            file.Length);
+            request.Name,
+            request.DocumentType,
+            request.Description,
+            request.IsPrimary,
+            request.FileName,
+            request.ContentType,
+            request.FileSize);
 
         var result = await sender.Send(command, ct);
-        return result.ToCreatedResult(docId => $"/v1/contacts/{id}/documents/{docId}");
+        return result.ToCreatedResult(r => $"/v1/contacts/{id}/documents/{r.DocumentId}");
+    }
+
+    private static async Task<IResult> ConfirmContactDocumentUploadAsync(
+        string id,
+        string documentId,
+        ISender sender,
+        CancellationToken ct)
+    {
+        var result = await sender.Send(new ConfirmContactDocumentUploadCommand(id, documentId), ct);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> InitiateContactDocumentVersionUploadAsync(
+        string id,
+        string documentId,
+        InitiateContactDocumentVersionUploadRequest request,
+        ISender sender,
+        CancellationToken ct)
+    {
+        var command = new InitiateContactDocumentVersionUploadCommand(
+            id,
+            documentId,
+            request.FileName,
+            request.ContentType,
+            request.FileSize);
+
+        var result = await sender.Send(command, ct);
+        return result.ToCreatedResult(r => $"/v1/contacts/{id}/documents/{r.DocumentId}");
     }
 
     private static async Task<IResult> UpdateContactDocumentAsync(
