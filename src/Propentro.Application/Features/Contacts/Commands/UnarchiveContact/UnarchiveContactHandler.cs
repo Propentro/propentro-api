@@ -28,8 +28,7 @@ public sealed class UnarchiveContactHandler(
         // Activity log
         var activity = new Activity("contact", contact.Id, "unarchived")
         {
-            Title = "Contact unarchived",
-            Description = $"Contact \"{contact.DisplayName}\" was unarchived by {currentUser.FullName}.",
+            Title = "Contact unarchived"
         };
         dbContext.Activities.Add(activity);
 

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Models;
+using Activity = Propentro.Domain.Entities.Activities.Activity;
 
 namespace Propentro.Application.Features.Contacts.Commands.DeleteContact;
 
@@ -18,6 +19,13 @@ public sealed class DeleteContactHandler(
             return ContactErrors.NotFoundById(request.ContactId);
 
         contact.IsActive = false;
+
+        // Activity log
+        var activity = new Activity("contact", contact.Id, "system_event")
+        {
+            Title = "Contact deleted"
+        };
+        dbContext.Activities.Add(activity);
 
         // Domain event (outbox)
         contact.MarkAsDeleted(currentUser.OrganizationId);

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Interfaces.Storage;
 using Propentro.Application.Common.Models;
+using Activity = Propentro.Domain.Entities.Activities.Activity;
 
 namespace Propentro.Application.Features.Contacts.Commands.RemoveContactDocument;
 
@@ -32,6 +33,14 @@ public sealed class RemoveContactDocumentHandler(
             return ContactDocumentErrors.DocumentNotLinked;
 
         dbContext.ContactDocuments.Remove(contactDocument);
+
+        // Activity log
+        var activity = new Activity("contact", contact.Id, "system_event")
+        {
+            Title = "Document removed",
+            Description = $"Removed document: {document.Name}"
+        };
+        dbContext.Activities.Add(activity);
 
         // Soft delete document if no other links exist
         var otherLinks = await dbContext.ContactDocuments

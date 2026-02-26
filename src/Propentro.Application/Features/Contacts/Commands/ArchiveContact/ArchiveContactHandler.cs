@@ -29,8 +29,7 @@ public sealed class ArchiveContactHandler(
         // Activity log
         var activity = new Activity("contact", contact.Id, "archived")
         {
-            Title = "Contact archived",
-            Description = $"Contact \"{contact.DisplayName}\" was archived by {currentUser.FullName}.",
+            Title = "Contact archived"
         };
         dbContext.Activities.Add(activity);
 

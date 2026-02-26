@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Models;
+using Activity = Propentro.Domain.Entities.Activities.Activity;
 
 namespace Propentro.Application.Features.Contacts.Commands.UpdateContact;
 
@@ -69,6 +70,14 @@ public sealed class UpdateContactHandler(
             }
         }
 
+        // Activity log
+        var activity = new Activity("contact", contact.Id, "system_event")
+        {
+            Title = "Contact updated",
+            Description = BuildChangeDescription(request)
+        };
+        dbContext.Activities.Add(activity);
+
         // Domain event (outbox)
         contact.MarkAsUpdated(currentUser.OrganizationId);
 
@@ -76,5 +85,28 @@ public sealed class UpdateContactHandler(
         await cache.RemoveByPatternAsync($"org:{currentUser.OrganizationId}:contacts:*", cancellationToken);
 
         return Result.Success();
+    }
+
+    private static string? BuildChangeDescription(UpdateContactCommand request)
+    {
+        List<string> fields = [];
+
+        if (request.FirstName is not null) fields.Add("first name");
+        if (request.LastName is not null) fields.Add("last name");
+        if (request.LegalName is not null) fields.Add("legal name");
+        if (request.TradingName is not null) fields.Add("trading name");
+        if (request.Email is not null) fields.Add("email");
+        if (request.Phone is not null) fields.Add("phone");
+        if (request.SecondaryEmail is not null) fields.Add("secondary email");
+        if (request.SecondaryPhone is not null) fields.Add("secondary phone");
+        if (request.EmergencyContactName is not null) fields.Add("emergency contact name");
+        if (request.EmergencyContactPhone is not null) fields.Add("emergency contact phone");
+        if (request.Trade is not null) fields.Add("trade");
+        if (request.TaxNumber is not null) fields.Add("tax number");
+        if (request.TaxCountry is not null) fields.Add("tax country");
+        if (request.Note is not null) fields.Add("note");
+        if (request.Address is not null) fields.Add("address");
+
+        return fields.Count > 0 ? $"Updated {string.Join(", ", fields)}" : null;
     }
 }

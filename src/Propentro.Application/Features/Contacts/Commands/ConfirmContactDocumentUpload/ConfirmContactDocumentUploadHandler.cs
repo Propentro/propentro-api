@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Interfaces.Storage;
 using Propentro.Application.Common.Models;
+using Activity = Propentro.Domain.Entities.Activities.Activity;
 
 namespace Propentro.Application.Features.Contacts.Commands.ConfirmContactDocumentUpload;
 
@@ -52,6 +53,14 @@ public sealed class ConfirmContactDocumentUploadHandler(
         // Confirm upload
         version.Status = "active";
         document.CurrentVersionId = version.Id;
+
+        // Activity log
+        var activity = new Activity("contact", contact.Id, "system_event")
+        {
+            Title = "Document uploaded",
+            Description = $"Uploaded document: {document.Name}"
+        };
+        dbContext.Activities.Add(activity);
 
         await cache.RemoveByPatternAsync($"org:{currentUser.OrganizationId}:contacts:*", cancellationToken);
 
