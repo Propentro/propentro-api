@@ -15,4 +15,12 @@ public sealed class Document : OrganizationEntity
     // Navigation
     public DocumentVersion? CurrentVersion { get; set; }
     public ICollection<DocumentVersion> Versions { get; set; } = [];
+
+    private Document() { }
+
+    public Document(string name, string documentType) : base(PublicIdPrefix)
+    {
+        Name = name;
+        DocumentType = documentType;
+    }
 }

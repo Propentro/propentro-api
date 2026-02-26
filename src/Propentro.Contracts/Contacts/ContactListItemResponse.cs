@@ -1,3 +1,5 @@
+using Propentro.Contracts.Tags;
+
 namespace Propentro.Contracts.Contacts;
 
 public sealed record ContactListItemResponse(
@@ -17,7 +19,9 @@ public sealed record ContactListItemResponse(
     string? EmergencyContactPhone,
     string? TradeOther,
     string? TaxNumber,
-    string? TaxCountry,
+    string? TaxCountryName,
+    string? UserId,
     bool IsArchived,
     IReadOnlyList<string> Roles,
+    IReadOnlyList<TagResponse> Tags,
     DateTimeOffset CreatedAt);

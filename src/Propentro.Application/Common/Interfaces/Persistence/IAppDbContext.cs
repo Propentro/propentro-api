@@ -66,6 +66,10 @@ public interface IAppDbContext
     DbSet<PropertyPurpose> PropertyPurposes { get; }
     DbSet<PropertyType> PropertyTypes { get; }
 
+    // Tags
+    DbSet<Tag> Tags { get; }
+    DbSet<EntityTag> EntityTags { get; }
+
     // Outbox
     DbSet<OutboxMessage> OutboxMessages { get; }
 

@@ -1,3 +1,5 @@
+using Propentro.Contracts.Tags;
+
 namespace Propentro.Contracts.Contacts;
 
 public sealed record ContactResponse(
@@ -17,11 +19,14 @@ public sealed record ContactResponse(
     string? Trade,
     string? TradeOther,
     string? TaxNumber,
-    string? TaxCountry,
+    string? TaxCountryName,
     string? Note,
     bool IsArchived,
     DateTimeOffset? ArchivedAt,
+    string? ArchivedByName,
+    string? UserId,
     IReadOnlyList<string> Roles,
+    IReadOnlyList<TagResponse> Tags,
     ContactAddressResponse? Address,
     string? CreatedByName,
     string? UpdatedByName,
@@ -34,4 +39,4 @@ public sealed record ContactAddressResponse(
     string City,
     string? Region,
     string? PostalCode,
-    string CountryCode);
+    string CountryName);

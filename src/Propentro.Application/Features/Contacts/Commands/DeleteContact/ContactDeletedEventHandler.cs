@@ -1,20 +1,40 @@
 using System.Text.Json;
+using Dapper;
+using Propentro.Application.Common.Interfaces.Notifications;
 using Propentro.Domain.Entities.Contacts.Events;
 
 namespace Propentro.Application.Features.Contacts.Commands.DeleteContact;
 
-public sealed class ContactDeletedEventHandler : IOutboxEventHandler
+public sealed class ContactDeletedEventHandler(
+    IDbConnectionFactory db,
+    INotificationService notificationService) : IOutboxEventHandler
 {
     public string EventType => "contact.deleted";
 
-    public Task HandleAsync(string payload, CancellationToken cancellationToken = default)
+    public async Task HandleAsync(string payload, CancellationToken cancellationToken = default)
     {
         var domainEvent = JsonSerializer.Deserialize<ContactDeletedEvent>(payload, OutboxJsonOptions.Instance);
 
         Log.Information("Handling {EventType} for contact {ContactId}", EventType, domainEvent!.ContactId);
 
-        // TODO: Remove from external systems, send webhook, etc.
+        await using var connection = db.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
 
-        return Task.CompletedTask;
+        var contactName = await connection.QueryFirstOrDefaultAsync<string>(
+            "SELECT display_name FROM contacts WHERE id = @Id",
+            new { Id = domainEvent.ContactId });
+
+        var displayName = contactName ?? "Unknown";
+
+        await notificationService.CreateForOrgAdminsAsync(
+            domainEvent.OrganizationId,
+            $"Contact deleted",
+            $"Contact \"{displayName}\" was deleted.",
+            "system",
+            "warning",
+            "contact",
+            domainEvent.ContactId.ToString(),
+            senderId: null,
+            cancellationToken);
     }
 }

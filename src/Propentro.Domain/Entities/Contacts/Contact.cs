@@ -1,6 +1,7 @@
 using Propentro.Domain.Common;
 using Propentro.Domain.Entities.Addresses;
 using Propentro.Domain.Entities.Contacts.Events;
+using Propentro.Domain.Entities.Identity;
 
 namespace Propentro.Domain.Entities.Contacts;
 
@@ -35,6 +36,9 @@ public sealed class Contact : AggregateRoot
     public string? Trade { get; set; }
     public string? TradeOther { get; set; }
 
+    // Linked user
+    public Guid? UserId { get; set; }
+
     // Address
     public Guid? AddressId { get; set; }
 
@@ -50,6 +54,7 @@ public sealed class Contact : AggregateRoot
     public Guid? ArchivedById { get; set; }
 
     // Navigation
+    public User? User { get; set; }
     public Address? Address { get; set; }
     public ICollection<ContactRole> ContactRoles { get; set; } = [];
     public ICollection<ContactDocument> ContactDocuments { get; set; } = [];

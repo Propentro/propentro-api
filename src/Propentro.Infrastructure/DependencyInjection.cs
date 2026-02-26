@@ -9,6 +9,7 @@ using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Interfaces.Messaging;
 using Propentro.Application.Common.Interfaces.Email;
+using Propentro.Application.Common.Interfaces.Notifications;
 using Propentro.Infrastructure.Authentication;
 using Propentro.Infrastructure.Authorization;
 using Propentro.Infrastructure.Caching;
@@ -16,6 +17,7 @@ using Propentro.Infrastructure.Clock;
 using Propentro.Infrastructure.Email;
 using Propentro.Infrastructure.Outbox;
 using Propentro.Infrastructure.Persistence;
+using Propentro.Infrastructure.Notifications;
 using Propentro.Infrastructure.Storage;
 using Propentro.Infrastructure.Webhooks;
 using Quartz;
@@ -38,6 +40,7 @@ public static class DependencyInjection
         services.AddEmail(configuration);
 
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+        services.AddScoped<INotificationService, NotificationService>();
 
         services.Configure<BlobStorageOptions>(configuration.GetSection(BlobStorageOptions.SectionName));
         services.AddSingleton<IBlobStorageService, BlobStorageService>();

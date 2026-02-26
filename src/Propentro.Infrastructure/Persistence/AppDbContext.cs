@@ -4,6 +4,7 @@ using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Domain.Common;
 using Propentro.Domain.Common.Interfaces;
 using Serilog;
+using Propentro.Domain.Entities.Tags;
 using Activity = Propentro.Domain.Entities.Activities.Activity;
 using Unit = Propentro.Domain.Entities.Units.Unit;
 
@@ -81,6 +82,10 @@ public sealed class AppDbContext(
     public DbSet<PropertyPurpose> PropertyPurposes => Set<PropertyPurpose>();
     public DbSet<PropertyType> PropertyTypes => Set<PropertyType>();
 
+    // Tags
+    public DbSet<Tag> Tags => Set<Tag>();
+    public DbSet<EntityTag> EntityTags => Set<EntityTag>();
+
     // Outbox
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
@@ -114,6 +119,9 @@ public sealed class AppDbContext(
 
         // Activity: Organization-scoped + soft-delete
         builder.Entity<Activity>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
+
+        // Tag: Organization-scoped + soft-delete
+        builder.Entity<Tag>().HasQueryFilter(e => e.OrganizationId == CurrentOrganizationId && e.IsActive);
 
         // Soft-delete only
         builder.Entity<User>().HasQueryFilter(e => e.IsActive);

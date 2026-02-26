@@ -7,4 +7,8 @@ public record GetContactsQuery(
     int Page,
     int PageSize,
     string? Role,
-    string? Search) : IQuery<PagedResult<ContactListItemResponse>>;
+    string? Search) : IQuery<PagedResult<ContactListItemResponse>>, ICachedQuery<PagedResult<ContactListItemResponse>>
+{
+    public string CacheKey => $"contacts:list:{Page}:{PageSize}:{Role ?? ""}:{Search ?? ""}";
+    public TimeSpan? Expiration => TimeSpan.FromMinutes(5);
+}

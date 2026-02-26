@@ -6,6 +6,8 @@ internal static class EndpointExtensions
     {
         app.MapMeEndpoints();
         app.MapWebhookEndpoints();
+        app.MapContactEndpoints();
+        app.MapLookupEndpoints();
 
         return app;
     }

@@ -29,4 +29,5 @@ global using Propentro.Domain.Entities.Lookups;
 global using Propentro.Domain.Entities.Notifications;
 global using Propentro.Domain.Entities.Outbox;
 global using Propentro.Domain.Entities.Properties;
+global using Propentro.Domain.Entities.Tags;
 global using Propentro.Domain.Entities.Units;
