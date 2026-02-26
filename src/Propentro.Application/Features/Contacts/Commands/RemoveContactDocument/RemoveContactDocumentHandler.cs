@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
+using Propentro.Application.Common.Interfaces.Storage;
 using Propentro.Application.Common.Models;
 
 namespace Propentro.Application.Features.Contacts.Commands.RemoveContactDocument;
@@ -7,7 +8,8 @@ namespace Propentro.Application.Features.Contacts.Commands.RemoveContactDocument
 public sealed class RemoveContactDocumentHandler(
     IAppDbContext dbContext,
     IUserContext currentUser,
-    ICacheService cache) : ICommandHandler<RemoveContactDocumentCommand>
+    ICacheService cache,
+    IBlobStorageService blobStorage) : ICommandHandler<RemoveContactDocumentCommand>
 {
     public async Task<Result> Handle(RemoveContactDocumentCommand request, CancellationToken cancellationToken)
     {
@@ -36,7 +38,22 @@ public sealed class RemoveContactDocumentHandler(
             .AnyAsync(cd => cd.DocumentId == document.Id && cd.Id != contactDocument.Id, cancellationToken);
 
         if (!otherLinks)
+        {
+            List<string> storageKeys = await dbContext.DocumentVersions
+                .Where(v => v.DocumentId == document.Id)
+                .Select(v => v.StorageKey)
+                .ToListAsync(cancellationToken);
+
+            foreach (var key in storageKeys)
+            {
+                bool deleted = await blobStorage.DeleteAsync(key, cancellationToken);
+
+                if (!deleted)
+                    Log.Warning("Failed to delete blob {StorageKey} for document {DocumentId}", key, request.DocumentId);
+            }
+
             document.IsActive = false;
+        }
 
         await cache.RemoveByPatternAsync($"org:{currentUser.OrganizationId}:contacts:*", cancellationToken);
 
