@@ -8,7 +8,6 @@ internal static class EndpointExtensions
         app.MapOrganizationEndpoints();
         app.MapWebhookEndpoints();
         app.MapContactEndpoints();
-        app.MapLookupEndpoints();
 
         return app;
     }

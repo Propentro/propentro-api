@@ -77,8 +77,6 @@ public sealed class AppDbContext(
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
 
     // Lookup Tables
-    public DbSet<Currency> Currencies => Set<Currency>();
-    public DbSet<Country> Countries => Set<Country>();
     public DbSet<PropertyPurpose> PropertyPurposes => Set<PropertyPurpose>();
     public DbSet<PropertyType> PropertyTypes => Set<PropertyType>();
 

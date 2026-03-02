@@ -58,10 +58,5 @@ public sealed class UnitConfiguration : IEntityTypeConfiguration<Unit>
             .HasForeignKey(e => e.ParentUnitId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne<Currency>()
-            .WithMany()
-            .HasForeignKey(e => e.DefaultCurrency)
-            .HasPrincipalKey(e => e.Code)
-            .OnDelete(DeleteBehavior.Restrict);
     }
 }
