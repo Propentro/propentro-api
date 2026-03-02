@@ -138,9 +138,9 @@ public sealed class SyncMembershipHandler(
 
     private static string MapClerkRole(string clerkRole) => clerkRole switch
     {
-        "org:organisation_owner" => "Owner",
-        "org:organisation_manager" => "Manager",
-        "org:organisation_viewer" => "Viewer",
+        "org:organization_owner" => "Owner",
+        "org:organization_manager" => "Manager",
+        "org:organization_viewer" => "Viewer",
         _ => "Viewer" // Default to least privileged role
     };
 }

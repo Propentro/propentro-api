@@ -19,6 +19,7 @@ using Propentro.Infrastructure.Outbox;
 using Propentro.Infrastructure.Persistence;
 using Propentro.Infrastructure.Notifications;
 using Propentro.Infrastructure.Storage;
+using Propentro.Infrastructure.Resilience;
 using Propentro.Infrastructure.Webhooks;
 using Quartz;
 
@@ -121,6 +122,12 @@ public static class DependencyInjection
         var clerkAuthority = configuration["Clerk:Authority"]
             ?? throw new InvalidOperationException("Clerk:Authority not configured");
 
+        services.AddHttpClient<IClerkOrganizationService, ClerkOrganizationService>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.clerk.com/v1/");
+        })
+        .AddStandardResilience();
+
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
@@ -210,7 +217,7 @@ public static class DependencyInjection
         {
             client.BaseAddress = new Uri("https://api.resend.com");
         })
-        .AddStandardResilienceHandler();
+        .AddStandardResilience();
 
         return services;
     }

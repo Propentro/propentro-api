@@ -14,12 +14,17 @@ public static class ResiliencePolicies
     {
         builder.AddResilienceHandler("standard", pipeline =>
         {
-            // Retry with exponential backoff
+            // Total timeout — caps the entire retry cycle (outermost, evaluated first)
+            pipeline.AddTimeout(TimeSpan.FromSeconds(30));
+
+            // Retry with exponential backoff + jitter
+            // Jitter spreads retries to avoid thundering herd when many requests fail simultaneously
             pipeline.AddRetry(new HttpRetryStrategyOptions
             {
                 MaxRetryAttempts = 3,
                 Delay = TimeSpan.FromMilliseconds(500),
                 BackoffType = DelayBackoffType.Exponential,
+                UseJitter = true,
                 ShouldHandle = args => ValueTask.FromResult(
                     args.Outcome.Result?.StatusCode is >= HttpStatusCode.InternalServerError
                     || args.Outcome.Exception is HttpRequestException or TimeoutException)
@@ -34,7 +39,7 @@ public static class ResiliencePolicies
                 BreakDuration = TimeSpan.FromSeconds(30)
             });
 
-            // Timeout
+            // Per-attempt timeout (innermost)
             pipeline.AddTimeout(TimeSpan.FromSeconds(10));
         });
 

@@ -63,7 +63,7 @@ public sealed class ClerkIdResolver(IDbConnectionFactory db) : IExternalIdResolv
               AND is_active = true
             """;
 
-        var result = await connection.QueryFirstOrDefaultAsync<OrganisationIdResult>(
+        var result = await connection.QueryFirstOrDefaultAsync<OrganizationIdResult>(
             sql, new { ExternalId = externalOrgId, AuthProvider = "clerk" });
 
         return result is null
@@ -72,5 +72,5 @@ public sealed class ClerkIdResolver(IDbConnectionFactory db) : IExternalIdResolv
     }
 
     private sealed record UserIdResult(Guid Id, string PublicId, string FullName = "");
-    private sealed record OrganisationIdResult(Guid Id, string PublicId);
+    private sealed record OrganizationIdResult(Guid Id, string PublicId);
 }

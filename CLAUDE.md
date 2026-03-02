@@ -21,7 +21,7 @@ Propentro is a property management API built with **.NET 10.0** following **Clea
 | Email | Resend (via HTTP client with Polly resilience) |
 | Storage | S3-compatible (Cloudflare R2) via AWSSDK.S3 |
 | Background Jobs | Quartz.NET 3.15 (outbox processing) |
-| Resilience | Polly (via Microsoft.Extensions.Http.Resilience) |
+| Resilience | Polly (custom `AddStandardResilience()` in `Infrastructure/Resilience/ResiliencePolicies.cs`) |
 | Observability | OpenTelemetry (OTLP exporter, ASP.NET Core + HTTP + Runtime instrumentation) |
 
 ## Architecture
@@ -747,7 +747,7 @@ Events are reserved for async outbox side-effects only.
 Email is sent via the Resend API through `IEmailService` → `ResendEmailService`:
 
 - **Configuration**: `Email:ApiKey` and `Email:FromAddress` in appsettings
-- **Resilience**: HTTP client uses `AddStandardResilienceHandler()` (Polly) for retries
+- **Resilience**: HTTP client uses custom `AddStandardResilience()` (Polly) for retries
 - **Graceful degradation**: If API key is not configured, logs a warning and returns success (does not fail the request)
 - **Templates**: `EmailTemplates` class provides pre-built HTML/text templates:
   - `WelcomeEmail(firstName)` — sent when a user is first synced
@@ -771,6 +771,29 @@ public sealed class MembershipCreatedEventHandler : IOutboxEventHandler
     }
 }
 ```
+
+## HTTP Resilience
+
+All outbound HTTP clients use the custom `AddStandardResilience()` extension from `Infrastructure/Resilience/ResiliencePolicies.cs`. **Never use `AddStandardResilienceHandler()` (Microsoft's built-in) — always use the custom one.**
+
+```csharp
+services.AddHttpClient<IMyService, MyService>(client =>
+{
+    client.BaseAddress = new Uri("https://api.example.com");
+})
+.AddStandardResilience();  // always this, not AddStandardResilienceHandler()
+```
+
+The custom policy applies three strategies in order:
+
+| Order | Strategy | Config | Triggers on |
+|-------|----------|--------|-------------|
+| 1 (outer) | **Total Timeout** | 30s for entire retry cycle | Caps all retries combined |
+| 2 | **Retry** | 3 attempts, exponential backoff (500ms base) + jitter | 5xx responses, `HttpRequestException`, `TimeoutException` |
+| 3 | **Circuit Breaker** | Opens at 50% failure ratio over 30s window (min 10 requests), stays open 30s | Same as retry |
+| 4 (inner) | **Per-attempt Timeout** | 10s per individual attempt | Any single request exceeding the limit |
+
+**Graceful degradation pattern** — if an external service's API key/secret is not configured, log a warning and return `Result.Success()` instead of failing. The operation is skipped silently. Applied to: Email (`Email:ApiKey`), Clerk org sync (`Clerk:SecretKey`).
 
 ## Blob Storage
 
