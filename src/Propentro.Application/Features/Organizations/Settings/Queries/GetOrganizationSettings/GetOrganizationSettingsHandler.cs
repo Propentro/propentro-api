@@ -40,51 +40,13 @@ public sealed class GetOrganizationSettingsHandler(
               AND o.is_active = true
             """;
 
-        var result = await connection.QueryFirstOrDefaultAsync<OrganizationSettingsQueryResult>(
+        var result = await connection.QueryFirstOrDefaultAsync<OrganizationSettingsResponse>(
             sql,
             new { currentUser.OrganizationId });
 
         if (result is null)
             return OrganizationSettingsErrors.NotFound;
 
-        return new OrganizationSettingsResponse(
-            result.OrganizationId,
-            result.Name,
-            result.Slug,
-            result.ContactName,
-            result.ContactEmail,
-            result.ContactPhone,
-            result.AddressLine1,
-            result.AddressLine2,
-            result.City,
-            result.Region,
-            result.PostalCode,
-            result.CountryCode,
-            result.LegalName,
-            result.TaxNumber,
-            result.TaxCountry,
-            result.CurrencyCode,
-            result.Timezone);
-    }
-
-    private sealed class OrganizationSettingsQueryResult
-    {
-        public string OrganizationId { get; init; } = null!;
-        public string Name { get; init; } = null!;
-        public string Slug { get; init; } = null!;
-        public string? ContactName { get; init; }
-        public string? ContactEmail { get; init; }
-        public string? ContactPhone { get; init; }
-        public string? AddressLine1 { get; init; }
-        public string? AddressLine2 { get; init; }
-        public string? City { get; init; }
-        public string? Region { get; init; }
-        public string? PostalCode { get; init; }
-        public string? CountryCode { get; init; }
-        public string? LegalName { get; init; }
-        public string? TaxNumber { get; init; }
-        public string? TaxCountry { get; init; }
-        public string CurrencyCode { get; init; } = null!;
-        public string Timezone { get; init; } = null!;
+        return result;
     }
 }

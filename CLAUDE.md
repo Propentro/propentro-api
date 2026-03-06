@@ -630,11 +630,35 @@ var result = await connection.QueryAsync<UnitDto>(sql, new { currentUser.Organiz
 
 ### Dapper Query Result Conventions
 
-- **Never use positional records as Dapper materialization targets.** Dapper's constructor matching fails with nullable parameters and complex signatures.
-- For all Dapper `QueryAsync<T>` result types, use `sealed class` with a parameterless constructor and `init`-only properties.
-- Non-nullable reference type properties must use `= null!;` suppression.
-- This applies to all private/internal DTOs inside CQRS query handlers that Dapper maps into.
-- Records are fine for: MediatR requests, API response contracts (`Contracts` project), domain events, and anything not touched by Dapper.
+**Never use positional records as Dapper materialization targets.** Dapper uses reflection to set properties at runtime — positional records rely on constructor matching, which breaks with nullable parameters and complex signatures.
+
+**Preferred pattern: non-positional `sealed record` with `init` properties.**
+
+`init` setters are enforced at compile-time by the C# compiler, but at runtime (via reflection) they behave like regular setters — so Dapper can set them freely. This means response types in `Contracts/` can be defined as non-positional records and used directly as Dapper targets, with no intermediate mapping class needed.
+
+```csharp
+// In Contracts/ — works as both API response AND Dapper materialization target
+public sealed record OrganizationSettingsResponse
+{
+    public string OrganizationId { get; init; } = null!;
+    public string Name { get; init; } = null!;
+    public string? ContactName { get; init; }
+    // ...
+}
+
+// Handler — map directly, no intermediate class
+var result = await connection.QueryFirstOrDefaultAsync<OrganizationSettingsResponse>(sql, new { ... });
+if (result is null) return SomeErrors.NotFound;
+return result;
+```
+
+**Quick reference:**
+| Type | Dapper-safe? | Use for |
+|------|-------------|---------|
+| Positional record | No | MediatR commands/queries, domain events only |
+| Non-positional record + `init` | Yes | Response contracts in `Contracts/` (preferred) |
+| `sealed class` + `init` | Yes | Internal-only DTOs not exposed as API contracts |
+| Intermediate mapping class | Avoid | Only needed when the response is a positional record — which it shouldn't be |
 
 ## Multi-Tenancy
 
@@ -843,7 +867,7 @@ public class CreateUnitHandlerTests
 ```csharp
 public class UnitIntegrationTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder().Build();
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
 
     public async Task InitializeAsync()
     {
@@ -950,7 +974,7 @@ The `/me` endpoint is the reference implementation. All future endpoints should 
 - **No `RequirePermission`** on `/me` - every authenticated user can view their own profile
 - **Dapper query** with `await using` + `OpenAsync` + sequential queries on same connection
 - **Error codes** follow `Entity.ErrorName` format (e.g., `Me.NotAuthenticated`)
-- **Response** types use positional records, nullable fields where data may not exist
+- **Response** types use non-positional records with `init` properties — Dapper-compatible and serialization-friendly
 - **Handler** uses Dapper with `await using` + `OpenAsync` pattern
 - **Endpoint** uses `ProducesProblem()` for error responses, `Produces<T>()` for success
 

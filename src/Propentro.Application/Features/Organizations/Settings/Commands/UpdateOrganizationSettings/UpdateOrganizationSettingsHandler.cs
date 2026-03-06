@@ -56,23 +56,25 @@ public sealed class UpdateOrganizationSettingsHandler(
         org.CurrencyCode = request.CurrencyCode;
         org.Timezone = request.Timezone;
 
-        return new OrganizationSettingsResponse(
-            org.PublicId,
-            org.Name,
-            org.Slug,
-            org.ContactName,
-            org.ContactEmail,
-            org.ContactPhone,
-            org.AddressLine1,
-            org.AddressLine2,
-            org.City,
-            org.Region,
-            org.PostalCode,
-            org.CountryCode,
-            org.LegalName,
-            org.TaxNumber,
-            org.TaxCountry,
-            org.CurrencyCode,
-            org.Timezone);
+        return new OrganizationSettingsResponse
+        {
+            OrganizationId = org.PublicId,
+            Name = org.Name,
+            Slug = org.Slug,
+            ContactName = org.ContactName,
+            ContactEmail = org.ContactEmail,
+            ContactPhone = org.ContactPhone,
+            AddressLine1 = org.AddressLine1,
+            AddressLine2 = org.AddressLine2,
+            City = org.City,
+            Region = org.Region,
+            PostalCode = org.PostalCode,
+            CountryCode = org.CountryCode,
+            LegalName = org.LegalName,
+            TaxNumber = org.TaxNumber,
+            TaxCountry = org.TaxCountry,
+            CurrencyCode = org.CurrencyCode,
+            Timezone = org.Timezone
+        };
     }
 }
