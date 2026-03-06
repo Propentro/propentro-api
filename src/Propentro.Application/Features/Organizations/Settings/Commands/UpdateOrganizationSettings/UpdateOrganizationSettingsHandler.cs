@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Models;
-using Propentro.Contracts.Organizations;
+using Propentro.Contracts.Organizations.Settings;
 
-namespace Propentro.Application.Features.Organizations.Commands.UpdateOrganizationSettings;
+namespace Propentro.Application.Features.Organizations.Settings.Commands.UpdateOrganizationSettings;
 
 public sealed class UpdateOrganizationSettingsHandler(
     IAppDbContext dbContext,
@@ -16,7 +16,7 @@ public sealed class UpdateOrganizationSettingsHandler(
             .FirstOrDefaultAsync(o => o.Id == currentUser.OrganizationId, cancellationToken);
 
         if (org is null)
-            return OrganizationErrors.NotFound;
+            return OrganizationSettingsErrors.NotFound;
 
         var nameChanged = !string.Equals(org.Name, request.Name, StringComparison.Ordinal);
 
@@ -36,7 +36,7 @@ public sealed class UpdateOrganizationSettingsHandler(
                     org.PublicId,
                     syncResult.Error.Message);
 
-                return OrganizationErrors.ClerkSyncFailed;
+                return OrganizationSettingsErrors.ClerkSyncFailed;
             }
         }
 

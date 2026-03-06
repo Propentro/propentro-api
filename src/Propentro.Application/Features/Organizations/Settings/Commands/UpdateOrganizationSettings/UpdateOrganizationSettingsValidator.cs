@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace Propentro.Application.Features.Organizations.Commands.UpdateOrganizationSettings;
+namespace Propentro.Application.Features.Organizations.Settings.Commands.UpdateOrganizationSettings;
 
 public sealed class UpdateOrganizationSettingsValidator : AbstractValidator<UpdateOrganizationSettingsCommand>
 {

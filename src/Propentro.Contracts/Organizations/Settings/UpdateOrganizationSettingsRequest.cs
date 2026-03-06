@@ -1,9 +1,7 @@
-namespace Propentro.Contracts.Organizations;
+namespace Propentro.Contracts.Organizations.Settings;
 
-public sealed record OrganizationSettingsResponse(
-    string OrganizationId,
+public sealed record UpdateOrganizationSettingsRequest(
     string Name,
-    string Slug,
     string? ContactName,
     string? ContactEmail,
     string? ContactPhone,

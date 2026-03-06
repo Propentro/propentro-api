@@ -1,8 +1,8 @@
 using Propentro.Application.Common.Models;
 
-namespace Propentro.Application.Features.Organizations;
+namespace Propentro.Application.Features.Organizations.Settings;
 
-public static class OrganizationErrors
+public static class OrganizationSettingsErrors
 {
     public static readonly Error NotFound = new(
         "Organization.NotFound",

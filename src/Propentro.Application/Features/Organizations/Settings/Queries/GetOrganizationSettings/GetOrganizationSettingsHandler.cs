@@ -1,9 +1,9 @@
 using Dapper;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Models;
-using Propentro.Contracts.Organizations;
+using Propentro.Contracts.Organizations.Settings;
 
-namespace Propentro.Application.Features.Organizations.Queries.GetOrganizationSettings;
+namespace Propentro.Application.Features.Organizations.Settings.Queries.GetOrganizationSettings;
 
 public sealed class GetOrganizationSettingsHandler(
     IDbConnectionFactory db,
@@ -45,7 +45,7 @@ public sealed class GetOrganizationSettingsHandler(
             new { currentUser.OrganizationId });
 
         if (result is null)
-            return OrganizationErrors.NotFound;
+            return OrganizationSettingsErrors.NotFound;
 
         return new OrganizationSettingsResponse(
             result.OrganizationId,

@@ -1,6 +1,8 @@
-namespace Propentro.Contracts.Organizations;
+using Propentro.Contracts.Organizations.Settings;
 
-public sealed record UpdateOrganizationSettingsRequest(
+namespace Propentro.Application.Features.Organizations.Settings.Commands.UpdateOrganizationSettings;
+
+public sealed record UpdateOrganizationSettingsCommand(
     string Name,
     string? ContactName,
     string? ContactEmail,
@@ -15,4 +17,4 @@ public sealed record UpdateOrganizationSettingsRequest(
     string? TaxNumber,
     string? TaxCountry,
     string CurrencyCode,
-    string Timezone);
+    string Timezone) : ICommand<OrganizationSettingsResponse>;

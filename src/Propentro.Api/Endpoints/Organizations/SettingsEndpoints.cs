@@ -1,15 +1,15 @@
 using MediatR;
 using Propentro.Api.Extensions;
-using Propentro.Application.Features.Organizations.Commands.UpdateOrganizationSettings;
-using Propentro.Application.Features.Organizations.Queries.GetOrganizationSettings;
-using Propentro.Contracts.Organizations;
+using Propentro.Application.Features.Organizations.Settings.Commands.UpdateOrganizationSettings;
+using Propentro.Application.Features.Organizations.Settings.Queries.GetOrganizationSettings;
+using Propentro.Contracts.Organizations.Settings;
 using Propentro.Infrastructure.Authorization;
 
 namespace Propentro.Api.Endpoints;
 
-internal static class OrganizationEndpoints
+internal static class SettingsEndpoints
 {
-    public static void MapOrganizationEndpoints(this IEndpointRouteBuilder app)
+    public static void MapOrganizationSettingsEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/v1/organizations")
             .WithTags("Organizations")
@@ -18,7 +18,7 @@ internal static class OrganizationEndpoints
         group.MapGet("/settings", GetSettingsAsync)
             .WithName("GetOrganizationSettings")
             .WithSummary("Get organization settings")
-            .WithMetadata(new RequirePermissionAttribute("org:read"))
+            .WithMetadata(new RequirePermissionAttribute("org:settings:read"))
             .Produces<OrganizationSettingsResponse>()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden)
@@ -27,7 +27,7 @@ internal static class OrganizationEndpoints
         group.MapPatch("/settings", UpdateSettingsAsync)
             .WithName("UpdateOrganizationSettings")
             .WithSummary("Update organization settings")
-            .WithMetadata(new RequirePermissionAttribute("org:update"))
+            .WithMetadata(new RequirePermissionAttribute("org:settings:update"))
             .Produces<OrganizationSettingsResponse>()
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
