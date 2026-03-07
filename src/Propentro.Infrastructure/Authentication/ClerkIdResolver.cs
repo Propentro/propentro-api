@@ -20,7 +20,7 @@ public sealed class ClerkIdResolver(IDbConnectionFactory db) : IExternalIdResolv
 
         // Npgsql does not support concurrent commands on a single connection
         var (userId, publicUserId, fullName) = await ResolveUserAsync(connection, externalUserId);
-        var (orgId, publicOrgId) = await ResolveOrgAsync(connection, externalOrgId);
+        var (orgId, publicOrgId) = await ResolveOrgAsync(connection, externalOrgId, userId);
 
         return new ResolvedIdentity(userId, publicUserId, orgId, publicOrgId, fullName);
     }
@@ -50,21 +50,25 @@ public sealed class ClerkIdResolver(IDbConnectionFactory db) : IExternalIdResolv
 
     private static async Task<(Guid OrgId, string PublicOrgId)> ResolveOrgAsync(
         System.Data.Common.DbConnection connection,
-        string? externalOrgId)
+        string? externalOrgId,
+        Guid userId)
     {
-        if (string.IsNullOrWhiteSpace(externalOrgId))
+        if (string.IsNullOrWhiteSpace(externalOrgId) || userId == Guid.Empty)
             return (Guid.Empty, string.Empty);
 
         const string sql = """
-            SELECT id, public_id
-            FROM organizations
-            WHERE external_id = @ExternalId
-              AND auth_provider = @AuthProvider
-              AND is_active = true
+            SELECT o.id, o.public_id
+            FROM organizations o
+            JOIN organization_users ou ON ou.organization_id = o.id
+                AND ou.user_id = @UserId
+                AND ou.status = 'active'
+            WHERE o.external_id = @ExternalId
+              AND o.auth_provider = @AuthProvider
+              AND o.is_active = true
             """;
 
         var result = await connection.QueryFirstOrDefaultAsync<OrganizationIdResult>(
-            sql, new { ExternalId = externalOrgId, AuthProvider = "clerk" });
+            sql, new { ExternalId = externalOrgId, AuthProvider = "clerk", UserId = userId });
 
         return result is null
             ? (Guid.Empty, string.Empty)
