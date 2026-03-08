@@ -71,7 +71,7 @@ public sealed class SyncMembershipHandler(
             {
                 OrganizationId = org.Id,
                 UserId = user.Id,
-                Status = "active"
+                Status = OrganizationUser.Statuses.Active
             };
             dbContext.OrganizationUsers.Add(membership);
             dbContext.AddOutboxEvent(new MembershipCreatedEvent(user.Id, org.Id));
@@ -81,7 +81,7 @@ public sealed class SyncMembershipHandler(
         }
         else
         {
-            membership.Status = "active";
+            membership.Status = OrganizationUser.Statuses.Active;
         }
 
         // Map Clerk role to system role

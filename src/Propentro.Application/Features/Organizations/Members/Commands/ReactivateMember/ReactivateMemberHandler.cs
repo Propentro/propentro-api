@@ -29,10 +29,10 @@ public sealed class ReactivateMemberHandler(
         if (membership is null)
             return MemberErrors.UserNotMember;
 
-        if (membership.Status == "active")
+        if (membership.Status == OrganizationUser.Statuses.Active)
             return MemberErrors.AlreadyActive;
 
-        membership.Status = "active";
+        membership.Status = OrganizationUser.Statuses.Active;
         user.IsActive = true;
 
         // Re-add to Clerk org using their existing Clerk ID (direct membership, no invite email)

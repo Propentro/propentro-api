@@ -11,8 +11,10 @@ public sealed partial class GetOrganizationMembersValidator : AbstractValidator<
         RuleFor(x => x.PageSize).InclusiveBetween(1, 100);
 
         RuleFor(x => x.Status)
-            .Must(s => s is null or "active" or "deactivated")
-            .WithMessage("Status must be 'active' or 'deactivated'.");
+            .Must(s => s is null
+                || s == OrganizationUser.Statuses.Active
+                || s == OrganizationUser.Statuses.Deactivated)
+            .WithMessage($"Status must be '{OrganizationUser.Statuses.Active}' or '{OrganizationUser.Statuses.Deactivated}'.");
 
         RuleFor(x => x.RoleId)
             .Must(id => id is null || RoleIdRegex().IsMatch(id))

@@ -29,7 +29,7 @@ public sealed class DeactivateMemberHandler(
         if (membership is null)
             return MemberErrors.UserNotMember;
 
-        if (membership.Status == "deactivated")
+        if (membership.Status == OrganizationUser.Statuses.Deactivated)
             return MemberErrors.AlreadyDeactivated;
 
         // Guard: cannot deactivate the last owner
@@ -73,14 +73,14 @@ public sealed class DeactivateMemberHandler(
             }
         }
 
-        membership.Status = "deactivated";
+        membership.Status = OrganizationUser.Statuses.Deactivated;
 
         // If user has no other active memberships, deactivate the user account
         var hasOtherActiveMemberships = await dbContext.OrganizationUsers
             .IgnoreQueryFilters()
             .AnyAsync(ou => ou.UserId == user.Id
                 && ou.OrganizationId != currentUser.OrganizationId
-                && ou.Status == "active",
+                && ou.Status == OrganizationUser.Statuses.Active,
                 cancellationToken);
 
         if (!hasOtherActiveMemberships)

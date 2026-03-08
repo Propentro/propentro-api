@@ -23,12 +23,14 @@ public sealed class UpdateMemberRolesHandler(
         var membership = await dbContext.OrganizationUsers
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(
-                // TODO: check if user active in org? put status somewhere with enum or const.
                 ou => ou.OrganizationId == currentUser.OrganizationId && ou.UserId == user.Id,
                 cancellationToken);
 
         if (membership is null)
             return MemberErrors.UserNotMember;
+
+        if (membership.Status == OrganizationUser.Statuses.Deactivated)
+            return MemberErrors.AlreadyDeactivated;
 
         // Load roles by PublicIds — must be system roles OR org-specific roles
         var roles = await dbContext.Roles
