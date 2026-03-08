@@ -4,7 +4,6 @@ using Propentro.Application.Common.Models;
 using Propentro.Application.Features.Organizations.Members.Commands.DeactivateMember;
 using Propentro.Application.Features.Organizations.Members.Commands.InviteMember;
 using Propentro.Application.Features.Organizations.Members.Commands.ReactivateMember;
-using Propentro.Application.Features.Organizations.Members.Commands.RemoveMember;
 using Propentro.Application.Features.Organizations.Members.Commands.UpdateMemberRoles;
 using Propentro.Application.Features.Organizations.Members.Queries.GetOrganizationMembers;
 using Propentro.Contracts.Organizations.Members;
@@ -71,15 +70,6 @@ internal static class MembersEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
-        group.MapDelete("/{userId}", RemoveMemberAsync)
-            .WithName("RemoveMember")
-            .WithSummary("Permanently remove a member from the organization")
-            .WithMetadata(new RequirePermissionAttribute("org:members:manage"))
-            .Produces(StatusCodes.Status204NoContent)
-            .ProducesProblem(StatusCodes.Status401Unauthorized)
-            .ProducesProblem(StatusCodes.Status403Forbidden)
-            .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict);
     }
 
     private static async Task<IResult> GetMembersAsync(
@@ -133,15 +123,6 @@ internal static class MembersEndpoints
         CancellationToken ct)
     {
         var result = await sender.Send(new ReactivateMemberCommand(userId), ct);
-        return result.ToHttpResult();
-    }
-
-    private static async Task<IResult> RemoveMemberAsync(
-        string userId,
-        ISender sender,
-        CancellationToken ct)
-    {
-        var result = await sender.Send(new RemoveMemberCommand(userId), ct);
         return result.ToHttpResult();
     }
 
