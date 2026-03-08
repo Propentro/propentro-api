@@ -1,12 +1,8 @@
-# CLAUDE.md - AI Assistant Guide for Propentro API
+# CLAUDE.md - Propentro API Guide
 
-This document provides comprehensive guidance for AI assistants working with the Propentro API codebase.
+Propentro: .NET 10.0 property management API, Clean Architecture, multi-tenant, CQRS.
 
-## Project Overview
-
-Propentro is a property management API built with **.NET 10.0** following **Clean Architecture** principles. It provides multi-tenant property, unit, lease, and contact management with CQRS pattern implementation.
-
-### Technology Stack
+## Tech Stack
 
 | Category | Technologies |
 |----------|-------------|
@@ -15,364 +11,178 @@ Propentro is a property management API built with **.NET 10.0** following **Clea
 | Patterns | CQRS, MediatR 14.0, Result Pattern, DDD, UnitOfWork |
 | Validation | FluentValidation 12.1 |
 | Auth | Clerk JWT (Bearer tokens) |
-| Logging | Serilog (static `Log` class) |
+| Logging | Serilog (static `Log` class — NOT injected ILogger) |
 | Testing | xUnit, FluentAssertions, NSubstitute, Testcontainers |
-| Caching | Redis (default), MemoryCache (fallback) via ICacheService abstraction |
-| Email | Resend (via HTTP client with Polly resilience) |
+| Caching | Redis (default) / MemoryCache (fallback) via `ICacheService` |
+| Email | Resend via HTTP + Polly resilience |
 | Storage | S3-compatible (Cloudflare R2) via AWSSDK.S3 |
 | Background Jobs | Quartz.NET 3.15 (outbox processing) |
-| Resilience | Polly (custom `AddStandardResilience()` in `Infrastructure/Resilience/ResiliencePolicies.cs`) |
-| Observability | OpenTelemetry (OTLP exporter, ASP.NET Core + HTTP + Runtime instrumentation) |
+| Resilience | Polly — custom `AddStandardResilience()` in `Infrastructure/Resilience/ResiliencePolicies.cs` |
+| Observability | OpenTelemetry (OTLP, ASP.NET Core + HTTP + Runtime) |
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                       Propentro.Api                             │
-│                  (Endpoints, Middleware)                        │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-         ┌────────────────────┼────────────────────┐
-         ▼                    ▼                    ▼
-┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────┐
-│   Application   │  │  Infrastructure │  │     Contracts       │
-│ (CQRS Handlers) │  │ (DB, Services)  │  │ (DTOs, Requests)    │
-└─────────────────┘  └─────────────────┘  └─────────────────────┘
-         │                    │
-         └────────┬───────────┘
-                  ▼
-         ┌─────────────────┐
-         │     Domain      │
-         │ (Entities, VOs) │
-         └─────────────────┘
-```
-
-### Layer Dependencies
-
-- **Api** → Application, Infrastructure, Contracts
-- **Application** → Domain, Contracts
-- **Infrastructure** → Domain, Application
-- **Domain** → No dependencies (pure)
-- **Contracts** → No dependencies (DTOs only)
+**Layer dependencies:** Api → Application + Infrastructure + Contracts; Application → Domain + Contracts; Infrastructure → Domain + Application; Domain → none; Contracts → none.
 
 ## Project Structure
 
 ```
 src/
-├── Propentro.Api/                 # Web API entry point
-│   ├── Endpoints/                 # Feature-based endpoint definitions
-│   ├── Middleware/                # GlobalExceptionHandler, UserContextMiddleware
-│   ├── Extensions/                # ResultExtensions for IResult conversion
-│   └── Program.cs                 # Application bootstrap
-│
-├── Propentro.Application/         # Business logic layer
+├── Propentro.Api/
+│   ├── Endpoints/          # Feature-based endpoint definitions
+│   ├── Middleware/          # GlobalExceptionHandler, UserContextMiddleware
+│   ├── Extensions/          # ResultExtensions (IResult conversion)
+│   └── Program.cs
+├── Propentro.Application/
 │   ├── Common/
-│   │   ├── Interfaces/            # ICommand, IQuery, ICachedQuery, IAppDbContext, etc.
-│   │   │   ├── Authentication/    # IUserContext, IUserContextInitializer, IExternalIdResolver
-│   │   │   ├── Authorization/     # IPermissionService
-│   │   │   ├── Caching/           # ICacheService
-│   │   │   ├── Email/             # IEmailService, EmailMessage
-│   │   │   ├── Messaging/         # ICommand, IQuery, ICachedQuery, IOutboxEventHandler, OutboxJsonOptions
-│   │   │   ├── Persistence/       # IAppDbContext, IDbConnectionFactory
-│   │   │   ├── Storage/           # IBlobStorageService
-│   │   │   └── Time/              # IDateTimeProvider
-│   │   ├── Behaviors/             # MediatR pipeline behaviors
-│   │   ├── Email/                 # EmailTemplates (Welcome, MembershipAdded, MembershipRemoved)
-│   │   ├── Errors/                # CommonErrors (Unauthorized, Forbidden, ValidationFailed, etc.)
-│   │   └── Models/                # Result<T>, Error, PagedResult<T>
-│   ├── Features/
-│   │   ├── Me/                    # Current user profile
-│   │   ├── Contacts/              # Contact management (tenants, owners, suppliers)
-│   │   ├── Activities/            # Timeline activities (notes, phone calls, events)
-│   │   ├── Webhooks/              # Clerk webhook command handlers (SyncUser, SyncOrg, etc.)
-│   │   └── [Feature]/
-│   │       ├── Commands/          # Create, Update, Delete handlers + outbox event handlers
-│   │       ├── Queries/           # Get, List handlers
-│   │       └── [Feature]Errors.cs # Centralized error definitions
+│   │   ├── Interfaces/      # ICommand, IQuery, ICachedQuery, IAppDbContext, IUserContext, ICacheService, etc.
+│   │   ├── Behaviors/       # MediatR pipeline behaviors
+│   │   ├── Email/           # EmailTemplates (Welcome, MembershipAdded, MembershipRemoved)
+│   │   ├── Errors/          # CommonErrors
+│   │   └── Models/          # Result<T>, Error, PagedResult<T>
+│   └── Features/
+│       ├── Me/ | Contacts/ | Activities/ | Webhooks/ | Organizations/
+│       └── [Feature]/
+│           ├── Commands/    # Handler + outbox event handlers (co-located)
+│           ├── Queries/
+│           └── [Feature]Errors.cs
+├── Propentro.Domain/
+│   ├── Common/              # Entity, AggregateRoot, OrganizationEntity, DomainEvent, PublicIdGenerator
+│   └── Entities/
+│       ├── Identity/        # User, Organization, OrganizationUser, OrganizationUserRole, Role, RolePermission
+│       │   └── Events/      # MembershipCreatedEvent, MembershipRemovedEvent
+│       ├── Contacts/Events/ # ContactCreatedEvent, ContactUpdatedEvent, etc.
+│       ├── Properties/Events/
+│       └── [Other entities...]
+├── Propentro.Infrastructure/
+│   ├── Persistence/AppDbContext.cs   # Global filters + domain event collection
+│   ├── Persistence/Configurations/
+│   ├── Authorization/       # PermissionService, handlers
+│   ├── Caching/             # RedisCacheService, MemoryCacheService
+│   ├── Outbox/              # ProcessOutboxMessagesJob
 │   └── DependencyInjection.cs
-│
-├── Propentro.Domain/              # Domain entities and logic
-│   ├── Common/                    # Entity, AggregateRoot, OrganizationEntity, DomainEvent, ValueObject, PublicIdGenerator
-│   │   └── Interfaces/            # IDomainEvent, IOrganizationScoped, IAuditableEntity, ISoftDeletable, IHasPublicId
-│   ├── Entities/                  # Domain entities with co-located Events/ folders
-│   │   ├── Activities/            # Activity
-│   │   ├── Addresses/             # Address
-│   │   ├── Contacts/              # Contact, ContactRole, ContactDocument
-│   │   │   └── Events/            # ContactCreatedEvent, ContactUpdatedEvent, ContactArchivedEvent, etc.
-│   │   ├── Documents/             # Document, DocumentVersion
-│   │   ├── Identity/              # User, Organization, OrganizationUser, OrganizationUserRole, Role, RolePermission, SystemAdministrator
-│   │   │   └── Events/            # MembershipCreatedEvent, MembershipRemovedEvent
-│   │   ├── Lookups/               # AmenityType, ComplianceType, Currency, Country, Permission
-│   │   ├── Notifications/         # Notification, NotificationPreference
-│   │   ├── Outbox/                # OutboxMessage
-│   │   ├── Properties/            # Property, PropertyType, PropertyPurpose, PropertyAmenity, PropertyCompliance, PropertyComplianceDocument, PropertyContactRole, PropertyDocument
-│   │   │   └── Events/            # PropertyCreatedEvent, PropertyUpdatedEvent
-│   │   └── Units/                 # Unit, UnitAmenity, UnitCompliance, UnitComplianceDocument, UnitContactRole, UnitDocument
-│   ├── ValueObjects/              # Money, DateRange
-│   └── Enums/                     # UnitType, UnitStatus, UsageType, RentalMode, FurnishedStatus, ComplianceStatus, DocumentType
-│
-├── Propentro.Infrastructure/      # External concerns
-│   ├── Authentication/            # UserContext, ClerkIdResolver, ExternalIdResolver
-│   ├── Authorization/             # PermissionService, PermissionAuthorizationHandler, ActiveUserAuthorizationHandler
-│   ├── Caching/                   # RedisCacheService, MemoryCacheService, CachingOptions
-│   ├── Clock/                     # DateTimeProvider (IDateTimeProvider implementation)
-│   ├── Email/                     # ResendEmailService, EmailOptions
-│   ├── Outbox/                    # ProcessOutboxMessagesJob, OutboxOptions, ProcessOutboxMessagesJobSetup
-│   ├── Persistence/
-│   │   ├── AppDbContext.cs        # EF Core context with global filters and domain event collection
-│   │   └── Configurations/        # Entity type configurations
-│   ├── Resilience/                # ResiliencePolicies (Polly)
-│   ├── Storage/                   # BlobStorageService, BlobStorageOptions (S3-compatible)
-│   ├── Webhooks/                  # ClerkWebhookVerifier, WebhookIdempotencyStore
-│   └── DependencyInjection.cs
-│
-└── Propentro.Contracts/           # Shared request/response types
-    └── [Feature]/                 # {Verb}{Entity}Request, {Entity}Response, {Entity}ListItemResponse
+└── Propentro.Contracts/
+    └── [Feature]/           # {Verb}{Entity}Request, {Entity}Response, {Entity}ListItemResponse
 
 tests/
-├── Propentro.Domain.Tests/        # Entity and value object tests
-├── Propentro.Application.Tests/   # Handler and validator tests
-└── Propentro.Api.Tests/           # Endpoint and middleware tests
+├── Propentro.Domain.Tests/
+├── Propentro.Application.Tests/
+└── Propentro.Api.Tests/
 ```
 
-## Development Workflows
-
-### Building
+## Development Commands
 
 ```bash
-# Build entire solution
 dotnet build Propentro.slnx
-
-# Build specific project
-dotnet build src/Propentro.Api/Propentro.Api.csproj
-```
-
-**Note:** `TreatWarningsAsErrors` is enabled globally. All warnings must be resolved before committing.
-
-### Running Tests
-
-```bash
-# Run all tests
 dotnet test Propentro.slnx
-
-# Run specific test project
-dotnet test tests/Propentro.Domain.Tests/Propentro.Domain.Tests.csproj
-
-# Run with verbosity
-dotnet test --verbosity normal
-```
-
-### Running the API
-
-```bash
-# From the API project directory
 dotnet run --project src/Propentro.Api/Propentro.Api.csproj
-
-# With specific environment
-ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/Propentro.Api/Propentro.Api.csproj
-```
-
-### Database Migrations
-
-```bash
-# Add migration
 dotnet ef migrations add MigrationName --project src/Propentro.Infrastructure --startup-project src/Propentro.Api
-
-# Update database
 dotnet ef database update --project src/Propentro.Infrastructure --startup-project src/Propentro.Api
 ```
 
+**`TreatWarningsAsErrors` is globally enabled — all warnings are build errors.**
+
 ## Middleware Pipeline Order
 
-The middleware pipeline in `Program.cs` follows this exact order:
-
 ```
-Request → ExceptionHandler → Serilog Logging → [Scalar/OpenApi (dev only)]
-        → CORS → Rate Limiter → Authentication → UserContextMiddleware
-        → Authorization → Health Checks / API Endpoints → Response
+ExceptionHandler → Serilog → [Scalar/OpenApi dev] → CORS → RateLimiter
+→ Authentication → UserContextMiddleware → Authorization → Endpoints
 ```
 
-**Key points:**
-- Authentication runs before `UserContextMiddleware` so JWT claims are available
-- `UserContextMiddleware` runs AFTER Authentication and BEFORE Authorization — resolves Clerk external IDs to internal IDs and enriches Serilog LogContext with tenant context
-- `ActiveUserAuthorizationHandler` depends on `UserContextMiddleware` having initialized the user context
-- CORS is configured from `Cors:AllowedOrigins` in appsettings (empty/missing origins block all cross-origin requests)
-- Rate limiting: fixed window, 100 requests/minute
-- Health check at `/health` (anonymous, no auth required)
-- Scalar API reference at `/scalar/v1` in development only
+- `UserContextMiddleware` runs AFTER Authentication, BEFORE Authorization — resolves Clerk IDs to internal IDs, enriches Serilog context.
+- `ActiveUserAuthorizationHandler` depends on `UserContextMiddleware`.
+- Rate limiting: fixed window, 100 req/min.
+- Health check at `/health` (anonymous). Scalar at `/scalar/v1` (dev only).
 
-## Key Patterns & Conventions
+## Key Patterns & Rules
 
-### CQRS Command Pattern
+### CQRS — Commands
 
-Commands modify state and return `Result` or `Result<T>`. **Handlers do NOT call `SaveChangesAsync`** - the `UnitOfWorkBehavior` handles persistence.
+- Commands implement `ICommand<TResponse>`, handlers implement `ICommandHandler`.
+- **Handlers MUST NOT call `SaveChangesAsync`** — `UnitOfWorkBehavior` handles it.
+- `PublicId` is generated client-side, available immediately after construction.
+- Return `Result<T>` or `Result`. Implicit conversion from Error or value works.
 
 ```csharp
-// Command definition (record)
-public record CreateUnitCommand(
-    string PropertyId,
-    string UnitNumber,
-    UnitType Type
-) : ICommand<string>;  // Returns PublicId
+public record CreateUnitCommand(string PropertyId, string UnitNumber, UnitType Type) : ICommand<string>;
 
-// Command handler
-public class CreateUnitHandler(
-    IAppDbContext dbContext,
-    IUserContext currentUser
-) : ICommandHandler<CreateUnitCommand, string>
+public class CreateUnitHandler(IAppDbContext db, IUserContext user) : ICommandHandler<CreateUnitCommand, string>
 {
-    public async Task<Result<string>> Handle(
-        CreateUnitCommand request,
-        CancellationToken cancellationToken)
+    public async Task<Result<string>> Handle(CreateUnitCommand request, CancellationToken ct)
     {
-        var property = await dbContext.Properties
-            .FirstOrDefaultAsync(p => p.PublicId == request.PropertyId, cancellationToken);
-
-        if (property is null)
-            return UnitErrors.PropertyNotFound;
-
+        var property = await db.Properties.FirstOrDefaultAsync(p => p.PublicId == request.PropertyId, ct);
+        if (property is null) return UnitErrors.PropertyNotFound;
         var unit = new Unit(property.Id, request.UnitNumber, request.Type);
-
-        dbContext.Units.Add(unit);
-        // Do NOT call SaveChangesAsync - UnitOfWorkBehavior does this
-
-        return unit.PublicId;  // Available immediately (client-side generated)
-    }
-}
-
-// Validator
-public class CreateUnitValidator : AbstractValidator<CreateUnitCommand>
-{
-    public CreateUnitValidator()
-    {
-        RuleFor(x => x.PropertyId).NotEmpty();
-        RuleFor(x => x.UnitNumber).NotEmpty().MaximumLength(50);
-        RuleFor(x => x.Type).IsInEnum();
+        db.Units.Add(unit);
+        return unit.PublicId;  // Do NOT call SaveChangesAsync
     }
 }
 ```
 
-### CQRS Query Pattern
+### CQRS — Queries
 
-Queries read data using Dapper for performance. Always use `await using` and `OpenAsync`:
+- Queries use Dapper. Always `await using` + `OpenAsync`. Always filter by `organization_id`.
+- `Dapper MatchNamesWithUnderscores = true` → snake_case columns → PascalCase properties automatically.
 
 ```csharp
-// Query definition
 public record GetUnitByIdQuery(string Id) : IQuery<UnitDetailDto>;
 
-// Query handler (uses Dapper)
-public class GetUnitByIdHandler(
-    IDbConnectionFactory db,
-    IUserContext currentUser
-) : IQueryHandler<GetUnitByIdQuery, UnitDetailDto>
-{
-    public async Task<Result<UnitDetailDto>> Handle(
-        GetUnitByIdQuery request,
-        CancellationToken cancellationToken)
-    {
-        await using var connection = db.CreateConnection();
-        await connection.OpenAsync(cancellationToken);
-
-        const string sql = """
-            SELECT u.public_id, u.unit_number, u.type
-            FROM units u
-            WHERE u.public_id = @Id
-              AND u.organization_id = @OrganizationId
-              AND u.is_active = true
-            """;
-
-        var unit = await connection.QueryFirstOrDefaultAsync<UnitDetailDto>(
-            sql,
-            new { request.Id, currentUser.OrganizationId });
-
-        return unit is null
-            ? UnitErrors.NotFound
-            : unit;
-    }
-}
+// Handler:
+await using var connection = db.CreateConnection();
+await connection.OpenAsync(ct);
+const string sql = """
+    SELECT u.public_id, u.unit_number FROM units u
+    WHERE u.public_id = @Id AND u.organization_id = @OrganizationId AND u.is_active = true
+    """;
+var unit = await connection.QueryFirstOrDefaultAsync<UnitDetailDto>(sql, new { request.Id, user.OrganizationId });
+return unit is null ? UnitErrors.NotFound : unit;
 ```
 
-### Cached Query Pattern
+### Cached Queries
 
-Cache keys are **automatically prefixed** with `org:{OrganizationId}:` by `QueryCachingBehavior` for multi-tenant isolation. Do NOT include `OrganizationId` in `CacheKey` — it is added automatically.
+Cache keys are **auto-prefixed** with `org:{OrganizationId}:` by `QueryCachingBehavior`. Do NOT include `OrganizationId` in `CacheKey`.
 
 ```csharp
-public record GetUnitsQuery(int Page, int PageSize)
-    : IQuery<PagedResult<UnitDto>>, ICachedQuery<PagedResult<UnitDto>>
+public record GetUnitsQuery(int Page, int PageSize) : IQuery<PagedResult<UnitDto>>, ICachedQuery<PagedResult<UnitDto>>
 {
-    // Final key: "org:{OrganizationId}:units:{Page}:{PageSize}" (auto-prefixed)
-    public string CacheKey => $"units:{Page}:{PageSize}";
+    public string CacheKey => $"units:{Page}:{PageSize}";  // Final: "org:{OrgId}:units:1:20"
     public TimeSpan? Expiration => TimeSpan.FromMinutes(5);
 }
 ```
 
+**MediatR pipeline order:** `Logging → QueryCaching → Validation → UnitOfWork → Handler`
+Cache hits skip validation entirely.
+
 ### Result Pattern
 
-Never throw exceptions for business errors:
+Error code format: `"Entity.ErrorName"` (dotted, PascalCase).
 
 ```csharp
-// Error definitions (per feature)
-// Code format: "Entity.ErrorName" (dotted, PascalCase)
 public static class UnitErrors
 {
-    public static readonly Error NotFound = new(
-        "Unit.NotFound",
-        "Unit not found",
-        ErrorType.NotFound);
-
-    public static Error NotFoundById(string id) => new(
-        "Unit.NotFound",
-        $"Unit with ID '{id}' was not found",
-        ErrorType.NotFound);
+    public static readonly Error NotFound = new("Unit.NotFound", "Unit not found", ErrorType.NotFound);
+    public static Error NotFoundById(string id) => new("Unit.NotFound", $"Unit '{id}' not found", ErrorType.NotFound);
 }
-
-// Usage in handlers
-if (unit is null)
-    return UnitErrors.NotFoundById(request.Id);
-
-// Success returns
-return Result.Success(unit);
-return unit.PublicId;  // Implicit conversion
 ```
 
 ### Domain Entity Pattern
 
-Most business entities extend `OrganizationEntity` (which provides audit fields, soft delete, and org scoping). Use `AggregateRoot` for entities that raise domain events:
+**Entity hierarchy:**
+- `Entity` → `Id` (Guid v7) + `PublicId` (prefixed hex)
+- `OrganizationEntity : Entity` → adds `OrganizationId`, audit fields, soft delete
+- `AggregateRoot : OrganizationEntity` → adds `RaiseDomainEvent`
+
+**Entity prefixes:** `prp`, `unt`, `cnt`, `act`, `adr`, `doc`, `docv`, `ntf`, `pcm`, `ucm`, `usr`, `org`, `rol`, `sadm`
+
+Lookup entities (Country, Currency, Permission, AmenityType, etc.) have no PublicId prefix.
 
 ```csharp
-// OrganizationEntity base class provides: OrganizationId, CreatedAt, CreatedById,
-// UpdatedAt, UpdatedById, IsActive — all set automatically by AppDbContext
 public class Unit : AggregateRoot
 {
-    public Guid PropertyId { get; set; }
-    public string Name { get; set; } = default!;
-    public string UnitType { get; set; } = default!;
-    public string Status { get; set; } = "available";
-
-    private Unit() { }  // EF Core
-
-    public Unit(Guid propertyId, string name, string unitType) : base("unt")
-    {
-        // Id (Guid v7) and PublicId (unt_a3f9c12d8e4b) set by Entity base class
-        PropertyId = propertyId;
-        Name = name;
-        UnitType = unitType;
-    }
+    private Unit() { }  // EF Core only
+    public Unit(Guid propertyId, string name, string unitType) : base("unt") { ... }
 }
 ```
-
-**Entity hierarchy:**
-- `Entity` → base with `Id` (Guid v7) and `PublicId` (prefixed hex)
-- `OrganizationEntity : Entity` → adds `OrganizationId`, audit fields (`IAuditableEntity`), soft delete (`ISoftDeletable`)
-- `AggregateRoot : OrganizationEntity` → adds domain event support (`RaiseDomainEvent`)
-
-**Key domain conventions:**
-- `Id` (Guid v7) - internal identifier, auto-generated in `Entity(prefix)` constructor
-- `PublicId` (prefixed hex: `prp_a3f9c12d8e4b`) - user-facing, generated client-side by `PublicIdGenerator`
-- Both IDs are available immediately after construction - no need to wait for database
-- Each entity defines its prefix via `base("prefix")`: `prp`, `unt`, `cnt`, `act`, `adr`, `doc`, `docv`, `ntf`, `pcm`, `ucm`, `usr`, `org`, `rol`, `sadm`
-- Lookup/reference entities (Country, Currency, Permission, AmenityType, ComplianceType, PropertyType, PropertyPurpose) do not use PublicId prefixes
-- Parameterless constructor is for EF Core only (no ID generation)
 
 ### API Endpoint Pattern
 
@@ -381,31 +191,20 @@ public static class UnitEndpoints
 {
     public static void MapUnitEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1/units")
-            .WithTags("Units")
-            .RequireAuthorization();
-
+        var group = app.MapGroup("/api/v1/units").WithTags("Units").RequireAuthorization();
         group.MapGet("/{id}", GetUnitById)
             .WithName("GetUnitById")
-            .WithSummary("Get unit by ID")
             .WithMetadata(new RequirePermissionAttribute("units:read"))
             .Produces<UnitDetailDto>()
-            .Produces(StatusCodes.Status404NotFound);
-
+            .ProducesProblem(404);
         group.MapPost("/", CreateUnit)
-            .WithName("CreateUnit")
             .WithMetadata(new RequirePermissionAttribute("units:write"))
-            .Produces<string>(StatusCodes.Status201Created)
-            .Produces<ProblemDetails>(StatusCodes.Status400BadRequest);
+            .Produces<string>(201)
+            .ProducesProblem(400);
     }
-
-    private static async Task<IResult> CreateUnit(
-        CreateUnitRequest request,
-        ISender sender,
-        CancellationToken ct)
+    private static async Task<IResult> CreateUnit(CreateUnitRequest request, ISender sender, CancellationToken ct)
     {
-        var command = new CreateUnitCommand(request.PropertyId, request.UnitNumber, request.Type);
-        var result = await sender.Send(command, ct);
+        var result = await sender.Send(new CreateUnitCommand(request.PropertyId, request.UnitNumber, request.Type), ct);
         return result.ToCreatedResult($"/api/v1/units/{result.Value}");
     }
 }
@@ -413,668 +212,175 @@ public static class UnitEndpoints
 
 **All endpoints must be registered in `EndpointExtensions.MapApiEndpoints()`.**
 
-### PublicId Format Validation
+### PublicId Validation
 
-All queries that accept a PublicId should validate the format before hitting the database. PublicIds follow the pattern `{prefix}_{12-hex-chars}`. Use `[GeneratedRegex]` for compile-time optimized validation:
+Validate format before hitting DB using `[GeneratedRegex]`:
 
 ```csharp
-public sealed partial class GetContactByIdValidator : AbstractValidator<GetContactByIdQuery>
-{
-    public GetContactByIdValidator()
-    {
-        RuleFor(x => x.Id)
-            .NotEmpty()
-            .Must(id => ContactIdRegex().IsMatch(id))
-            .WithMessage("Invalid contact ID format.");
-    }
-
-    [GeneratedRegex(@"^cnt_[0-9a-f]{12}$", RegexOptions.Compiled)]
-    private static partial Regex ContactIdRegex();
-}
+[GeneratedRegex(@"^cnt_[0-9a-f]{12}$", RegexOptions.Compiled)]
+private static partial Regex ContactIdRegex();
+// In validator: RuleFor(x => x.Id).NotEmpty().Must(id => ContactIdRegex().IsMatch(id))
 ```
-
-Entity prefixes: `prp`, `unt`, `cnt`, `act`, `adr`, `doc`, `docv`, `ntf`, `pcm`, `ucm`, `usr`, `org`, `rol`, `sadm`
 
 ### Pagination Validation
 
-All paginated queries must have a validator enforcing:
-- `Page >= 1`
-- `PageSize` between 1 and 100
-
-Without this, `page=0` or negative values produce invalid SQL `OFFSET` and runtime 500s.
+All paginated queries must enforce: `Page >= 1`, `PageSize` 1–100. (page=0 → invalid SQL OFFSET → 500.)
 
 ### Audit Columns
 
-`AppDbContext.SaveChangesAsync` automatically sets audit fields based on EF change tracker state:
-- `EntityState.Added` → `CreatedAt`, `CreatedById`, `OrganizationId` (for `IOrganizationScoped`)
-- `EntityState.Modified` → `UpdatedAt`, `UpdatedById`
+`AppDbContext.SaveChangesAsync` auto-sets: Added → `CreatedAt`, `CreatedById`, `OrganizationId`; Modified → `UpdatedAt`, `UpdatedById`. **Do NOT set these in handlers.** Only set fields NOT in `IAuditableEntity` (e.g., `ArchivedAt`).
 
-**Do NOT manually set these in handlers.** The infrastructure handles it. Only set domain-specific fields that are NOT part of `IAuditableEntity` (e.g., `ArchivedAt`, `ArchivedById`).
+### Timestamps
+
+**Always `DateTimeOffset`** for timestamps (matches PostgreSQL TIMESTAMPTZ). `DateOnly` for date-only fields. NEVER `DateTime`.
 
 ### Bulk Operations
 
-For operations that can be performed on multiple entities (archive, unarchive, delete), create separate bulk endpoints:
-- URL: `POST /v1/{entities}/bulk-{action}` (e.g., `/v1/contacts/bulk-archive`)
-- Request body: `{ "contactIds": ["cnt_xxx", "cnt_yyy"] }`
-- Limit: 50 items per request (validated)
-- Handler: Load all entities in one query, loop and modify, single transaction via UnitOfWork
-- Skip already-in-target-state entities silently (e.g., already archived contacts)
+URL: `POST /v1/{entities}/bulk-{action}`. Body: `{ "ids": [...] }`. Max 50 items (validated). Load all in one query, loop, single transaction. Skip already-in-target-state silently.
 
-### Activity Types
+### Logging
 
-Activity types are constrained at both validation and DB level:
-- **User-creatable**: `note`, `phone_call`
-- **System-only**: `system_event`, `archived`, `unarchived`
-- DB CHECK constraint: `ck_activities_activity_type`
-- When adding new types: update validator, handler whitelist (if system type), AND DB constraint (new migration)
-
-### Timestamps — DateTimeOffset Convention
-
-All timestamp fields use `DateTimeOffset` (not `DateTime`) to match PostgreSQL `TIMESTAMPTZ`:
-- Entity properties: `DateTimeOffset CreatedAt`, `DateTimeOffset? UpdatedAt`, etc.
-- DTOs/Response records: Same — `DateTimeOffset`
-- Dapper query result records: Same — Npgsql maps `TIMESTAMPTZ` → `DateTimeOffset` automatically
-- `IDateTimeProvider.UtcNow` returns `DateTimeOffset`
-- API responses serialize as ISO 8601 with timezone: `2025-06-15T10:30:00+00:00`
-- Date-only fields (lease start/end, compliance issued/expires) use `DateOnly` — not affected
-
-**Do NOT use `DateTime` for any timestamp.** Use `DateOnly` for dates, `TimeOnly` for times, `DateTimeOffset` for timestamps.
-
-## Code Style Conventions
-
-### C# Conventions (from .editorconfig)
-
-- **Indentation**: 4 spaces
-- **Line endings**: LF
-- **Namespaces**: File-scoped (`namespace Propentro.Domain.Entities;`)
-- **Braces**: Required for multi-line blocks, optional for single-line (`csharp_prefer_braces = when_multiline`)
-- **var usage**: Use when type is apparent, explicit types for built-ins
-- **Private fields**: `_camelCase` prefix
-- **Async methods**: Must end with `Async` suffix
-- **Interfaces**: Must start with `I` prefix
-- **Primary constructors**: Preferred for simple DI
-- **Warnings as errors**: Enabled globally - all warnings must be resolved
-- **Analysis level**: `latest-recommended` (not `latest-all`) - aggressive rules suppressed in `.editorconfig`
-
-### Suppressed Analyzer Rules
-
-The following CA rules are suppressed in `.editorconfig` to avoid false positives:
-
-| Rule | Reason |
-|------|--------|
-| `CA1515` | "Make public types internal" - impractical for DI-heavy projects |
-| `CA1062` | "Validate public method args" - redundant with nullable reference types |
-| `CA1848` | "Use LoggerMessage delegates" - project uses Serilog static `Log` |
-| `CA2007` | "ConfigureAwait" - not needed in ASP.NET Core |
-| `CA1034` | "Nested types not visible" - common for DTOs/result types |
-| `CA1711` | "Identifiers incorrect suffix" - `EventHandler` is correct for outbox handlers |
-| `CA1716` | "Identifiers match keywords" - `Me` is VB.NET keyword, irrelevant for C# |
-| `CA1724` | "Type names match namespaces" - false positives with domain names |
-| `CA1054/55/56` | "URI as strings" - simpler for API DTOs |
-| `IDE0058` | "Expression value unused" - noisy with fluent APIs |
-
-### File Organization
-
-- One class per file (generally)
-- File name matches class name
-- Organize by feature, not by type
-- Keep related command/query/handler/validator together
-
-### Naming Conventions
-
-| Type | Convention | Example |
-|------|------------|---------|
-| Command | `{Verb}{Entity}Command` | `CreateUnitCommand` |
-| Query | `Get{Entity}(ById/s)Query` | `GetUnitByIdQuery` |
-| Handler | `{Command/Query}Handler` | `CreateUnitHandler` |
-| Validator | `{Command}Validator` | `CreateUnitValidator` |
-| Response | `{Entity}Response` / `{Entity}ListItemResponse` | `ContactResponse`, `ContactListItemResponse` |
-| Request | `{Verb}{Entity}Request` | `CreateContactRequest` |
-| Error class | `{Entity}Errors` | `UnitErrors` |
-| Domain event | `{Entity}{Action}Event` | `ContactCreatedEvent` |
-| Outbox handler | `{Entity}{Action}EventHandler` | `ContactCreatedEventHandler` |
-
-### Logging Conventions
-
-This project uses **Serilog's static `Log` class** instead of injected `ILogger`:
-
-```csharp
-using Serilog;
-
-public class MyHandler(IAppDbContext db) : ICommandHandler<MyCommand>
-{
-    public async Task<Result> Handle(MyCommand request, CancellationToken ct)
-    {
-        Log.Information("Processing {RequestName}", nameof(MyCommand));
-        // ...
-    }
-}
-
-// Don't inject ILogger - use static Log class
-```
-
-**Log Levels:**
-- `Log.Debug()` - Detailed diagnostic info (transactions, queries)
-- `Log.Information()` - General operational events
-- `Log.Warning()` - Unexpected but handled situations
-- `Log.Error()` - Errors and exceptions
-
-**Structured Logging:**
-- Use `{PropertyName}` placeholders, not string interpolation
-- Use `@` for complex object serialization: `{@Request}`
-
-### Transaction Management (UnitOfWork)
-
-Commands are wrapped in database transactions via `UnitOfWorkBehavior`:
-
-```
-Request → Logging → QueryCaching → Validation → UnitOfWork → Handler
-                        ↓                           ↓
-                   Cache hit?                  BeginTransaction
-                   ├─ Yes → Return                   ↓
-                   └─ No  → Continue           Handler runs
-                                                     ↓
-                                  ┌─ Success → SaveChangesAsync → Commit
-                                  ├─ Failure → Rollback (no save)
-                                  └─ Exception → Rollback + throw
-```
-
-**Critical rules:**
-- Handlers **must NOT** call `SaveChangesAsync` - `UnitOfWorkBehavior` does it automatically
-- `UnitOfWorkBehavior` calls `SaveChangesAsync` then `CommitAsync` on success
-- On `Result.Failure()`, the transaction is rolled back without saving
-- On exception, the transaction is rolled back and the exception rethrows
-- `PublicId` is generated client-side, available immediately after entity creation
-
-```csharp
-public async Task<Result<string>> Handle(CreateUnitCommand request, CancellationToken ct)
-{
-    var unit = new Unit(request.PropertyId, request.UnitNumber);
-    db.Units.Add(unit);
-
-    // Do NOT call SaveChangesAsync here
-    // UnitOfWorkBehavior handles: SaveChangesAsync → Commit
-
-    return unit.PublicId;  // Already available (client-side generated)
-}
-```
+Use Serilog static `Log` class — **never inject `ILogger`**. Use structured `{PropertyName}` placeholders, not string interpolation. `@` for complex objects.
 
 ### Database Conventions
 
-- Table names: `snake_case` plural (`units`, `properties`)
-- Column names: `snake_case` (`unit_number`, `property_id`)
-- All entities have `public_id` (user-facing, prefixed hex e.g. `prp_a3f9c12d8e4b`) and `id` (internal Guid v7)
-- Organization-scoped entities have `organization_id`
-- Soft delete via `is_active` boolean
-- Audit fields: `created_at`, `created_by_id`, `updated_at`, `updated_by_id`
+- Tables: `snake_case` plural. Columns: `snake_case`.
+- All entities: `id` (Guid v7, internal) + `public_id` (prefixed hex, user-facing).
+- Org-scoped: `organization_id`. Soft delete: `is_active`. Audit: `created_at`, `created_by_id`, `updated_at`, `updated_by_id`.
 
-### Dapper Query Conventions
+### Dapper Result Types
 
-```csharp
-// Always use await using + OpenAsync
-await using var connection = db.CreateConnection();
-await connection.OpenAsync(cancellationToken);
-
-// Always filter by organization_id for tenant isolation
-const string sql = """
-    SELECT u.public_id, u.unit_number
-    FROM units u
-    WHERE u.organization_id = @OrganizationId
-      AND u.is_active = true
-    """;
-
-var result = await connection.QueryAsync<UnitDto>(sql, new { currentUser.OrganizationId });
-```
-
-**Important:** Dapper `MatchNamesWithUnderscores = true` is set in `Program.cs`, so `snake_case` DB columns map to `PascalCase` C# properties automatically.
-
-### Dapper Query Result Conventions
-
-**Never use positional records as Dapper materialization targets.** Dapper uses reflection to set properties at runtime — positional records rely on constructor matching, which breaks with nullable parameters and complex signatures.
-
-**Preferred pattern: non-positional `sealed record` with `init` properties.**
-
-`init` setters are enforced at compile-time by the C# compiler, but at runtime (via reflection) they behave like regular setters — so Dapper can set them freely. This means response types in `Contracts/` can be defined as non-positional records and used directly as Dapper targets, with no intermediate mapping class needed.
+**Never use positional records as Dapper targets** (constructor matching breaks with nullables).
+**Use non-positional `sealed record` with `init` properties** — Dapper sets `init` via reflection at runtime.
 
 ```csharp
-// In Contracts/ — works as both API response AND Dapper materialization target
-public sealed record OrganizationSettingsResponse
+// In Contracts/ — usable as both API response and Dapper target
+public sealed record UnitResponse
 {
-    public string OrganizationId { get; init; } = null!;
-    public string Name { get; init; } = null!;
-    public string? ContactName { get; init; }
-    // ...
+    public string PublicId { get; init; } = null!;
+    public string UnitNumber { get; init; } = null!;
 }
-
-// Handler — map directly, no intermediate class
-var result = await connection.QueryFirstOrDefaultAsync<OrganizationSettingsResponse>(sql, new { ... });
-if (result is null) return SomeErrors.NotFound;
-return result;
+// In handler — no intermediate mapping needed:
+var result = await connection.QueryFirstOrDefaultAsync<UnitResponse>(sql, params);
 ```
 
-**Quick reference:**
 | Type | Dapper-safe? | Use for |
 |------|-------------|---------|
-| Positional record | No | MediatR commands/queries, domain events only |
-| Non-positional record + `init` | Yes | Response contracts in `Contracts/` (preferred) |
-| `sealed class` + `init` | Yes | Internal-only DTOs not exposed as API contracts |
-| Intermediate mapping class | Avoid | Only needed when the response is a positional record — which it shouldn't be |
+| Positional record | No | Commands, queries, domain events |
+| Non-positional record + `init` | Yes | Contracts/ response types (preferred) |
 
 ## Multi-Tenancy
 
-The application uses implicit organization-scoped multi-tenancy:
-
-1. **Current user** extracted from JWT claims via `IUserContext`
-2. **Global query filters** automatically scope all `IOrganizationScoped` entities by referencing `AppDbContext.CurrentOrganizationId` via lambda closures
-3. **SaveChangesAsync** automatically sets `OrganizationId` on new entities
-4. **Dapper queries** must include `organization_id = @OrganizationId` filter manually
-
-```csharp
-// EF Core - automatic filtering via global query filters
-var units = await dbContext.Units.ToListAsync();  // Already filtered by org
-
-// Dapper - manual filtering required
-const string sql = """
-    SELECT * FROM units
-    WHERE organization_id = @OrganizationId
-      AND is_active = true
-    """;
-```
-
-**How global filters work:** `AppDbContext` exposes `CurrentOrganizationId` which delegates to `IUserContext.OrganizationId`. Each entity has an explicit `HasQueryFilter` call in `ApplyGlobalFilters()` that references `CurrentOrganizationId`. EF Core rebinds this DbContext property per query, ensuring correct tenant isolation. When adding a new entity, add the corresponding `HasQueryFilter` line in `AppDbContext.ApplyGlobalFilters()`.
+- **EF Core**: global query filters auto-scope by `OrganizationId` — no manual filter needed.
+- **Dapper**: must manually add `WHERE organization_id = @OrganizationId`.
+- **Cache keys**: auto-prefixed with `org:{OrganizationId}:` by `QueryCachingBehavior`.
+- When adding a new entity: add `HasQueryFilter` in `AppDbContext.ApplyGlobalFilters()`.
 
 ## Caching
 
-### Cache Provider Selection
+- Redis when `ConnectionStrings:Redis` is set; MemoryCache fallback.
+- Both implement per-key `SemaphoreSlim` locking in `GetOrCreateAsync` (stampede protection).
+- **Always use `GetOrCreateAsync`**, never manual get-then-set.
+- Permission cache: 5 min per user/org. Invalidation:
+  - `InvalidatePermissionsCacheAsync(userId, orgId)` — single user
+  - `InvalidateOrganizationPermissionsCacheAsync(orgId)` — all users in org
+- Cache invalidation is a direct call in handlers (`await cache.RemoveByPatternAsync(...)`). Do NOT use domain events for cache invalidation.
 
-The cache provider is selected based on the `ConnectionStrings:Redis` value:
+## Side-Effect Decision Guide
 
-- **Redis** (default for production): Used when `ConnectionStrings:Redis` is set and non-empty. Suitable for multi-instance deployments.
-- **Memory** (fallback): Used when Redis connection string is empty or missing. Suitable for development and single-instance deployments.
+| Concern | Mechanism | Transaction |
+|---------|-----------|-------------|
+| Activity log | Direct write in handler | Same transaction (atomic) |
+| Cache invalidation | Direct call in handler | Post-save, best-effort |
+| Email / webhook / push | Domain event → Outbox | Async, guaranteed delivery |
 
-Additional caching options are configured via `CachingOptions` (`Caching` section):
+## Domain Events & Outbox
 
-```json
-{
-  "ConnectionStrings": {
-    "Redis": "localhost:6379"
-  },
-  "Caching": {
-    "KeyPrefix": "propentro:",
-    "DefaultExpiration": "00:05:00"
-  }
-}
-```
+Events are **exclusively async** via outbox. No synchronous MediatR dispatch.
 
-### Cache Stampede Protection
+**Flow:** `entity.MarkAs{Action}(orgId)` → `RaiseDomainEvent(new XEvent(...))` → `SaveChangesAsync` in UnitOfWork → `AppDbContext` serializes to `outbox_messages` → `ProcessOutboxMessagesJob` polls and dispatches.
 
-Both `MemoryCacheService` and `RedisCacheService` implement **per-key `SemaphoreSlim` locking** in `GetOrCreateAsync` to prevent cache stampede (thundering herd):
+**Event type format:** `{aggregate}.{action}` (e.g. `contact.created`). Defined as `override string EventType` on each event record.
 
-```
-Thread 1: Cache miss → Acquire lock → DB query → Set cache → Release
-Thread 2: Cache miss → Wait for lock → Cache hit (from Thread 1) → Return
-Thread 3: Cache miss → Wait for lock → Cache hit (from Thread 1) → Return
-```
-
-**Always use `GetOrCreateAsync`** for hot-path caching (e.g., `PermissionService`). Never use manual get-then-set pattern.
-
-### Multi-Tenant Cache Key Enforcement
-
-`QueryCachingBehavior` **automatically prefixes** all `ICachedQuery` cache keys with `org:{OrganizationId}:`. This prevents cross-tenant data leaks. When defining a cached query's `CacheKey`, do NOT include `OrganizationId` — it is added by the behavior.
-
-### Permission Caching
-
-`PermissionService` caches user permissions per organization for 5 minutes using `GetOrCreateAsync` (stampede-protected). Two invalidation levels are available:
-
-| Method | Scope | When to Use |
-|--------|-------|-------------|
-| `InvalidatePermissionsCacheAsync(userId, orgId)` | Single user | User's role assignment changes |
-| `InvalidateOrganizationPermissionsCacheAsync(orgId)` | All users in org | Role or permission definitions change |
-
-### MediatR Pipeline Caching Order
-
-```
-Logging → QueryCaching → Validation → UnitOfWork → Handler
-```
-
-`QueryCachingBehavior` runs **before** `ValidationBehavior`, so cache hits skip validation entirely for optimal performance.
-
-### Cache Invalidation Strategy
-
-Cache invalidation is done directly in handlers. Since it's a single line,
-repeating across Create/Update/Archive/Delete handlers is acceptable and explicit:
+**Event location:** `Domain/Entities/{Feature}/Events/` — NOT a top-level `Domain/Events/`.
 
 ```csharp
-await cache.RemoveByPatternAsync($"org:{currentUser.OrganizationId}:contacts:*");
-```
-
-Do NOT use domain events or MediatR notifications for cache invalidation.
-Events are reserved for async outbox side-effects only.
-
-### Side-Effect Patterns
-
-| Concern | Where | Transaction | Guarantee |
-|---------|-------|-------------|-----------|
-| Activity log | Handler (direct write) | Same transaction | Atomic with business data |
-| Cache invalidation | Handler (direct call) | After save, before response | Best-effort (stale cache auto-expires) |
-| Email/webhook/push | Outbox (domain event) | Async background job | Guaranteed delivery with retry |
-
-**Decision guide:**
-- "Must be atomic with the business operation?" → Direct write in handler
-- "Is it a single line and acceptable to repeat?" → Direct call in handler
-- "Needs guaranteed delivery or is slow/external?" → Domain event → Outbox
-
-## Email
-
-### Resend Integration
-
-Email is sent via the Resend API through `IEmailService` → `ResendEmailService`:
-
-- **Configuration**: `Email:ApiKey` and `Email:FromAddress` in appsettings
-- **Resilience**: HTTP client uses custom `AddStandardResilience()` (Polly) for retries
-- **Graceful degradation**: If API key is not configured, logs a warning and returns success (does not fail the request)
-- **Templates**: `EmailTemplates` class provides pre-built HTML/text templates:
-  - `WelcomeEmail(firstName)` — sent when a user is first synced
-  - `MembershipAddedEmail(firstName, orgName)` — sent when user joins an organization
-  - `MembershipRemovedEmail(firstName, orgName)` — sent when user is removed from an organization
-
-### Email via Outbox
-
-Emails are sent from outbox event handlers (async, guaranteed delivery):
-
-```csharp
-public sealed class MembershipCreatedEventHandler : IOutboxEventHandler
+// Domain event
+public record ContactCreatedEvent(Guid ContactId, Guid OrganizationId) : DomainEvent(ContactId, OrganizationId)
 {
-    public string EventType => "membership.created";
-
-    public async Task HandleAsync(string payload, CancellationToken ct)
-    {
-        var evt = JsonSerializer.Deserialize<MembershipCreatedEvent>(payload, OutboxJsonOptions.Instance);
-        var content = EmailTemplates.MembershipAddedEmail(firstName, orgName);
-        await emailService.SendAsync(new EmailMessage(email, content.Subject, content.HtmlBody, content.TextBody), ct);
-    }
+    public override string EventType => "contact.created";
 }
+
+// Entity method
+public void MarkAsCreated(Guid orgId) => RaiseDomainEvent(new ContactCreatedEvent(Id, orgId));
+
+// In handler — after adding to DbContext
+dbContext.Contacts.Add(contact);
+contact.MarkAsCreated(currentUser.OrganizationId);
 ```
 
-## HTTP Resilience
+**Current event types:**
+`contact.created/updated/archived/unarchived/deleted`, `property.created/updated`, `membership.created/removed`
 
-All outbound HTTP clients use the custom `AddStandardResilience()` extension from `Infrastructure/Resilience/ResiliencePolicies.cs`. **Never use `AddStandardResilienceHandler()` (Microsoft's built-in) — always use the custom one.**
+### Outbox Job (ProcessOutboxMessagesJob)
 
-```csharp
-services.AddHttpClient<IMyService, MyService>(client =>
-{
-    client.BaseAddress = new Uri("https://api.example.com");
-})
-.AddStandardResilience();  // always this, not AddStandardResilienceHandler()
-```
-
-The custom policy applies three strategies in order:
-
-| Order | Strategy | Config | Triggers on |
-|-------|----------|--------|-------------|
-| 1 (outer) | **Total Timeout** | 30s for entire retry cycle | Caps all retries combined |
-| 2 | **Retry** | 3 attempts, exponential backoff (500ms base) + jitter | 5xx responses, `HttpRequestException`, `TimeoutException` |
-| 3 | **Circuit Breaker** | Opens at 50% failure ratio over 30s window (min 10 requests), stays open 30s | Same as retry |
-| 4 (inner) | **Per-attempt Timeout** | 10s per individual attempt | Any single request exceeding the limit |
-
-**Graceful degradation pattern** — if an external service's API key/secret is not configured, log a warning and return `Result.Success()` instead of failing. The operation is skipped silently. Applied to: Email (`Email:ApiKey`), Clerk org sync (`Clerk:SecretKey`).
-
-## Blob Storage
-
-S3-compatible blob storage via `IBlobStorageService` → `BlobStorageService`:
-
-- **Provider**: Cloudflare R2 (or any S3-compatible service)
-- **Configuration**: `BlobStorage` section in appsettings (`BucketName`, `AccessKey`, `SecretKey`, `ServiceUrl`)
-- **Operations**: `UploadAsync`, `DownloadAsync`, `DeleteAsync`, `GetPresignedUrlAsync`, `ExistsAsync`
-- **Naming**: Files are stored with GUID-prefixed blob names for uniqueness
-
-## Testing Guidelines
-
-### Unit Tests (Domain/Application)
-
-```csharp
-public class CreateUnitHandlerTests
-{
-    private readonly IAppDbContext _dbContext = Substitute.For<IAppDbContext>();
-    private readonly IUserContext _currentUser = Substitute.For<IUserContext>();
-    private readonly CreateUnitHandler _handler;
-
-    public CreateUnitHandlerTests()
-    {
-        _handler = new CreateUnitHandler(_dbContext, _currentUser);
-    }
-
-    [Fact]
-    public async Task Handle_WhenPropertyExists_ShouldCreateUnit()
-    {
-        // Arrange
-        var property = new Property("Test Property", "single");
-        _dbContext.Properties.Returns(new[] { property }.AsQueryable());
-        var command = new CreateUnitCommand(property.PublicId, "101", UnitType.Apartment);
-
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Should().NotBeEmpty();
-    }
-}
-```
-
-### Integration Tests
-
-```csharp
-public class UnitIntegrationTests : IAsyncLifetime
-{
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
-
-    public async Task InitializeAsync()
-    {
-        await _postgres.StartAsync();
-        // Setup DbContext with connection string
-    }
-
-    public async Task DisposeAsync() => await _postgres.DisposeAsync();
-}
-```
-
-## Common Tasks
-
-### Adding a New Entity
-
-1. Create entity in `Domain/Entities/` extending `AggregateRoot` (or `OrganizationEntity`)
-2. Add constructor with prefix: `public MyEntity(...) : base("mye") { ... }`
-3. Create `Events/` folder under entity folder with domain events
-4. Add `MarkAs{Action}` methods to entity for each event
-5. Add `DbSet` in `AppDbContext`
-6. Add `HasQueryFilter` in `AppDbContext.ApplyGlobalFilters()`
-7. Create configuration in `Infrastructure/Persistence/Configurations/`
-8. Create Request/Response types in `Contracts/[Feature]/`
-9. Create Commands/Queries in `Application/Features/[Feature]/`
-10. Create Endpoints in `Api/Endpoints/`
-11. Register endpoints in `EndpointExtensions.MapApiEndpoints()`
-12. Add migration: `dotnet ef migrations add Add{Entity}`
-
-### Adding a New Command
-
-1. Create `{Verb}{Entity}Command.cs` record implementing `ICommand<TResponse>`
-2. Create `{Verb}{Entity}Handler.cs` implementing `ICommandHandler` - do NOT call `SaveChangesAsync`
-3. Create `{Verb}{Entity}Validator.cs` with FluentValidation rules
-4. Add request type to `Contracts/[Feature]/`
-5. Map endpoint in `Api/Endpoints/{Entity}Endpoints.cs`
-6. Add activity log write if the action should appear in timeline
-7. Add cache invalidation if entity has cached queries
-8. Add domain event (`MarkAs{Action}`) if async side-effects are needed
-9. If domain event added: create `IOutboxEventHandler` implementation co-located with the command
-
-### Adding a New Query
-
-1. Create `Get{Entity}(ById/s)Query.cs` implementing `IQuery<TResponse>`
-2. Create handler using Dapper (`await using` + `OpenAsync` pattern)
-3. Add response type to `Contracts/[Feature]/`
-4. Map endpoint in `Api/Endpoints/{Entity}Endpoints.cs`
-
-## Important Files Reference
-
-| File | Purpose |
-|------|---------|
-| `Directory.Build.props` | Global build settings, TFM, nullable, TreatWarningsAsErrors, AnalysisLevel |
-| `Directory.Packages.props` | Centralized NuGet package versions |
-| `global.json` | .NET SDK version pinning (10.0.102) |
-| `.editorconfig` | Code style rules and naming conventions |
-| `Application/DependencyInjection.cs` | MediatR and validator registration |
-| `Application/Common/Interfaces/Messaging/OutboxJsonOptions.cs` | Shared JSON options for outbox event serialization/deserialization |
-| `Application/Common/Email/EmailTemplates.cs` | HTML/text email templates (Welcome, MembershipAdded, MembershipRemoved) |
-| `Application/Common/Errors/CommonErrors.cs` | Shared error definitions (Unauthorized, Forbidden, ValidationFailed, Conflict, NotFound) |
-| `Infrastructure/DependencyInjection.cs` | DB, auth, caching, email, outbox, webhooks, storage registration |
-| `Infrastructure/Persistence/AppDbContext.cs` | EF Core context with global filters and domain event collection |
-| `Infrastructure/Outbox/ProcessOutboxMessagesJob.cs` | Quartz job for outbox message processing with retry |
-| `Domain/Common/PublicIdGenerator.cs` | Client-side prefixed PublicId generation |
-| `Domain/Common/OrganizationEntity.cs` | Base class for org-scoped entities (audit + soft delete) |
-| `Api/Program.cs` | Application bootstrap and middleware pipeline |
-| `Api/Endpoints/EndpointExtensions.cs` | Central endpoint registration |
-
-## Reference Implementation: /me Endpoint
-
-The `/me` endpoint is the reference implementation. All future endpoints should follow the same patterns.
-
-### Response Shape
-
-```json
-{
-  "userId": "usr_a3f9c12d8e4b",
-  "email": "john@example.com",
-  "firstName": "John",
-  "lastName": "Doe",
-  "organization": {
-    "organizationId": "org_9bc21f0a7d33",
-    "name": "Acme Corp",
-    "slug": "acme-corp",
-    "currencyCode": "EUR",
-    "timezone": "Europe/Istanbul"
-  },
-  "roles": ["admin"],
-  "permissions": ["properties:read", "properties:write", "units:read"]
-}
-```
-
-### Files
-
-| File | Purpose |
-|------|---------|
-| `Api/Endpoints/MeEndpoints.cs` | Endpoint definition with metadata |
-| `Application/Features/Me/Queries/GetMe/GetMeQuery.cs` | Query record |
-| `Application/Features/Me/Queries/GetMe/GetMeHandler.cs` | Dapper handler with roles + permissions |
-| `Application/Features/Me/MeErrors.cs` | Error definitions |
-| `Contracts/Me/MeDto.cs` | Response types (MeResponse, MeOrganizationResponse) |
-
-### Key Patterns Demonstrated
-
-- **No `RequirePermission`** on `/me` - every authenticated user can view their own profile
-- **Dapper query** with `await using` + `OpenAsync` + sequential queries on same connection
-- **Error codes** follow `Entity.ErrorName` format (e.g., `Me.NotAuthenticated`)
-- **Response** types use non-positional records with `init` properties — Dapper-compatible and serialization-friendly
-- **Handler** uses Dapper with `await using` + `OpenAsync` pattern
-- **Endpoint** uses `ProducesProblem()` for error responses, `Produces<T>()` for success
-
-## Outbox Pattern
-
-Domain events are persisted to the `outbox_messages` table atomically with business data, then processed asynchronously by `ProcessOutboxMessagesJob` (Quartz background job).
-
-### Pipeline Flow
-
-```
-Handler raises event → entity.MarkAs{Action}(orgId)
-    → RaiseDomainEvent(new ContactCreatedEvent(Id, OrganizationId))
-    → UnitOfWorkBehavior → SaveChangesAsync
-    → AppDbContext collects DomainEvents from AggregateRoots
-    → Serializes to OutboxMessage (using explicit AggregateId/OrganizationId from DomainEvent base)
-    → Saved atomically with business data
-    → ProcessOutboxMessagesJob polls and dispatches
-```
-
-### Event Type Naming
-
-Format: `{aggregate}.{action}` (lowercase, dot-separated). Defined explicitly as `override string EventType` on each domain event record:
-
-| Domain Event | Outbox EventType |
-|-------------|-----------------|
-| `ContactCreatedEvent` | `contact.created` |
-| `ContactUpdatedEvent` | `contact.updated` |
-| `ContactArchivedEvent` | `contact.archived` |
-| `ContactUnarchivedEvent` | `contact.unarchived` |
-| `ContactDeletedEvent` | `contact.deleted` |
-| `PropertyCreatedEvent` | `property.created` |
-| `PropertyUpdatedEvent` | `property.updated` |
-| `MembershipCreatedEvent` | `membership.created` |
-| `MembershipRemovedEvent` | `membership.removed` |
-
-### ProcessOutboxMessagesJob
-
-The Quartz job (`[DisallowConcurrentExecution]`) processes outbox messages:
-
-1. **Query**: Selects `pending` messages where `next_retry_at IS NULL OR next_retry_at <= now()`, ordered by `created_at`, limited by `BatchSize`, using `FOR UPDATE SKIP LOCKED`
-2. **Processing**: Each message is processed in its own mini-transaction (independent failure isolation)
-3. **Status lifecycle**: `pending` → `completed` | `failed`
-   - Success → `status = 'completed'`, `processed_at = now`
-   - Failure → `retry_count++`, exponential backoff (`2^retryCount` seconds for `next_retry_at`), `last_error` set
-   - Max retries exceeded → `status = 'failed'`, `processed_at = now`
+- `[DisallowConcurrentExecution]` Quartz job
+- Selects `pending` messages (`next_retry_at IS NULL OR <= now()`), `FOR UPDATE SKIP LOCKED`
+- Each message processed in its own mini-transaction
+- Success → `completed`; Failure → exponential backoff (`2^retryCount` sec), `retry_count++`; Max retries → `failed`
 
 ### Outbox Event Handlers
-
-The `IOutboxEventHandler` interface is implemented per event type. Handlers are auto-discovered and registered via `AddOutboxEventHandlers()` in DI. Each handler specifies its `EventType` and receives the JSON payload:
 
 ```csharp
 public sealed class ContactArchivedEventHandler : IOutboxEventHandler
 {
     public string EventType => "contact.archived";
-
-    public Task HandleAsync(string payload, CancellationToken cancellationToken = default)
+    public Task HandleAsync(string payload, CancellationToken ct)
     {
-        var domainEvent = JsonSerializer.Deserialize<ContactArchivedEvent>(payload, OutboxJsonOptions.Instance);
-        // Handle the event (send email, notify external systems, etc.)
+        var evt = JsonSerializer.Deserialize<ContactArchivedEvent>(payload, OutboxJsonOptions.Instance);
+        // ... send email, notify external systems
         return Task.CompletedTask;
     }
 }
 ```
 
-**Current handlers:**
+- Use `OutboxJsonOptions.Instance` (camelCase) — matches AppDbContext serialization.
+- Co-locate handlers with their command, not in a separate folder.
+- Unhandled event types → logged as warning, marked completed.
 
-| Handler | EventType | Location |
-|---------|-----------|----------|
-| `ContactCreatedEventHandler` | `contact.created` | Features/Contacts/Commands/CreateContact/ |
-| `ContactUpdatedEventHandler` | `contact.updated` | Features/Contacts/Commands/UpdateContact/ |
-| `ContactArchivedEventHandler` | `contact.archived` | Features/Contacts/Commands/ArchiveContact/ |
-| `ContactUnarchivedEventHandler` | `contact.unarchived` | Features/Contacts/Commands/UnarchiveContact/ |
-| `ContactDeletedEventHandler` | `contact.deleted` | Features/Contacts/Commands/DeleteContact/ |
-| `MembershipCreatedEventHandler` | `membership.created` | Features/Webhooks/Commands/SyncMembership/ |
-| `MembershipRemovedEventHandler` | `membership.removed` | Features/Webhooks/Commands/RemoveMembership/ |
+**Current handlers:** `ContactCreated/Updated/Archived/Unarchived/DeletedEventHandler` (Features/Contacts/Commands/), `MembershipCreated/RemovedEventHandler` (Features/Webhooks/Commands/)
 
-**Key conventions:**
-- Use `OutboxJsonOptions.Instance` (camelCase) for deserialization — must match serialization in `AppDbContext`
-- Handlers are co-located with their corresponding command (not in a separate folder)
-- Unhandled event types are logged as warnings and the message is marked completed
+## Email
 
-### Outbox Configuration
+Via `IEmailService` → `ResendEmailService`. Config: `Email:ApiKey`, `Email:FromAddress`. If API key missing → log warning, return success (graceful degradation). Templates: `WelcomeEmail`, `MembershipAddedEmail`, `MembershipRemovedEmail`.
 
-Configured via `Outbox` section in appsettings and registered in `Infrastructure/DependencyInjection.cs` → `AddOutbox()`.
+## HTTP Resilience
 
-## Webhook Handler Conventions
+**Always use custom `AddStandardResilience()`** from `Infrastructure/Resilience/ResiliencePolicies.cs`. **Never `AddStandardResilienceHandler()` (Microsoft's built-in).**
 
-### Endpoint Structure
+| Strategy | Config |
+|----------|--------|
+| Total Timeout (outer) | 30s for entire retry cycle |
+| Retry | 3 attempts, exponential backoff 500ms + jitter; 5xx/HttpRequestException/TimeoutException |
+| Circuit Breaker | Opens at 50% failure over 30s window (min 10 req), stays open 30s |
+| Per-attempt Timeout (inner) | 10s |
 
-- **URL**: `POST /v1/webhooks/clerk` (anonymous, no auth required)
-- **Signature verification**: Svix HMAC-SHA256 with replay prevention
-- **Idempotency**: In-memory store keyed by `svix-id` header (7-day TTL, 10K max entries)
-- **Error handling**: On handler failure → log error, remove idempotency entry, return **500** so Clerk retries with exponential backoff
+**Graceful degradation:** if API key/secret missing → log warning, return `Result.Success()`.
 
-### Event Routing
+## Blob Storage
 
-The webhook endpoint is the **only Clerk-aware code**. It translates Clerk events into auth-provider-agnostic MediatR commands:
+`IBlobStorageService` → `BlobStorageService`. Config: `BlobStorage` section (`BucketName`, `AccessKey`, `SecretKey`, `ServiceUrl`). Operations: `UploadAsync`, `DownloadAsync`, `DeleteAsync`, `GetPresignedUrlAsync`, `ExistsAsync`.
 
-| Clerk Event | MediatR Command |
-|-------------|----------------|
+## Webhooks (Clerk)
+
+- `POST /v1/webhooks/clerk` — anonymous, no auth.
+- Svix HMAC-SHA256 verification + replay prevention.
+- Idempotency: in-memory store, `svix-id` key, 7-day TTL, 10K max entries.
+- On failure → log, remove idempotency entry, return 500 (Clerk retries).
+- Handlers use `IgnoreQueryFilters()` (outside tenant context), are idempotent, return `Result.Success()` even if not found.
+
+| Clerk Event | Command |
+|-------------|---------|
 | `user.created/updated` | `SyncUserCommand` |
 | `user.deleted` | `DeactivateUserCommand` |
 | `organization.created/updated` | `SyncOrganizationCommand` |
@@ -1082,131 +388,93 @@ The webhook endpoint is the **only Clerk-aware code**. It translates Clerk event
 | `organizationMembership.created/updated` | `SyncMembershipCommand` |
 | `organizationMembership.deleted` | `RemoveMembershipCommand` |
 
-### Handler Design Principles
+## Code Style
 
-- All handlers use `IgnoreQueryFilters()` (webhooks operate outside normal tenant context)
-- Idempotent at handler level (guard clauses for already-processed state)
-- Return `Result.Success()` even when entity not found (graceful degradation)
-- UnitOfWork pattern respected (no `SaveChangesAsync` in handlers)
-- `ExternalId` + `AuthProvider` tuple for all lookups (auth-provider agnostic)
+- 4 spaces, LF, file-scoped namespaces, `_camelCase` private fields
+- `var` when type is apparent; explicit for built-ins
+- Primary constructors preferred for simple DI
+- Async methods → `Async` suffix; interfaces → `I` prefix
+- Analysis level: `latest-recommended`; suppressed rules: `CA1515`, `CA1062`, `CA1848`, `CA2007`, `CA1034`, `CA1711`, `CA1716`, `CA1724`, `CA1054/55/56`, `IDE0058`
 
-## Domain Events (Outbox-Only)
+## Naming Conventions
 
-Domain events are **exclusively asynchronous**. They are persisted to the outbox table atomically
-with business data and processed by the background job. There is NO synchronous MediatR dispatch.
+| Type | Pattern | Example |
+|------|---------|---------|
+| Command | `{Verb}{Entity}Command` | `CreateUnitCommand` |
+| Query | `Get{Entity}(ById/s)Query` | `GetUnitByIdQuery` |
+| Handler | `{Command/Query}Handler` | `CreateUnitHandler` |
+| Validator | `{Command}Validator` | `CreateUnitValidator` |
+| Response | `{Entity}Response` / `{Entity}ListItemResponse` | `ContactResponse` |
+| Request | `{Verb}{Entity}Request` | `CreateContactRequest` |
+| Errors | `{Entity}Errors` | `UnitErrors` |
+| Domain event | `{Entity}{Action}Event` | `ContactCreatedEvent` |
+| Outbox handler | `{Entity}{Action}EventHandler` | `ContactCreatedEventHandler` |
 
-### Architecture Decision
+## Common Task Checklists
 
-| Concern | Mechanism | Transaction |
-|---------|-----------|-------------|
-| Activity log | Direct write in handler | Same transaction |
-| Cache invalidation | Direct call in handler | Post-save (handler code) |
-| Email/notification | Domain event → Outbox | Async, background job |
-| Webhook dispatch | Domain event → Outbox | Async, background job |
+### Adding a New Entity
+1. Create entity in `Domain/Entities/` extending `AggregateRoot` with `base("prefix")`
+2. Add `Events/` folder + `MarkAs{Action}` methods
+3. Add `DbSet` + `HasQueryFilter` in `AppDbContext`
+4. Create EF configuration in `Infrastructure/Persistence/Configurations/`
+5. Create Request/Response types in `Contracts/[Feature]/`
+6. Create Commands/Queries in `Application/Features/[Feature]/`
+7. Create Endpoints + register in `EndpointExtensions.MapApiEndpoints()`
+8. `dotnet ef migrations add Add{Entity}`
 
-**Why no synchronous events?**
-- Cache invalidation is a single line — repeating it across handlers is acceptable
-- Activity logs are part of the business operation and must be atomic
-- Event infrastructure is reserved for guaranteed-delivery async side-effects
+### Adding a New Command
+1. `{Verb}{Entity}Command.cs` record → `ICommand<TResponse>`
+2. Handler — do NOT call `SaveChangesAsync`
+3. Validator with FluentValidation
+4. Request type in `Contracts/[Feature]/`
+5. Map endpoint in `Api/Endpoints/{Entity}Endpoints.cs`
+6. Add activity log write (if timeline-visible)
+7. Add cache invalidation (if cached queries exist)
+8. Add domain event + outbox handler (if async side-effects needed)
 
-### Base Types
+### Adding a New Query
+1. `Get{Entity}(ById/s)Query.cs` → `IQuery<TResponse>`
+2. Handler using Dapper (`await using` + `OpenAsync`)
+3. Response type in `Contracts/[Feature]/` (non-positional record with `init`)
+4. Map endpoint
 
-```csharp
-// Interface — no MediatR dependency
-public interface IDomainEvent
-{
-    string EventType { get; }
-    Guid AggregateId { get; }
-    Guid OrganizationId { get; }
-    DateTimeOffset OccurredAt { get; }
-}
+## Important Files
 
-// Base record — all events inherit from this
-public abstract record DomainEvent(Guid AggregateId, Guid OrganizationId) : IDomainEvent
-{
-    public abstract string EventType { get; }
-    public DateTimeOffset OccurredAt { get; } = DateTimeOffset.UtcNow;
-}
-```
+| File | Purpose |
+|------|---------|
+| `Directory.Build.props` | Global build settings, TreatWarningsAsErrors, AnalysisLevel |
+| `Directory.Packages.props` | Centralized NuGet versions |
+| `global.json` | SDK pinning (10.0.102) |
+| `.editorconfig` | Code style + CA suppressions |
+| `Application/DependencyInjection.cs` | MediatR + validator registration |
+| `Application/Common/Interfaces/Messaging/OutboxJsonOptions.cs` | camelCase JSON for outbox |
+| `Application/Common/Email/EmailTemplates.cs` | Email templates |
+| `Application/Common/Errors/CommonErrors.cs` | Shared errors |
+| `Infrastructure/Persistence/AppDbContext.cs` | EF Core + global filters + domain events |
+| `Infrastructure/Outbox/ProcessOutboxMessagesJob.cs` | Quartz outbox processor |
+| `Domain/Common/PublicIdGenerator.cs` | Client-side PublicId generation |
+| `Api/Program.cs` | Bootstrap + middleware pipeline |
+| `Api/Endpoints/EndpointExtensions.cs` | Central endpoint registration |
 
-### Event Location Convention
+## Reference: /me Endpoint
 
-Events live inside their feature's entity folder:
+The `/me` endpoint is the canonical reference. Files: `Api/Endpoints/MeEndpoints.cs`, `Application/Features/Me/Queries/GetMe/`, `Application/Features/Me/MeErrors.cs`, `Contracts/Me/MeDto.cs`.
 
-```
-Domain/Entities/Contacts/Events/ContactCreatedEvent.cs
-Domain/Entities/Properties/Events/PropertyCreatedEvent.cs
-```
-
-NOT in a top-level `Domain/Events/` folder.
-
-### Event Record Pattern
-
-Each event must define its `EventType` (used for outbox routing and handler dispatch):
-
-```csharp
-public record ContactCreatedEvent(Guid ContactId, Guid OrganizationId)
-    : DomainEvent(ContactId, OrganizationId)
-{
-    public override string EventType => "contact.created";
-}
-```
-
-The `EventType` must match the `EventType` property on the corresponding `IOutboxEventHandler`.
-
-### Raising Events
-
-```csharp
-// In entity (MarkAs{Action} methods)
-public void MarkAsCreated(Guid organizationId)
-    => RaiseDomainEvent(new ContactCreatedEvent(Id, organizationId));
-
-// In handler — call AFTER adding to DbContext
-dbContext.Contacts.Add(contact);
-contact.MarkAsCreated(currentUser.OrganizationId);
-```
-
-### Handler-Level Side Effects
-
-Cache invalidation and activity logs are NOT event-driven. They are direct calls in the handler:
-
-```csharp
-public async Task<Result<string>> Handle(CreateContactCommand request, CancellationToken ct)
-{
-    var contact = new Contact(displayName, request.Kind);
-    dbContext.Contacts.Add(contact);
-
-    // Activity log — same transaction (UnitOfWork commits both)
-    var activity = new Activity("contact", contact.Id, "system_event");
-    activity.Title = "Contact created";
-    dbContext.Activities.Add(activity);
-
-    // Domain event — outbox (async side-effects)
-    contact.MarkAsCreated(currentUser.OrganizationId);
-
-    // Cache invalidation — direct call
-    await cache.RemoveByPatternAsync($"org:{currentUser.OrganizationId}:contacts:*");
-
-    return contact.PublicId;
-}
-```
+- No `RequirePermission` — every authenticated user can access their own profile.
+- Handler uses Dapper with sequential queries on same connection.
+- Error codes: `Me.NotAuthenticated` format.
+- Response types: non-positional records with `init`.
 
 ## Troubleshooting
 
-### Common Issues
+| Issue | Fix |
+|-------|-----|
+| Org filter not applied | Ensure entity implements `IOrganizationScoped` |
+| Domain events not publishing | Verify `SaveChangesAsync` called by UnitOfWork |
+| Dapper mapping fails | Verify `MatchNamesWithUnderscores = true` in Program.cs |
+| Validation not running | Ensure validator in same assembly as command |
+| Build fails with warnings | `TreatWarningsAsErrors` — fix all warnings |
+| Analyzer forces public→internal | Check `CA1515` suppressed in `.editorconfig` |
+| Nested `bin/Debug` paths | `dotnet clean` + delete `bin/obj` |
 
-1. **Organization filter not applied**: Ensure entity implements `IOrganizationScoped`
-2. **Domain events not publishing**: Check `SaveChangesAsync` is called (by UnitOfWork, not handler)
-3. **Dapper mapping fails**: Verify `MatchNamesWithUnderscores = true` is set in Program.cs
-4. **Validation not running**: Ensure validator is in same assembly as command
-5. **Permission denied**: Check user has required permission and cache hasn't expired
-6. **Build fails with warnings**: `TreatWarningsAsErrors` is enabled - fix all warnings
-7. **Analyzer forces public→internal**: Check if `CA1515` is suppressed in `.editorconfig`; if a new aggressive CA rule appears, suppress it there
-
-### Debug Tips
-
-- All requests logged via `LoggingBehavior` with timing
-- User context enriched in logs via `UserContextMiddleware`
-- Trace ID available in error responses for debugging
-- Use `ASPNETCORE_ENVIRONMENT=Development` for detailed errors and Scalar API docs
-- Scalar API reference available at `/scalar/v1` in development
+**Debug tips:** `LoggingBehavior` logs all requests with timing. User context enriched via `UserContextMiddleware`. Trace ID in error responses. Use `ASPNETCORE_ENVIRONMENT=Development` for Scalar docs at `/scalar/v1`.
