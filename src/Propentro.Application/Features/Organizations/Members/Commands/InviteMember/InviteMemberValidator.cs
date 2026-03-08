@@ -13,7 +13,8 @@ public sealed partial class InviteMemberValidator : AbstractValidator<InviteMemb
             .MaximumLength(256);
 
         RuleFor(x => x.RoleId)
-            .Must(id => id is null || RoleIdRegex().IsMatch(id))
+            .NotEmpty()
+            .Must(id => RoleIdRegex().IsMatch(id))
             .WithMessage("Invalid role ID format.");
     }
 

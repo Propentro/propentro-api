@@ -23,22 +23,17 @@ public sealed class InviteMemberHandler(
             return Result.Success();
         }
 
-        string clerkRole = "org:organization_viewer"; // Default role
+        var role = await dbContext.Roles
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(r => r.PublicId == request.RoleId
+                && r.IsActive
+                && (r.IsSystem || r.OrganizationId == currentUser.OrganizationId),
+                cancellationToken);
 
-        if (!string.IsNullOrWhiteSpace(request.RoleId))
-        {
-            var role = await dbContext.Roles
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(r => r.PublicId == request.RoleId
-                    && r.IsActive
-                    && (r.IsSystem || r.OrganizationId == currentUser.OrganizationId),
-                    cancellationToken);
+        if (role is null)
+            return MemberErrors.InvalidRoleIds;
 
-            if (role is null)
-                return MemberErrors.InvalidRoleIds;
-
-            clerkRole = MapToClerkRole(role.Name);
-        }
+        var clerkRole = MapToClerkRole(role.Name);
 
         return await clerkService.InviteMemberAsync(org.ExternalId, request.Email, clerkRole, cancellationToken);
     }
