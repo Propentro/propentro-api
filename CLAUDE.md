@@ -248,6 +248,23 @@ Use Serilog static `Log` class — **never inject `ILogger`**. Use structured `{
 - All entities: `id` (Guid v7, internal) + `public_id` (prefixed hex, user-facing).
 - Org-scoped: `organization_id`. Soft delete: `is_active`. Audit: `created_at`, `created_by_id`, `updated_at`, `updated_by_id`.
 
+### Pagination Pattern
+
+Paginated queries return `PagedResult<{Entity}ListItemResponse>`. Non-paginated (small/bounded lists) return `IReadOnlyList<{Entity}Response>`. The list item type lives in `Contracts/` as a non-positional `init` record (Dapper-safe). Do not embed pagination fields manually.
+
+```csharp
+// Query
+public sealed record GetContactsQuery(int Page, int PageSize) : IQuery<PagedResult<ContactListItemResponse>>;
+
+// Handler
+return new PagedResult<ContactListItemResponse>(items, total, request.Page, request.PageSize);
+
+// Endpoint
+.Produces<PagedResult<ContactListItemResponse>>()
+```
+
+`Contracts/` response types **cannot** reference `PagedResult<T>` (Application layer). The `{Entity}ListItemResponse` is the item type; `PagedResult<T>` wraps it in Application/Api layers only.
+
 ### Dapper Result Types
 
 **Never use positional records as Dapper targets** (constructor matching breaks with nullables).
