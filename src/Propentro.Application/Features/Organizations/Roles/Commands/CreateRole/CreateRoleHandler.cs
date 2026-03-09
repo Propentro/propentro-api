@@ -6,7 +6,8 @@ namespace Propentro.Application.Features.Organizations.Roles.Commands.CreateRole
 
 public sealed class CreateRoleHandler(
     IAppDbContext dbContext,
-    IUserContext currentUser) : ICommandHandler<CreateRoleCommand, string>
+    IUserContext currentUser,
+    ICacheService cache) : ICommandHandler<CreateRoleCommand, string>
 {
     public async Task<Result<string>> Handle(CreateRoleCommand request, CancellationToken cancellationToken)
     {
@@ -51,6 +52,8 @@ public sealed class CreateRoleHandler(
                 });
             }
         }
+
+        await cache.RemoveAsync($"org:{currentUser.OrganizationId}:roles", cancellationToken);
 
         return role.PublicId;
     }

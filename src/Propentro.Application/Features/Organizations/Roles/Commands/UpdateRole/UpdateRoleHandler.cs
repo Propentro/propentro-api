@@ -8,7 +8,8 @@ namespace Propentro.Application.Features.Organizations.Roles.Commands.UpdateRole
 public sealed class UpdateRoleHandler(
     IAppDbContext dbContext,
     IUserContext currentUser,
-    IPermissionService permissionService) : ICommandHandler<UpdateRoleCommand>
+    IPermissionService permissionService,
+    ICacheService cache) : ICommandHandler<UpdateRoleCommand>
 {
     public async Task<Result> Handle(UpdateRoleCommand request, CancellationToken cancellationToken)
     {
@@ -75,6 +76,7 @@ public sealed class UpdateRoleHandler(
         }
 
         await permissionService.InvalidateOrganizationPermissionsCacheAsync(currentUser.OrganizationId, cancellationToken);
+        await cache.RemoveAsync($"org:{currentUser.OrganizationId}:roles", cancellationToken);
 
         return Result.Success();
     }

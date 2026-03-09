@@ -8,7 +8,8 @@ namespace Propentro.Application.Features.Organizations.Settings.Commands.UpdateO
 public sealed class UpdateOrganizationSettingsHandler(
     IAppDbContext dbContext,
     IUserContext currentUser,
-    IClerkOrganizationService clerkOrganizationService) : ICommandHandler<UpdateOrganizationSettingsCommand, OrganizationSettingsResponse>
+    IClerkOrganizationService clerkOrganizationService,
+    ICacheService cache) : ICommandHandler<UpdateOrganizationSettingsCommand, OrganizationSettingsResponse>
 {
     public async Task<Result<OrganizationSettingsResponse>> Handle(UpdateOrganizationSettingsCommand request, CancellationToken cancellationToken)
     {
@@ -39,6 +40,8 @@ public sealed class UpdateOrganizationSettingsHandler(
                 return OrganizationSettingsErrors.ClerkSyncFailed;
             }
         }
+
+        await cache.RemoveAsync($"org:{currentUser.OrganizationId}:org-settings", cancellationToken);
 
         org.Name = request.Name;
         org.ContactName = request.ContactName;

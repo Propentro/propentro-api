@@ -8,7 +8,8 @@ namespace Propentro.Application.Features.Organizations.Roles.Commands.DeleteRole
 public sealed class DeleteRoleHandler(
     IAppDbContext dbContext,
     IUserContext currentUser,
-    IPermissionService permissionService) : ICommandHandler<DeleteRoleCommand>
+    IPermissionService permissionService,
+    ICacheService cache) : ICommandHandler<DeleteRoleCommand>
 {
     public async Task<Result> Handle(DeleteRoleCommand request, CancellationToken cancellationToken)
     {
@@ -44,6 +45,7 @@ public sealed class DeleteRoleHandler(
         role.IsActive = false;
 
         await permissionService.InvalidateOrganizationPermissionsCacheAsync(currentUser.OrganizationId, cancellationToken);
+        await cache.RemoveAsync($"org:{currentUser.OrganizationId}:roles", cancellationToken);
 
         return Result.Success();
     }
