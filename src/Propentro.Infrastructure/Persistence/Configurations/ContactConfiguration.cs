@@ -28,6 +28,7 @@ public sealed class ContactConfiguration : IEntityTypeConfiguration<Contact>
         builder.Property(e => e.EmergencyContactPhone).HasColumnName("emergency_contact_phone");
         builder.Property(e => e.Trade).HasColumnName("trade");
         builder.Property(e => e.TradeOther).HasColumnName("trade_other");
+        builder.Property(e => e.UserId).HasColumnName("user_id");
         builder.Property(e => e.AddressId).HasColumnName("address_id");
         builder.Property(e => e.TaxNumber).HasColumnName("tax_number");
         builder.Property(e => e.TaxCountry).HasColumnName("tax_country");
@@ -40,6 +41,11 @@ public sealed class ContactConfiguration : IEntityTypeConfiguration<Contact>
         builder.Property(e => e.CreatedById).HasColumnName("created_by_id");
         builder.Property(e => e.UpdatedAt).HasColumnName("updated_at");
         builder.Property(e => e.UpdatedById).HasColumnName("updated_by_id");
+
+        builder.HasOne(e => e.User)
+            .WithMany()
+            .HasForeignKey(e => e.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasOne(e => e.Address)
             .WithMany()

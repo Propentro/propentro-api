@@ -7,11 +7,13 @@ namespace Propentro.Application.Common.Interfaces.Authentication;
 /// <param name="PublicUserId">User's public ID, or empty string if not found.</param>
 /// <param name="OrganizationId">Internal organization ID, or Guid.Empty if not found.</param>
 /// <param name="PublicOrganizationId">Organization's public ID, or empty string if not found.</param>
+/// <param name="FullName">User's full name, or empty string if not found.</param>
 public readonly record struct ResolvedIdentity(
     Guid UserId,
     string PublicUserId,
     Guid OrganizationId,
-    string PublicOrganizationId);
+    string PublicOrganizationId,
+    string FullName);
 
 /// <summary>
 /// Resolves external authentication provider IDs to internal database IDs.
@@ -26,7 +28,7 @@ public interface IExternalIdResolver
     /// <param name="externalUserId">The external user ID (e.g., "user_xxx" from Clerk).</param>
     /// <param name="externalOrgId">The external organization ID (e.g., "org_xxx" from Clerk).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Resolved identity containing userId, publicUserId, and organizationId.</returns>
+    /// <returns>Resolved identity containing userId, publicUserId, organizationId, and fullName.</returns>
     Task<ResolvedIdentity> ResolveIdentityAsync(
         string? externalUserId,
         string? externalOrgId,

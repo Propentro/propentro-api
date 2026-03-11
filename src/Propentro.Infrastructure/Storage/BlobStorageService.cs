@@ -5,10 +5,6 @@ using Serilog;
 
 namespace Propentro.Infrastructure.Storage;
 
-/// <summary>
-/// Blob storage service for Cloudflare R2 (S3-compatible API).
-/// Configure R2 credentials in appsettings.json under "BlobStorage" section.
-/// </summary>
 public sealed class BlobStorageService : IBlobStorageService, IDisposable
 {
     private readonly AmazonS3Client _s3;
@@ -29,52 +25,6 @@ public sealed class BlobStorageService : IBlobStorageService, IDisposable
             });
     }
 
-    public async Task<string> UploadAsync(
-        Stream content,
-        string fileName,
-        string contentType,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(content);
-        ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
-
-        var blobName = $"{Guid.NewGuid():N}/{fileName}";
-
-        Log.Information(
-            "Uploading blob {BlobName} to bucket {BucketName} with content type {ContentType}",
-            blobName, _bucketName, contentType);
-
-        var request = new PutObjectRequest
-        {
-            BucketName = _bucketName,
-            Key = blobName,
-            InputStream = content,
-            ContentType = contentType
-        };
-
-        await _s3.PutObjectAsync(request, cancellationToken);
-
-        return blobName;
-    }
-
-    public async Task<Stream?> DownloadAsync(string blobName, CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(blobName);
-
-        Log.Information("Downloading blob {BlobName} from bucket {BucketName}", blobName, _bucketName);
-
-        try
-        {
-            var response = await _s3.GetObjectAsync(_bucketName, blobName, cancellationToken);
-            return response.ResponseStream;
-        }
-        catch (AmazonS3Exception ex) when (ex.StatusCode is System.Net.HttpStatusCode.NotFound)
-        {
-            Log.Warning("Blob {BlobName} not found in bucket {BucketName}", blobName, _bucketName);
-            return null;
-        }
-    }
-
     public async Task<bool> DeleteAsync(string blobName, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(blobName);
@@ -93,21 +43,46 @@ public sealed class BlobStorageService : IBlobStorageService, IDisposable
         }
     }
 
-    public async Task<string> GetPresignedUrlAsync(
-        string blobName,
+    public async Task<string> GetPresignedDownloadUrlAsync(
+        string storageKey,
         TimeSpan expiry,
         CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(blobName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(storageKey);
 
-        Log.Information("Generating presigned URL for blob {BlobName} with expiry {Expiry}", blobName, expiry);
+        Log.Information("Generating presigned download URL for blob {StorageKey} with expiry {Expiry}", storageKey, expiry);
 
         var request = new GetPreSignedUrlRequest
         {
             BucketName = _bucketName,
-            Key = blobName,
+            Key = storageKey,
             Expires = DateTime.UtcNow.Add(expiry),
             Verb = HttpVerb.GET
+        };
+
+        string url = await _s3.GetPreSignedURLAsync(request);
+
+        return url;
+    }
+
+    public async Task<string> GetPresignedUploadUrlAsync(
+        string storageKey,
+        string contentType,
+        TimeSpan expiry,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(storageKey);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentType);
+
+        Log.Information("Generating presigned upload URL for blob {StorageKey} with expiry {Expiry}", storageKey, expiry);
+
+        var request = new GetPreSignedUrlRequest
+        {
+            BucketName = _bucketName,
+            Key = storageKey,
+            Expires = DateTime.UtcNow.Add(expiry),
+            Verb = HttpVerb.PUT,
+            ContentType = contentType
         };
 
         string url = await _s3.GetPreSignedURLAsync(request);

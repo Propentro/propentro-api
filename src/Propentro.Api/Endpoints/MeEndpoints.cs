@@ -15,7 +15,8 @@ internal static class MeEndpoints
             .RequireAuthorization();
 
         group.MapGet("/", GetMeAsync)
-            .WithDescription("Get current authenticated user profile, roles, and permissions")
+            .WithName("GetMe")
+            .WithSummary("Get current user profile")
             .Produces<MeResponse>()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status404NotFound);

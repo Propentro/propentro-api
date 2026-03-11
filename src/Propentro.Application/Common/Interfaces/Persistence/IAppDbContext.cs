@@ -61,10 +61,12 @@ public interface IAppDbContext
     DbSet<NotificationPreference> NotificationPreferences { get; }
 
     // Lookup Tables
-    DbSet<Currency> Currencies { get; }
-    DbSet<Country> Countries { get; }
     DbSet<PropertyPurpose> PropertyPurposes { get; }
     DbSet<PropertyType> PropertyTypes { get; }
+
+    // Tags
+    DbSet<Tag> Tags { get; }
+    DbSet<EntityTag> EntityTags { get; }
 
     // Outbox
     DbSet<OutboxMessage> OutboxMessages { get; }

@@ -19,57 +19,62 @@ public sealed class ClerkIdResolver(IDbConnectionFactory db) : IExternalIdResolv
         await connection.OpenAsync(cancellationToken);
 
         // Npgsql does not support concurrent commands on a single connection
-        var (userId, publicUserId) = await ResolveUserAsync(connection, externalUserId);
-        var (orgId, publicOrgId) = await ResolveOrgAsync(connection, externalOrgId);
+        var (userId, publicUserId, fullName) = await ResolveUserAsync(connection, externalUserId);
+        var (orgId, publicOrgId) = await ResolveOrgAsync(connection, externalOrgId, userId);
 
-        return new ResolvedIdentity(userId, publicUserId, orgId, publicOrgId);
+        return new ResolvedIdentity(userId, publicUserId, orgId, publicOrgId, fullName);
     }
 
-    private static async Task<(Guid UserId, string PublicUserId)> ResolveUserAsync(
+    private static async Task<(Guid UserId, string PublicUserId, string FullName)> ResolveUserAsync(
         System.Data.Common.DbConnection connection,
         string? externalUserId)
     {
         if (string.IsNullOrWhiteSpace(externalUserId))
-            return (Guid.Empty, string.Empty);
+            return (Guid.Empty, string.Empty, string.Empty);
 
         const string sql = """
-            SELECT id, public_id
+            SELECT id, public_id, first_name || ' ' || last_name AS full_name
             FROM users
             WHERE external_id = @ExternalId
               AND auth_provider = @AuthProvider
               AND is_active = true
             """;
 
-        var result = await connection.QueryFirstOrDefaultAsync<IdResult>(
+        var result = await connection.QueryFirstOrDefaultAsync<UserIdResult>(
             sql, new { ExternalId = externalUserId, AuthProvider = "clerk" });
 
         return result is null
-            ? (Guid.Empty, string.Empty)
-            : (result.Id, result.PublicId);
+            ? (Guid.Empty, string.Empty, string.Empty)
+            : (result.Id, result.PublicId, result.FullName);
     }
 
     private static async Task<(Guid OrgId, string PublicOrgId)> ResolveOrgAsync(
         System.Data.Common.DbConnection connection,
-        string? externalOrgId)
+        string? externalOrgId,
+        Guid userId)
     {
-        if (string.IsNullOrWhiteSpace(externalOrgId))
+        if (string.IsNullOrWhiteSpace(externalOrgId) || userId == Guid.Empty)
             return (Guid.Empty, string.Empty);
 
         const string sql = """
-            SELECT id, public_id
-            FROM organizations
-            WHERE external_id = @ExternalId
-              AND auth_provider = @AuthProvider
-              AND is_active = true
+            SELECT o.id, o.public_id
+            FROM organizations o
+            JOIN organization_users ou ON ou.organization_id = o.id
+                AND ou.user_id = @UserId
+                AND ou.status = 'active'
+            WHERE o.external_id = @ExternalId
+              AND o.auth_provider = @AuthProvider
+              AND o.is_active = true
             """;
 
-        var result = await connection.QueryFirstOrDefaultAsync<IdResult>(
-            sql, new { ExternalId = externalOrgId, AuthProvider = "clerk" });
+        var result = await connection.QueryFirstOrDefaultAsync<OrganizationIdResult>(
+            sql, new { ExternalId = externalOrgId, AuthProvider = "clerk", UserId = userId });
 
         return result is null
             ? (Guid.Empty, string.Empty)
             : (result.Id, result.PublicId);
     }
 
-    private sealed record IdResult(Guid Id, string PublicId);
+    private sealed record UserIdResult(Guid Id, string PublicId, string FullName = "");
+    private sealed record OrganizationIdResult(Guid Id, string PublicId);
 }

@@ -1,8 +1,6 @@
 using System.Text.Json;
 using MediatR;
 using Propentro.Application.Features.Webhooks.Commands.DeactivateOrganization;
-using Propentro.Application.Features.Webhooks.Commands.DeactivateUser;
-using Propentro.Application.Features.Webhooks.Commands.RemoveMembership;
 using Propentro.Application.Features.Webhooks.Commands.SyncMembership;
 using Propentro.Application.Features.Webhooks.Commands.SyncOrganization;
 using Propentro.Application.Features.Webhooks.Commands.SyncUser;
@@ -127,7 +125,6 @@ internal static class WebhookEndpoints
         switch (webhookEvent.Type)
         {
             case "user.created":
-            case "user.updated":
                 var email = GetPrimaryEmail(data);
                 if (data.Id is null || email is null)
                 {
@@ -136,15 +133,6 @@ internal static class WebhookEndpoints
                 }
                 await sender.Send(new SyncUserCommand(
                     data.Id, _authProvider, email, data.FirstName, data.LastName), ct);
-                break;
-
-            case "user.deleted":
-                if (data.Id is null)
-                {
-                    Log.Warning("Skipping user.deleted: missing Id in payload");
-                    break;
-                }
-                await sender.Send(new DeactivateUserCommand(data.Id, _authProvider), ct);
                 break;
 
             case "organization.created":
@@ -168,7 +156,6 @@ internal static class WebhookEndpoints
                 break;
 
             case "organizationMembership.created":
-            case "organizationMembership.updated":
                 var orgId = data.Organization?.Id;
                 var userId = data.PublicUserData?.UserId;
                 if (orgId is null || userId is null || data.Role is null)
@@ -179,18 +166,6 @@ internal static class WebhookEndpoints
                 }
                 await sender.Send(new SyncMembershipCommand(
                     orgId, userId, _authProvider, data.Role), ct);
-                break;
-
-            case "organizationMembership.deleted":
-                var delOrgId = data.Organization?.Id;
-                var delUserId = data.PublicUserData?.UserId;
-                if (delOrgId is null || delUserId is null)
-                {
-                    Log.Warning("Skipping organizationMembership.deleted: missing Organization.Id or UserId in payload");
-                    break;
-                }
-                await sender.Send(new RemoveMembershipCommand(
-                    delOrgId, delUserId, _authProvider), ct);
                 break;
 
             default:

@@ -40,10 +40,5 @@ public sealed class OrganizationConfiguration : IEntityTypeConfiguration<Organiz
         builder.Property(e => e.UpdatedAt).HasColumnName("updated_at");
         builder.Property(e => e.UpdatedById).HasColumnName("updated_by_id");
 
-        builder.HasOne<Currency>()
-            .WithMany()
-            .HasForeignKey(e => e.CurrencyCode)
-            .HasPrincipalKey(e => e.Code)
-            .OnDelete(DeleteBehavior.Restrict);
     }
 }
