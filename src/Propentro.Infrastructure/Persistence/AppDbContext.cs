@@ -3,8 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Domain.Common;
 using Propentro.Domain.Common.Interfaces;
-using Serilog;
 using Propentro.Domain.Entities.Tags;
+using Serilog;
 using Activity = Propentro.Domain.Entities.Activities.Activity;
 using Unit = Propentro.Domain.Entities.Units.Unit;
 

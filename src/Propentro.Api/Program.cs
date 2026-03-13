@@ -1,10 +1,10 @@
+using System.Globalization;
 using Microsoft.AspNetCore.RateLimiting;
 using Propentro.Api.Endpoints;
 using Propentro.Api.Middleware;
 using Propentro.Application;
 using Propentro.Infrastructure;
 using Scalar.AspNetCore;
-using System.Globalization;
 using Serilog;
 using Serilog.Events;
 
