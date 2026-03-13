@@ -2,11 +2,10 @@
 // These imports are available in all files within this project
 
 // Application Layer Interfaces
-global using Propentro.Application.Common.Interfaces.Persistence;
 global using Propentro.Application.Common.Interfaces.Caching;
+global using Propentro.Application.Common.Interfaces.Persistence;
 global using Propentro.Application.Common.Interfaces.Storage;
 global using Propentro.Application.Common.Interfaces.Time;
-
 // Domain Entities (feature-based sub-namespaces)
 global using Propentro.Domain.Entities.Addresses;
 global using Propentro.Domain.Entities.Contacts;
