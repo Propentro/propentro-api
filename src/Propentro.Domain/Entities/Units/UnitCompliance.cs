@@ -5,7 +5,7 @@ namespace Propentro.Domain.Entities.Units;
 
 public sealed class UnitCompliance : OrganizationEntity
 {
-    public const string PublicIdPrefix = "ucm";
+    public const string PublicIdPrefix = "unc";
 
     public Guid UnitId { get; set; }
     public Guid ComplianceTypeId { get; set; }

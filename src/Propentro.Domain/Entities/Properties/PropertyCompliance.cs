@@ -5,7 +5,7 @@ namespace Propentro.Domain.Entities.Properties;
 
 public sealed class PropertyCompliance : OrganizationEntity
 {
-    public const string PublicIdPrefix = "pcm";
+    public const string PublicIdPrefix = "prc";
 
     public Guid PropertyId { get; set; }
     public Guid ComplianceTypeId { get; set; }
