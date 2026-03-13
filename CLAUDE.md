@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## System Context
+
+This repo is part of the **Propentro** multi-repo ecosystem. See `../CLAUDE.md` for system-wide conventions, data flow, and cross-repo navigation.
+
+- **Database schema:** `../propentro-db/releases/` — source of truth for table structure, column names (snake_case), CHECK constraints, and public ID prefixes
+- **Frontend consumer:** `../propentro-app/src/app/api/` — Next.js proxy routes that forward requests to this API; endpoint changes here require matching proxy route updates
+- **Frontend types:** `../propentro-app/src/features/` — TypeScript types that must match the Contracts DTOs from this API
+
 ## Build & Test Commands
 
 ```bash
