@@ -53,8 +53,10 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddDbContext<AppDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("Database")));
+        services.AddScoped<AuditContextInterceptor>();
+        services.AddDbContext<AppDbContext>((sp, options) =>
+            options.UseNpgsql(configuration.GetConnectionString("Database"))
+                .AddInterceptors(sp.GetRequiredService<AuditContextInterceptor>()));
 
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
