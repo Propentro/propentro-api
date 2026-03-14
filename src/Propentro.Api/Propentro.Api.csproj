@@ -16,6 +16,7 @@
     <PackageReference Include="Serilog.Enrichers.Process" />
     <PackageReference Include="Scalar.AspNetCore" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
   </ItemGroup>
 
 </Project>

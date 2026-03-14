@@ -66,7 +66,10 @@ try
     });
 
     // Health Checks
-    builder.Services.AddHealthChecks();
+    builder.Services.AddHealthChecks()
+        .AddNpgSql(builder.Configuration.GetConnectionString("Database")!,
+            name: "postgresql",
+            tags: ["db", "ready"]);
 
     // Rate Limiting
     builder.Services.AddRateLimiter(options =>
