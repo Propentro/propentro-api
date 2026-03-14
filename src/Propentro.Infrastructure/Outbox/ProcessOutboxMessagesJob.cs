@@ -28,7 +28,8 @@ internal sealed class ProcessOutboxMessagesJob(
             """
             SELECT id, event_type, payload, retry_count, max_retries
             FROM outbox_messages
-            WHERE status = 'pending'
+            WHERE (status = 'pending'
+                   OR (status = 'processing' AND next_retry_at < now() - INTERVAL '5 minutes'))
               AND (next_retry_at IS NULL OR next_retry_at <= now())
             ORDER BY created_at
             LIMIT @BatchSize
@@ -62,6 +63,17 @@ internal sealed class ProcessOutboxMessagesJob(
 
         try
         {
+            // Mark as processing with timestamp (prevents re-claim; enables stale detection)
+            await connection.ExecuteAsync(
+                """
+                UPDATE outbox_messages
+                SET status = 'processing',
+                    next_retry_at = now()
+                WHERE id = @Id
+                """,
+                new { message.Id },
+                transaction);
+
             if (_handlers.TryGetValue(message.EventType, out var handler))
                 await handler.HandleAsync(message.Payload, cancellationToken);
             else
@@ -106,7 +118,7 @@ internal sealed class ProcessOutboxMessagesJob(
             await connection.ExecuteAsync(
                 """
                 UPDATE outbox_messages
-                SET status = 'failed',
+                SET status = 'dead_letter',
                     retry_count = @RetryCount,
                     processed_at = @ProcessedAt,
                     last_error = @LastError
@@ -121,19 +133,20 @@ internal sealed class ProcessOutboxMessagesJob(
                 });
 
             Log.Warning(
-                "Outbox message {MessageId} permanently failed after {RetryCount} retries",
+                "Outbox message {MessageId} moved to dead letter after {RetryCount} retries",
                 message.Id,
                 newRetryCount);
         }
         else
         {
-            var backoffSeconds = Math.Pow(2, newRetryCount);
-            var nextRetryAt = now.AddSeconds(backoffSeconds);
+            var backoffMinutes = Math.Pow(2, newRetryCount);
+            var nextRetryAt = now.AddMinutes(backoffMinutes);
 
             await connection.ExecuteAsync(
                 """
                 UPDATE outbox_messages
-                SET retry_count = @RetryCount,
+                SET status = 'pending',
+                    retry_count = @RetryCount,
                     next_retry_at = @NextRetryAt,
                     last_error = @LastError
                 WHERE id = @Id
