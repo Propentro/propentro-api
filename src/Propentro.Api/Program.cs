@@ -1,10 +1,11 @@
 using System.Globalization;
-using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 using Propentro.Api.Endpoints;
 using Propentro.Api.Middleware;
 using Propentro.Application;
 using Propentro.Infrastructure;
 using Scalar.AspNetCore;
+using System.Threading.RateLimiting;
 using Serilog;
 using Serilog.Events;
 
@@ -60,23 +61,32 @@ try
                 policy.SetIsOriginAllowed(_ => false);
             }
 
-            policy.AllowAnyMethod().AllowAnyHeader();
+            policy.WithMethods("GET", "POST", "PATCH", "DELETE", "OPTIONS")
+                  .WithHeaders("Authorization", "Content-Type", "Accept", "X-Requested-With");
         });
     });
 
     // Health Checks
-    builder.Services.AddHealthChecks();
+    builder.Services.AddHealthChecks()
+        .AddNpgSql(builder.Configuration.GetConnectionString("Database")!,
+            name: "postgresql",
+            tags: ["db", "ready"]);
 
     // Rate Limiting
     builder.Services.AddRateLimiter(options =>
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-        options.AddFixedWindowLimiter("fixed", config =>
-        {
-            config.PermitLimit = 100;
-            config.Window = TimeSpan.FromMinutes(1);
-            config.QueueLimit = 0;
-        });
+        options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                    ?? context.Connection.RemoteIpAddress?.ToString()
+                    ?? "anonymous",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 100,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0
+                }));
     });
 
     var app = builder.Build();

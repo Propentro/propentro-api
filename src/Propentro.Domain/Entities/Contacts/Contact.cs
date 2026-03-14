@@ -10,7 +10,7 @@ public sealed class Contact : AggregateRoot
     public const string PublicIdPrefix = "cnt";
 
     public string Kind { get; set; } = default!;
-    public string DisplayName { get; set; } = default!;
+    public string? DisplayName { get; set; }
 
     // Person
     public string? FirstName { get; set; }
@@ -61,7 +61,7 @@ public sealed class Contact : AggregateRoot
 
     private Contact() { }
 
-    public Contact(string displayName, string kind) : base(PublicIdPrefix)
+    public Contact(string? displayName, string kind) : base(PublicIdPrefix)
     {
         DisplayName = displayName;
         Kind = kind;
