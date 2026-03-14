@@ -145,8 +145,12 @@ public sealed class AppDbContext(
     {
         foreach (var entry in ChangeTracker.Entries())
         {
-            if (entry is { Entity: IOrganizationScoped scoped, State: EntityState.Added })
+            if (entry is { Entity: IOrganizationScoped scoped, State: EntityState.Added }
+                && userContext.OrganizationId != Guid.Empty
+                && scoped.OrganizationId == Guid.Empty)
+            {
                 scoped.OrganizationId = userContext.OrganizationId;
+            }
 
             if (entry.Entity is IAuditableEntity auditable)
             {
