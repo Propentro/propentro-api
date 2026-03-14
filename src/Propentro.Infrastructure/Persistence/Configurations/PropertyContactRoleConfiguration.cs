@@ -34,6 +34,6 @@ public sealed class PropertyContactRoleConfiguration : IEntityTypeConfiguration<
         builder.HasOne(e => e.Contact)
             .WithMany()
             .HasForeignKey(e => e.ContactId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
