@@ -61,7 +61,8 @@ try
                 policy.SetIsOriginAllowed(_ => false);
             }
 
-            policy.AllowAnyMethod().AllowAnyHeader();
+            policy.WithMethods("GET", "POST", "PATCH", "DELETE", "OPTIONS")
+                  .WithHeaders("Authorization", "Content-Type", "Accept", "X-Requested-With");
         });
     });
 
