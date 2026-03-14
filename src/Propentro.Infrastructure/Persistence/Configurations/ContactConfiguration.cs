@@ -15,7 +15,7 @@ public sealed class ContactConfiguration : IEntityTypeConfiguration<Contact>
         builder.Property(e => e.PublicId).HasColumnName("public_id").IsRequired().ValueGeneratedOnAdd();
         builder.Property(e => e.OrganizationId).HasColumnName("organization_id").IsRequired();
         builder.Property(e => e.Kind).HasColumnName("kind").IsRequired();
-        builder.Property(e => e.DisplayName).HasColumnName("display_name").IsRequired();
+        builder.Property(e => e.DisplayName).HasColumnName("display_name");
         builder.Property(e => e.FirstName).HasColumnName("first_name");
         builder.Property(e => e.LastName).HasColumnName("last_name");
         builder.Property(e => e.LegalName).HasColumnName("legal_name");
