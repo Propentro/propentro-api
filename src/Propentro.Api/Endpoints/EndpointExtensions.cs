@@ -19,6 +19,8 @@ internal static class EndpointExtensions
 
         // Admin
         app.MapAdminOrganizationEndpoints();
+        app.MapAdminUserEndpoints();
+        app.MapAdminMemberEndpoints();
 
         return app;
     }
