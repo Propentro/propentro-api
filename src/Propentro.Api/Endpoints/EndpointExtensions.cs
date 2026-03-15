@@ -1,4 +1,5 @@
 using Propentro.Api.Endpoints.Admin;
+using Propentro.Api.Endpoints.Organizations;
 
 namespace Propentro.Api.Endpoints;
 
@@ -21,6 +22,10 @@ internal static class EndpointExtensions
         app.MapAdminOrganizationEndpoints();
         app.MapAdminUserEndpoints();
         app.MapAdminMemberEndpoints();
+        app.MapAdminInviteEndpoints();
+
+        // Organization Invites
+        app.MapOrganizationInviteEndpoints();
 
         return app;
     }
