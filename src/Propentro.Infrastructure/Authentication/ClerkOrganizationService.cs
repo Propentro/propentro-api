@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Models;
@@ -19,10 +20,7 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_secretKey))
-        {
-            Log.Warning("Clerk:SecretKey is not configured — skipping organization sync for {ExternalId}", externalId);
-            return Result.Success();
-        }
+            return Result.Failure(new Error("Clerk.NotConfigured", "Clerk secret key is not configured. Cannot sync to Clerk.", ErrorType.Failure));
 
         httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _secretKey);
@@ -63,10 +61,7 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_secretKey))
-        {
-            Log.Warning("Clerk:SecretKey is not configured — skipping invitation for {Email}", email);
-            return Result.Success();
-        }
+            return Result.Failure(new Error("Clerk.NotConfigured", "Clerk secret key is not configured. Cannot sync to Clerk.", ErrorType.Failure));
 
         httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _secretKey);
@@ -106,10 +101,7 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_secretKey))
-        {
-            Log.Warning("Clerk:SecretKey is not configured — skipping member add for {UserExternalId}", userExternalId);
-            return Result.Success();
-        }
+            return Result.Failure(new Error("Clerk.NotConfigured", "Clerk secret key is not configured. Cannot sync to Clerk.", ErrorType.Failure));
 
         httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _secretKey);
@@ -149,10 +141,7 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_secretKey))
-        {
-            Log.Warning("Clerk:SecretKey is not configured — skipping membership removal for {UserExternalId}", userExternalId);
-            return Result.Success();
-        }
+            return Result.Failure(new Error("Clerk.NotConfigured", "Clerk secret key is not configured. Cannot sync to Clerk.", ErrorType.Failure));
 
         httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _secretKey);
@@ -182,6 +171,137 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
         {
             Log.Error(ex, "HTTP error removing {UserExternalId} from organization {OrgExternalId}", userExternalId, orgExternalId);
             return Result.Failure(new Error("Clerk.Unavailable", ex.Message, ErrorType.Failure));
+        }
+    }
+
+    public async Task<Result<string>> CreateOrganizationAsync(
+        string name, string slug, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_secretKey))
+            return Result.Failure<string>(new Error("Clerk.NotConfigured", "Clerk secret key is not configured. Cannot sync to Clerk.", ErrorType.Failure));
+
+        httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", _secretKey);
+
+        try
+        {
+            var response = await httpClient.PostAsJsonAsync(
+                "organizations",
+                new { name, slug },
+                cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
+                var externalId = body.GetProperty("id").GetString()!;
+                Log.Information("Created organization in Clerk: {ExternalId}", externalId);
+                return externalId;
+            }
+
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            Log.Warning("Clerk organization create failed {StatusCode}. Body: {Body}",
+                response.StatusCode, errorBody);
+
+            return Result.Failure<string>(new Error("Clerk.CreateOrgFailed", errorBody, ErrorType.Failure));
+        }
+        catch (HttpRequestException ex)
+        {
+            Log.Error(ex, "HTTP error creating organization in Clerk");
+            return Result.Failure<string>(new Error("Clerk.Unavailable", ex.Message, ErrorType.Failure));
+        }
+    }
+
+    public async Task<Result> DeleteOrganizationAsync(
+        string externalId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_secretKey))
+            return Result.Failure(new Error("Clerk.NotConfigured", "Clerk secret key is not configured. Cannot sync to Clerk.", ErrorType.Failure));
+
+        httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", _secretKey);
+
+        try
+        {
+            var response = await httpClient.DeleteAsync(
+                $"organizations/{externalId}",
+                cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Log.Information("Deleted organization from Clerk: {ExternalId}", externalId);
+                return Result.Success();
+            }
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                Log.Warning("Organization {ExternalId} not found in Clerk — already deleted", externalId);
+                return Result.Success();
+            }
+
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            Log.Warning("Clerk organization delete failed {StatusCode} for {ExternalId}. Body: {Body}",
+                response.StatusCode, externalId, body);
+
+            return Result.Failure(new Error("Clerk.DeleteOrgFailed", body, ErrorType.Failure));
+        }
+        catch (HttpRequestException ex)
+        {
+            Log.Error(ex, "HTTP error deleting organization {ExternalId} from Clerk", externalId);
+            return Result.Failure(new Error("Clerk.Unavailable", ex.Message, ErrorType.Failure));
+        }
+    }
+
+    public async Task<Result> RevokeInvitationAsync(
+        string externalOrgId, string email, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_secretKey))
+            return Result.Failure(new Error("Clerk.NotConfigured", "Clerk secret key is not configured. Cannot sync to Clerk.", ErrorType.Failure));
+
+        httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", _secretKey);
+
+        try
+        {
+            // List pending invitations for this org to find the one matching email
+            var listResponse = await httpClient.GetAsync(
+                $"organizations/{externalOrgId}/invitations?status=pending",
+                cancellationToken);
+
+            if (!listResponse.IsSuccessStatusCode)
+                return Result.Success(); // Best effort — invitation may not exist
+
+            var invitations = await listResponse.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
+            var matchingInvitation = invitations.GetProperty("data").EnumerateArray()
+                .FirstOrDefault(i => string.Equals(
+                    i.GetProperty("email_address").GetString(), email, StringComparison.OrdinalIgnoreCase));
+
+            if (matchingInvitation.ValueKind == JsonValueKind.Undefined)
+                return Result.Success(); // No matching invitation found
+
+            var invitationId = matchingInvitation.GetProperty("id").GetString()!;
+
+            // Revoke the invitation
+            var revokeResponse = await httpClient.PostAsync(
+                $"organizations/{externalOrgId}/invitations/{invitationId}/revoke",
+                null,
+                cancellationToken);
+
+            if (revokeResponse.IsSuccessStatusCode)
+            {
+                Log.Information("Revoked Clerk invitation {InvitationId} for {Email}", invitationId, email);
+            }
+            else
+            {
+                Log.Warning("Failed to revoke Clerk invitation {InvitationId} for {Email} — {StatusCode}",
+                    invitationId, email, revokeResponse.StatusCode);
+            }
+
+            return Result.Success();
+        }
+        catch (HttpRequestException ex)
+        {
+            Log.Error(ex, "HTTP error revoking invitation for {Email} in org {OrgExternalId}", email, externalOrgId);
+            return Result.Success(); // Best effort — don't fail the operation
         }
     }
 }
