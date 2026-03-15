@@ -1,8 +1,5 @@
 using System.Text.Json;
 using MediatR;
-using Propentro.Application.Features.Webhooks.Commands.DeactivateOrganization;
-using Propentro.Application.Features.Webhooks.Commands.SyncMembership;
-using Propentro.Application.Features.Webhooks.Commands.SyncOrganization;
 using Propentro.Application.Features.Webhooks.Commands.SyncUser;
 using Propentro.Contracts.Webhooks;
 using Propentro.Infrastructure.Webhooks;
@@ -133,39 +130,6 @@ internal static class WebhookEndpoints
                 }
                 await sender.Send(new SyncUserCommand(
                     data.Id, _authProvider, email, data.FirstName, data.LastName), ct);
-                break;
-
-            case "organization.created":
-            case "organization.updated":
-                if (data.Id is null || data.Name is null || data.Slug is null)
-                {
-                    Log.Warning("Skipping {EventType}: missing Id, Name, or Slug in payload", webhookEvent.Type);
-                    break;
-                }
-                await sender.Send(new SyncOrganizationCommand(
-                    data.Id, _authProvider, data.Name, data.Slug, data.LogoUrl), ct);
-                break;
-
-            case "organization.deleted":
-                if (data.Id is null)
-                {
-                    Log.Warning("Skipping organization.deleted: missing Id in payload");
-                    break;
-                }
-                await sender.Send(new DeactivateOrganizationCommand(data.Id, _authProvider), ct);
-                break;
-
-            case "organizationMembership.created":
-                var orgId = data.Organization?.Id;
-                var userId = data.PublicUserData?.UserId;
-                if (orgId is null || userId is null || data.Role is null)
-                {
-                    Log.Warning("Skipping {EventType}: missing Organization.Id, UserId, or Role in payload",
-                        webhookEvent.Type);
-                    break;
-                }
-                await sender.Send(new SyncMembershipCommand(
-                    orgId, userId, _authProvider, data.Role), ct);
                 break;
 
             default:

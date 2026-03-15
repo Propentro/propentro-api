@@ -16,6 +16,7 @@ public interface IAppDbContext
     DbSet<User> Users { get; }
     DbSet<OrganizationUser> OrganizationUsers { get; }
     DbSet<SystemAdministrator> SystemAdministrators { get; }
+    DbSet<Invite> Invites { get; }
 
     // Property Management
     DbSet<Property> Properties { get; }

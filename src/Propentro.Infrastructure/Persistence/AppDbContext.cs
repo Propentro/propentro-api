@@ -32,6 +32,7 @@ public sealed class AppDbContext(
     public DbSet<User> Users => Set<User>();
     public DbSet<OrganizationUser> OrganizationUsers => Set<OrganizationUser>();
     public DbSet<SystemAdministrator> SystemAdministrators => Set<SystemAdministrator>();
+    public DbSet<Invite> Invites => Set<Invite>();
 
     // Property Management
     public DbSet<Property> Properties => Set<Property>();

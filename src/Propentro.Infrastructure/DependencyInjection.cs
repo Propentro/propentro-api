@@ -105,6 +105,7 @@ public static class DependencyInjection
     {
         services.AddScoped<IAuthorizationHandler, ActiveUserAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler, SystemAdminAuthorizationHandler>();
 
         services.AddAuthorization(options =>
         {
