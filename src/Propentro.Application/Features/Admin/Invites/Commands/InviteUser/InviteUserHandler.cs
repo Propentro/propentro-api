@@ -86,8 +86,11 @@ public sealed class InviteUserHandler(
             AssignedBy = request.InvitedByUserId
         });
 
-        // Sync to Clerk if both external IDs exist
-        if (!string.IsNullOrEmpty(org.ExternalId) && !string.IsNullOrEmpty(user.ExternalId))
+        // Sync to Clerk — org and user must be linked
+        if (string.IsNullOrEmpty(org.ExternalId))
+            return Error.Validation("Organization.ClerkNotLinked", "Organisation is not linked to Clerk. Cannot send invite.");
+
+        if (!string.IsNullOrEmpty(user.ExternalId))
         {
             var clerkResult = await clerkService.AddMemberAsync(
                 org.ExternalId, user.ExternalId, "basic_member", cancellationToken);
@@ -134,15 +137,15 @@ public sealed class InviteUserHandler(
         if (hasPendingInvite)
             return InviteErrors.AlreadyInvited;
 
-        // Send Clerk invitation if org has ExternalId
-        if (!string.IsNullOrEmpty(org.ExternalId))
-        {
-            var clerkResult = await clerkService.InviteMemberAsync(
-                org.ExternalId, request.Email, "org:organization_viewer", cancellationToken);
+        // Send Clerk invitation — org must be linked to Clerk
+        if (string.IsNullOrEmpty(org.ExternalId))
+            return Error.Validation("Organization.ClerkNotLinked", "Organisation is not linked to Clerk. Cannot send invite.");
 
-            if (clerkResult.IsFailure)
-                return InviteErrors.ClerkSyncFailed;
-        }
+        var clerkResult = await clerkService.InviteMemberAsync(
+            org.ExternalId, request.Email, "org:organization_viewer", cancellationToken);
+
+        if (clerkResult.IsFailure)
+            return InviteErrors.ClerkSyncFailed;
 
         // Create Invite record as Pending
         dbContext.Invites.Add(new Invite
