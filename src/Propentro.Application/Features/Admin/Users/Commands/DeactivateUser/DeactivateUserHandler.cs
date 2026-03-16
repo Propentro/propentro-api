@@ -10,7 +10,7 @@ public sealed class DeactivateUserHandler(
     {
         var user = await dbContext.Users
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.PublicId == request.PublicId, cancellationToken);
+            .FirstOrDefaultAsync(u => u.PublicId == request.Id, cancellationToken);
 
         if (user is null)
             return AdminUserErrors.UserNotFound;

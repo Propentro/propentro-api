@@ -28,11 +28,11 @@ public sealed class GetOrganizationInvitesHandler(
             JOIN organizations o ON o.id = i.organization_id
             JOIN roles r ON r.id = i.role_id
             LEFT JOIN users u ON u.id = i.invited_by_id
-            WHERE i.organization_id = (SELECT id FROM organizations WHERE public_id = @OrgPublicId)
+            WHERE i.organization_id = (SELECT id FROM organizations WHERE public_id = @OrganizationId)
             ORDER BY i.created_at DESC
             """;
 
-        var items = (await connection.QueryAsync<InviteResponse>(sql, new { request.OrgPublicId })).ToList();
+        var items = (await connection.QueryAsync<InviteResponse>(sql, new { request.OrganizationId })).ToList();
 
         return items;
     }

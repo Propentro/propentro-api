@@ -14,7 +14,7 @@ public sealed class CancelInviteHandler(
         var invite = await dbContext.Invites
             .IgnoreQueryFilters()
             .Include(i => i.Organization)
-            .FirstOrDefaultAsync(i => i.PublicId == request.InvitePublicId, cancellationToken);
+            .FirstOrDefaultAsync(i => i.PublicId == request.Id, cancellationToken);
 
         if (invite is null)
             return InviteErrors.InviteNotFound;

@@ -27,15 +27,15 @@ internal static class AdminOrganizationEndpoints
             .WithName("AdminCreateOrganization")
             .WithSummary("Create a new organization");
 
-        group.MapGet("/{publicId}", GetAsync)
+        group.MapGet("/{id}", GetAsync)
             .WithName("AdminGetOrganization")
             .WithSummary("Get organization detail");
 
-        group.MapPut("/{publicId}", UpdateAsync)
+        group.MapPut("/{id}", UpdateAsync)
             .WithName("AdminUpdateOrganization")
             .WithSummary("Update organization");
 
-        group.MapDelete("/{publicId}", DeactivateAsync)
+        group.MapDelete("/{id}", DeactivateAsync)
             .WithName("AdminDeactivateOrganization")
             .WithSummary("Deactivate organization");
     }
@@ -65,27 +65,27 @@ internal static class AdminOrganizationEndpoints
     }
 
     private static async Task<IResult> GetAsync(
-        string publicId, ISender sender, CancellationToken ct)
+        string id, ISender sender, CancellationToken ct)
     {
-        var result = await sender.Send(new GetOrganizationQuery(publicId), ct);
+        var result = await sender.Send(new GetOrganizationQuery(id), ct);
         return result.ToHttpResult();
     }
 
     private static async Task<IResult> UpdateAsync(
-        string publicId, UpdateOrganizationRequest request,
+        string id, UpdateOrganizationRequest request,
         ISender sender, CancellationToken ct)
     {
         var command = new UpdateOrganizationCommand(
-            publicId, request.Name, request.ContactName, request.ContactEmail,
+            id, request.Name, request.ContactName, request.ContactEmail,
             request.ContactPhone, request.CurrencyCode, request.Timezone);
         var result = await sender.Send(command, ct);
         return result.ToHttpResult();
     }
 
     private static async Task<IResult> DeactivateAsync(
-        string publicId, ISender sender, CancellationToken ct)
+        string id, ISender sender, CancellationToken ct)
     {
-        var result = await sender.Send(new DeactivateOrganizationCommand(publicId), ct);
+        var result = await sender.Send(new DeactivateOrganizationCommand(id), ct);
         return result.ToHttpResult();
     }
 }

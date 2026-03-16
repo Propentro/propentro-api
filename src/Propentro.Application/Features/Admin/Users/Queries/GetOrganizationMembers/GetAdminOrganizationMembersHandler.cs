@@ -27,12 +27,12 @@ public sealed class GetAdminOrganizationMembersHandler(
             LEFT JOIN organization_user_roles our ON our.organization_id = ou.organization_id
                                                  AND our.user_id = ou.user_id
             LEFT JOIN roles r ON r.id = our.role_id
-            WHERE ou.organization_id = (SELECT id FROM organizations WHERE public_id = @OrgPublicId)
+            WHERE ou.organization_id = (SELECT id FROM organizations WHERE public_id = @OrganizationId)
             ORDER BY ou.created_at DESC
             """;
 
         var members = (await connection.QueryAsync<AdminMemberResponse>(
-            sql, new { request.OrgPublicId })).ToList();
+            sql, new { request.OrganizationId })).ToList();
 
         return members;
     }

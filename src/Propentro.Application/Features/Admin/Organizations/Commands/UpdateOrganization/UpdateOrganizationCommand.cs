@@ -3,7 +3,7 @@ using Propentro.Contracts.Admin.Organizations;
 namespace Propentro.Application.Features.Admin.Organizations.Commands.UpdateOrganization;
 
 public sealed record UpdateOrganizationCommand(
-    string PublicId,
+    string Id,
     string Name,
     string? ContactName,
     string? ContactEmail,

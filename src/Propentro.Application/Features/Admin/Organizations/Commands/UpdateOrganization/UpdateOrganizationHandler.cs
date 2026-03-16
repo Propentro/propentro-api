@@ -14,7 +14,7 @@ public sealed class UpdateOrganizationHandler(
     {
         var org = await dbContext.Organizations
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(o => o.PublicId == request.PublicId, cancellationToken);
+            .FirstOrDefaultAsync(o => o.PublicId == request.Id, cancellationToken);
 
         if (org is null || !org.IsActive)
             return AdminOrganizationErrors.NotFound;

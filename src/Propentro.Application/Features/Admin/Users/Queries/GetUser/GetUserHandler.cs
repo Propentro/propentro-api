@@ -22,11 +22,11 @@ public sealed class GetUserHandler(
                 u.is_active  AS is_active,
                 u.created_at AS created_at
             FROM users u
-            WHERE u.public_id = @PublicId
+            WHERE u.public_id = @Id
             """;
 
         var user = await connection.QueryFirstOrDefaultAsync<AdminUserResponse>(
-            userSql, new { request.PublicId });
+            userSql, new { request.Id });
 
         if (user is null)
             return AdminUserErrors.UserNotFound;
@@ -41,11 +41,11 @@ public sealed class GetUserHandler(
             JOIN organization_user_roles our ON our.organization_id = ou.organization_id
                                             AND our.user_id = ou.user_id
             JOIN roles r ON r.id = our.role_id
-            WHERE ou.user_id = (SELECT id FROM users WHERE public_id = @PublicId)
+            WHERE ou.user_id = (SELECT id FROM users WHERE public_id = @Id)
             """;
 
         var organizations = (await connection.QueryAsync<UserOrganizationInfo>(
-            orgsSql, new { request.PublicId })).ToList();
+            orgsSql, new { request.Id })).ToList();
 
         return user with { Organizations = organizations };
     }

@@ -15,7 +15,7 @@ public sealed class InviteUserHandler(
         // 1. Resolve organization by PublicId
         var org = await dbContext.Organizations
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(o => o.PublicId == request.OrgPublicId && o.IsActive, cancellationToken);
+            .FirstOrDefaultAsync(o => o.PublicId == request.OrganizationId && o.IsActive, cancellationToken);
 
         if (org is null)
             return InviteErrors.OrganizationNotFound;

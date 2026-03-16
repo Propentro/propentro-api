@@ -29,12 +29,12 @@ public sealed class GetOrganizationHandler(
                 o.created_at        AS created_at
             FROM organizations o
             LEFT JOIN organization_users ou ON ou.organization_id = o.id
-            WHERE o.public_id = @PublicId
+            WHERE o.public_id = @Id
             GROUP BY o.id
             """;
 
         var result = await connection.QueryFirstOrDefaultAsync<AdminOrganizationResponse>(
-            sql, new { request.PublicId });
+            sql, new { request.Id });
 
         if (result is null)
             return AdminOrganizationErrors.NotFound;
