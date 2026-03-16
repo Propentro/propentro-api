@@ -39,6 +39,15 @@ public sealed class ActiveUserAuthorizationHandler : AuthorizationHandler<Active
             return Task.CompletedTask;
         }
 
+        // Skip org check for admin endpoints — SystemAdminAuthorizationHandler handles those
+        var endpoint = httpContext.GetEndpoint();
+        var requiresAdmin = endpoint?.Metadata.GetMetadata<RequireSystemAdministratorAttribute>();
+        if (requiresAdmin is not null)
+        {
+            context.Succeed(requirement);
+            return Task.CompletedTask;
+        }
+
         if (currentUser.OrganizationId == Guid.Empty)
         {
             Log.Warning(
