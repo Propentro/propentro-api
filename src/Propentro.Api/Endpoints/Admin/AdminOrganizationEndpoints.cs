@@ -31,11 +31,11 @@ internal static class AdminOrganizationEndpoints
             .WithName("AdminGetOrganization")
             .WithSummary("Get organization detail");
 
-        group.MapPut("/{id}", UpdateAsync)
+        group.MapPatch("/{id}", UpdateAsync)
             .WithName("AdminUpdateOrganization")
             .WithSummary("Update organization");
 
-        group.MapDelete("/{id}", DeactivateAsync)
+        group.MapPatch("/{id}/deactivate", DeactivateAsync)
             .WithName("AdminDeactivateOrganization")
             .WithSummary("Deactivate organization");
     }
