@@ -9,7 +9,7 @@ using Propentro.Contracts.Organizations.Roles;
 using Propentro.Contracts.Organizations.Roles.Permissions;
 using Propentro.Infrastructure.Authorization;
 
-namespace Propentro.Api.Endpoints;
+namespace Propentro.Api.Endpoints.Organizations;
 
 internal static class RolesEndpoints
 {

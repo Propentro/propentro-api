@@ -5,7 +5,7 @@ using Propentro.Application.Features.Organizations.Settings.Queries.GetOrganizat
 using Propentro.Contracts.Organizations.Settings;
 using Propentro.Infrastructure.Authorization;
 
-namespace Propentro.Api.Endpoints;
+namespace Propentro.Api.Endpoints.Organizations;
 
 internal static class SettingsEndpoints
 {

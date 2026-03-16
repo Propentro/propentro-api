@@ -9,7 +9,7 @@ using Propentro.Application.Features.Organizations.Members.Queries.GetOrganizati
 using Propentro.Contracts.Organizations.Members;
 using Propentro.Infrastructure.Authorization;
 
-namespace Propentro.Api.Endpoints;
+namespace Propentro.Api.Endpoints.Organizations;
 
 internal static class MembersEndpoints
 {
@@ -128,7 +128,7 @@ internal static class MembersEndpoints
 
     private sealed record GetMembersQueryParams(
         int Page = 1,
-        int PageSize = 20,
+        int PageSize = 25,
         string? Search = null,
         string? Status = null,
         string? RoleId = null);
