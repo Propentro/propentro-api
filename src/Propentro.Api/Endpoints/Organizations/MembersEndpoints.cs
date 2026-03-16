@@ -2,6 +2,7 @@ using MediatR;
 using Propentro.Api.Extensions;
 using Propentro.Application.Common.Models;
 using Propentro.Application.Features.Organizations.Members.Commands.DeactivateMember;
+using Propentro.Application.Features.Organizations.Members.Queries.GetMember;
 using Propentro.Application.Features.Organizations.Members.Commands.ReactivateMember;
 using Propentro.Application.Features.Organizations.Members.Commands.UpdateMemberRoles;
 using Propentro.Application.Features.Organizations.Members.Queries.GetOrganizationMembers;
@@ -25,6 +26,11 @@ internal static class MembersEndpoints
             .Produces<PagedResult<MemberListItemResponse>>()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        group.MapGet("/{id}", GetMemberAsync)
+            .WithName("GetOrganizationMember")
+            .WithSummary("Get member detail")
+            .WithMetadata(new RequirePermissionAttribute("org:members:read"));
 
         group.MapPatch("/{userId}", UpdateMemberRolesAsync)
             .WithName("UpdateMemberRoles")
@@ -73,6 +79,13 @@ internal static class MembersEndpoints
             queryParams.Status,
             queryParams.RoleId);
         var result = await sender.Send(query, ct);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> GetMemberAsync(
+        string id, ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(new GetMemberQuery(id), ct);
         return result.ToHttpResult();
     }
 
