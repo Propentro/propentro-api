@@ -6,7 +6,12 @@ public sealed record AdminMemberResponse
     public string Email { get; init; } = null!;
     public string? FirstName { get; init; }
     public string? LastName { get; init; }
-    public string RoleName { get; init; } = null!;
-    public string RolePublicId { get; init; } = null!;
+    public IReadOnlyList<MemberRoleInfo> Roles { get; init; } = [];
     public DateTimeOffset JoinedAt { get; init; }
+}
+
+public sealed record MemberRoleInfo
+{
+    public string Id { get; init; } = null!;
+    public string Name { get; init; } = null!;
 }
