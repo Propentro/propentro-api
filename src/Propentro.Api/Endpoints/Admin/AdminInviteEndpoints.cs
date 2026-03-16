@@ -64,10 +64,12 @@ internal static class AdminInviteEndpoints
     private static async Task<IResult> ListOrgInvitesAsync(
         string organizationId,
         ISender sender,
-        CancellationToken cancellationToken)
+        int page = 1,
+        int pageSize = 25,
+        CancellationToken cancellationToken = default)
     {
         var result = await sender.Send(
-            new GetOrganizationInvitesQuery(organizationId), cancellationToken);
+            new GetOrganizationInvitesQuery(organizationId, page, pageSize), cancellationToken);
         return result.ToHttpResult();
     }
 

@@ -25,10 +25,14 @@ internal static class AdminMemberEndpoints
     }
 
     private static async Task<IResult> ListAsync(
-        string organizationId, ISender sender, CancellationToken cancellationToken)
+        string organizationId,
+        ISender sender,
+        int page = 1,
+        int pageSize = 25,
+        CancellationToken cancellationToken = default)
     {
         var result = await sender.Send(
-            new GetAdminOrganizationMembersQuery(organizationId), cancellationToken);
+            new GetAdminOrganizationMembersQuery(organizationId, page, pageSize), cancellationToken);
         return result.ToHttpResult();
     }
 
