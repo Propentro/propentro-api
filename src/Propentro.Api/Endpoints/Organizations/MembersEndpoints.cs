@@ -2,7 +2,6 @@ using MediatR;
 using Propentro.Api.Extensions;
 using Propentro.Application.Common.Models;
 using Propentro.Application.Features.Organizations.Members.Commands.DeactivateMember;
-using Propentro.Application.Features.Organizations.Members.Commands.InviteMember;
 using Propentro.Application.Features.Organizations.Members.Commands.ReactivateMember;
 using Propentro.Application.Features.Organizations.Members.Commands.UpdateMemberRoles;
 using Propentro.Application.Features.Organizations.Members.Queries.GetOrganizationMembers;
@@ -26,16 +25,6 @@ internal static class MembersEndpoints
             .Produces<PagedResult<MemberListItemResponse>>()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);
-
-        group.MapPost("/invite", InviteMemberAsync)
-            .WithName("InviteMember")
-            .WithSummary("Invite a user to the organization")
-            .WithMetadata(new RequirePermissionAttribute("org:members:manage"))
-            .Produces(StatusCodes.Status204NoContent)
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status401Unauthorized)
-            .ProducesProblem(StatusCodes.Status403Forbidden)
-            .ProducesProblem(StatusCodes.Status409Conflict);
 
         group.MapPatch("/{userId}", UpdateMemberRolesAsync)
             .WithName("UpdateMemberRoles")
@@ -84,16 +73,6 @@ internal static class MembersEndpoints
             queryParams.Status,
             queryParams.RoleId);
         var result = await sender.Send(query, ct);
-        return result.ToHttpResult();
-    }
-
-    private static async Task<IResult> InviteMemberAsync(
-        InviteMemberRequest request,
-        ISender sender,
-        CancellationToken ct)
-    {
-        var command = new InviteMemberCommand(request.Email, request.RoleId);
-        var result = await sender.Send(command, ct);
         return result.ToHttpResult();
     }
 
