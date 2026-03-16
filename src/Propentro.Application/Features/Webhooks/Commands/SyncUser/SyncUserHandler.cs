@@ -12,7 +12,8 @@ namespace Propentro.Application.Features.Webhooks.Commands.SyncUser;
 /// </summary>
 public sealed class SyncUserHandler(
     IAppDbContext dbContext,
-    IClerkOrganizationService clerkService) : ICommandHandler<SyncUserCommand>
+    IClerkOrganizationService clerkService,
+    IDateTimeProvider dateTimeProvider) : ICommandHandler<SyncUserCommand>
 {
     public async Task<Result> Handle(SyncUserCommand request, CancellationToken cancellationToken)
     {
@@ -64,7 +65,7 @@ public sealed class SyncUserHandler(
             .Include(i => i.Organization)
             .Where(i => string.Equals(i.Email, user.Email, StringComparison.OrdinalIgnoreCase)
                 && i.Status == Invite.Statuses.Pending
-                && (!i.ExpiresAt.HasValue || i.ExpiresAt > DateTimeOffset.UtcNow))
+                && (!i.ExpiresAt.HasValue || i.ExpiresAt > dateTimeProvider.UtcNow))
             .ToListAsync(cancellationToken);
 
         foreach (var invite in pendingInvites)
@@ -81,7 +82,7 @@ public sealed class SyncUserHandler(
                 OrganizationId = invite.OrganizationId,
                 UserId = user.Id,
                 RoleId = invite.RoleId,
-                AssignedAt = DateTimeOffset.UtcNow,
+                AssignedAt = dateTimeProvider.UtcNow,
                 AssignedBy = invite.InvitedById
             });
 

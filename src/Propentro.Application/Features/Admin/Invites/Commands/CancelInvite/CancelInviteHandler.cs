@@ -6,7 +6,8 @@ namespace Propentro.Application.Features.Admin.Invites.Commands.CancelInvite;
 
 public sealed class CancelInviteHandler(
     IAppDbContext dbContext,
-    IClerkOrganizationService clerkService) : ICommandHandler<CancelInviteCommand>
+    IClerkOrganizationService clerkService,
+    IDateTimeProvider dateTimeProvider) : ICommandHandler<CancelInviteCommand>
 {
     public async Task<Result> Handle(CancelInviteCommand request, CancellationToken cancellationToken)
     {
@@ -23,7 +24,7 @@ public sealed class CancelInviteHandler(
 
         invite.Status = Invite.Statuses.Cancelled;
         invite.CancelledById = request.CancelledByUserId;
-        invite.UpdatedAt = DateTimeOffset.UtcNow;
+        invite.UpdatedAt = dateTimeProvider.UtcNow;
 
         // Revoke Clerk invitation if org has ExternalId
         if (!string.IsNullOrEmpty(invite.Organization.ExternalId))

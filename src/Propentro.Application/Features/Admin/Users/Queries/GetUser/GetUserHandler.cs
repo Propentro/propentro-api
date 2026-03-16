@@ -15,12 +15,12 @@ public sealed class GetUserHandler(
 
         const string userSql = """
             SELECT
-                u.public_id  AS UserId,
-                u.email      AS Email,
-                u.first_name AS FirstName,
-                u.last_name  AS LastName,
-                u.is_active  AS IsActive,
-                u.created_at AS CreatedAt
+                u.public_id  AS user_id,
+                u.email      AS email,
+                u.first_name AS first_name,
+                u.last_name  AS last_name,
+                u.is_active  AS is_active,
+                u.created_at AS created_at
             FROM users u
             WHERE u.public_id = @PublicId
             """;
@@ -33,9 +33,9 @@ public sealed class GetUserHandler(
 
         const string orgsSql = """
             SELECT
-                o.public_id AS OrganizationId,
-                o.name      AS Name,
-                r.name      AS RoleName
+                o.public_id AS organization_id,
+                o.name      AS name,
+                r.name      AS role_name
             FROM organization_users ou
             JOIN organizations o ON o.id = ou.organization_id
             JOIN organization_user_roles our ON our.organization_id = ou.organization_id

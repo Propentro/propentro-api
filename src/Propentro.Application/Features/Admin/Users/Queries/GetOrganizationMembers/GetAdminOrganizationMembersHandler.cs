@@ -15,13 +15,13 @@ public sealed class GetAdminOrganizationMembersHandler(
 
         const string sql = """
             SELECT
-                u.public_id  AS UserId,
-                u.email      AS Email,
-                u.first_name AS FirstName,
-                u.last_name  AS LastName,
-                r.name       AS RoleName,
-                r.public_id  AS RolePublicId,
-                ou.created_at AS JoinedAt
+                u.public_id  AS user_id,
+                u.email      AS email,
+                u.first_name AS first_name,
+                u.last_name  AS last_name,
+                r.name       AS role_name,
+                r.public_id  AS role_public_id,
+                ou.created_at AS joined_at
             FROM organization_users ou
             JOIN users u ON u.id = ou.user_id
             LEFT JOIN organization_user_roles our ON our.organization_id = ou.organization_id

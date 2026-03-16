@@ -7,7 +7,8 @@ namespace Propentro.Application.Features.Admin.Invites.Commands.InviteUser;
 
 public sealed class InviteUserHandler(
     IAppDbContext dbContext,
-    IClerkOrganizationService clerkService) : ICommandHandler<InviteUserCommand>
+    IClerkOrganizationService clerkService,
+    IDateTimeProvider dateTimeProvider) : ICommandHandler<InviteUserCommand>
 {
     public async Task<Result> Handle(InviteUserCommand request, CancellationToken cancellationToken)
     {
@@ -81,7 +82,7 @@ public sealed class InviteUserHandler(
             OrganizationId = org.Id,
             UserId = user.Id,
             RoleId = role.Id,
-            AssignedAt = DateTimeOffset.UtcNow,
+            AssignedAt = dateTimeProvider.UtcNow,
             AssignedBy = request.InvitedByUserId
         });
 
@@ -105,7 +106,7 @@ public sealed class InviteUserHandler(
             RoleId = role.Id,
             Status = Invite.Statuses.Accepted,
             InvitedById = request.InvitedByUserId,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = dateTimeProvider.UtcNow
         });
 
         Log.Information(
@@ -153,8 +154,8 @@ public sealed class InviteUserHandler(
             RoleId = role.Id,
             Status = Invite.Statuses.Pending,
             InvitedById = request.InvitedByUserId,
-            ExpiresAt = DateTimeOffset.UtcNow.AddDays(7),
-            CreatedAt = DateTimeOffset.UtcNow
+            ExpiresAt = dateTimeProvider.UtcNow.AddDays(7),
+            CreatedAt = dateTimeProvider.UtcNow
         });
 
         Log.Information(

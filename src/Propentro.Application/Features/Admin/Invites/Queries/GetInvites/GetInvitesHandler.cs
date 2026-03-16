@@ -39,15 +39,15 @@ public sealed class GetInvitesHandler(
 
         var listSql = $"""
             SELECT
-                i.public_id                              AS InviteId,
-                o.public_id                              AS OrganizationId,
-                o.name                                   AS OrganizationName,
-                i.email                                  AS Email,
-                r.name                                   AS RoleName,
-                i.status                                 AS Status,
-                COALESCE(u.first_name || ' ' || u.last_name, '') AS InvitedBy,
-                i.expires_at                             AS ExpiresAt,
-                i.created_at                             AS CreatedAt
+                i.public_id                              AS invite_id,
+                o.public_id                              AS organization_id,
+                o.name                                   AS organization_name,
+                i.email                                  AS email,
+                r.name                                   AS role_name,
+                i.status                                 AS status,
+                COALESCE(u.first_name || ' ' || u.last_name, '') AS invited_by,
+                i.expires_at                             AS expires_at,
+                i.created_at                             AS created_at
             FROM invites i
             JOIN organizations o ON o.id = i.organization_id
             JOIN roles r ON r.id = i.role_id
