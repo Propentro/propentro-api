@@ -14,14 +14,14 @@ public sealed class RemoveMemberHandler(
     {
         var org = await dbContext.Organizations
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(o => o.PublicId == request.OrgPublicId, cancellationToken);
+            .FirstOrDefaultAsync(o => o.PublicId == request.OrganizationId, cancellationToken);
 
         if (org is null)
             return AdminUserErrors.OrgNotFound;
 
         var user = await dbContext.Users
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.PublicId == request.UserPublicId, cancellationToken);
+            .FirstOrDefaultAsync(u => u.PublicId == request.UserId, cancellationToken);
 
         if (user is null)
             return AdminUserErrors.UserNotFound;

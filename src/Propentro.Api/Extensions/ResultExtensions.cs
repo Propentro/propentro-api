@@ -37,6 +37,7 @@ internal static class ResultExtensions
             ErrorType.Forbidden => StatusCodes.Status403Forbidden,
             ErrorType.Validation => StatusCodes.Status400BadRequest,
             ErrorType.Conflict => StatusCodes.Status409Conflict,
+            ErrorType.ExternalService => StatusCodes.Status502BadGateway,
             _ => StatusCodes.Status400BadRequest
         };
 
@@ -59,6 +60,7 @@ internal static class ResultExtensions
         ErrorType.Forbidden => "Access Denied",
         ErrorType.Validation => "Validation Failed",
         ErrorType.Conflict => "Resource Conflict",
+        ErrorType.ExternalService => "External Service Error",
         _ => "Error"
     };
 }

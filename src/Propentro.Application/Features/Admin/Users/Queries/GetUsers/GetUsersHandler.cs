@@ -47,13 +47,13 @@ public sealed class GetUsersHandler(
 
         var listSql = $"""
             SELECT
-                u.public_id                     AS UserId,
-                u.email                         AS Email,
-                u.first_name                    AS FirstName,
-                u.last_name                     AS LastName,
-                u.is_active                     AS IsActive,
-                COUNT(DISTINCT ou.organization_id) AS OrganizationCount,
-                u.created_at                    AS CreatedAt
+                u.public_id                     AS user_id,
+                u.email                         AS email,
+                u.first_name                    AS first_name,
+                u.last_name                     AS last_name,
+                u.is_active                     AS is_active,
+                COUNT(DISTINCT ou.organization_id) AS organization_count,
+                u.created_at                    AS created_at
             FROM users u
             LEFT JOIN organization_users ou ON ou.user_id = u.id
             {where}

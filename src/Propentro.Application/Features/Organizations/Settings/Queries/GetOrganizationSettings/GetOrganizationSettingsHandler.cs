@@ -18,23 +18,23 @@ public sealed class GetOrganizationSettingsHandler(
 
         const string sql = """
             SELECT
-                o.public_id       AS OrganizationId,
-                o.name            AS Name,
-                o.slug            AS Slug,
-                o.contact_name    AS ContactName,
-                o.contact_email   AS ContactEmail,
-                o.contact_phone   AS ContactPhone,
-                o.address_line1   AS AddressLine1,
-                o.address_line2   AS AddressLine2,
-                o.city            AS City,
-                o.region          AS Region,
-                o.postal_code     AS PostalCode,
-                o.country_code    AS CountryCode,
-                o.legal_name      AS LegalName,
-                o.tax_number      AS TaxNumber,
-                o.tax_country     AS TaxCountry,
-                o.currency_code   AS CurrencyCode,
-                o.timezone        AS Timezone
+                o.public_id       AS organization_id,
+                o.name            AS name,
+                o.slug            AS slug,
+                o.contact_name    AS contact_name,
+                o.contact_email   AS contact_email,
+                o.contact_phone   AS contact_phone,
+                o.address_line1   AS address_line1,
+                o.address_line2   AS address_line2,
+                o.city            AS city,
+                o.region          AS region,
+                o.postal_code     AS postal_code,
+                o.country_code    AS country_code,
+                o.legal_name      AS legal_name,
+                o.tax_number      AS tax_number,
+                o.tax_country     AS tax_country,
+                o.currency_code   AS currency_code,
+                o.timezone        AS timezone
             FROM organizations o
             WHERE o.id = @OrganizationId
               AND o.is_active = true

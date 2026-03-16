@@ -7,7 +7,8 @@ public sealed record MeResponse(
     string? LastName,
     MeOrganizationResponse Organization,
     IReadOnlyList<string> Roles,
-    IReadOnlyList<string> Permissions);
+    IReadOnlyList<string> Permissions,
+    bool IsSystemAdmin);
 
 public sealed record MeOrganizationResponse(
     string OrganizationId,

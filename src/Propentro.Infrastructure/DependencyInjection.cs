@@ -202,8 +202,10 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        if (!string.IsNullOrWhiteSpace(configuration["Clerk:WebhookSecret"]))
-            services.AddSingleton<ClerkWebhookVerifier>();
+        var webhookSecret = configuration["Clerk:WebhookSecret"]
+            ?? throw new InvalidOperationException("Clerk:WebhookSecret must be configured. Webhook signature verification cannot be skipped.");
+
+        services.AddSingleton<ClerkWebhookVerifier>();
 
         services.AddSingleton<WebhookIdempotencyStore>();
 

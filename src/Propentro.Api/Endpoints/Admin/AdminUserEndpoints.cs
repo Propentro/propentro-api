@@ -13,7 +13,7 @@ internal static class AdminUserEndpoints
     public static void MapAdminUserEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/v1/admin/users")
-            .WithTags("Admin — Users")
+            .WithTags("Admin Users")
             .RequireAuthorization()
             .WithMetadata(new RequireSystemAdministratorAttribute());
 
@@ -21,15 +21,15 @@ internal static class AdminUserEndpoints
             .WithName("AdminListUsers")
             .WithSummary("List all users");
 
-        group.MapGet("/{publicId}", GetAsync)
+        group.MapGet("/{id}", GetAsync)
             .WithName("AdminGetUser")
             .WithSummary("Get user detail");
 
-        group.MapPatch("/{publicId}/deactivate", DeactivateAsync)
+        group.MapPatch("/{id}/deactivate", DeactivateAsync)
             .WithName("AdminDeactivateUser")
             .WithSummary("Deactivate user");
 
-        group.MapPatch("/{publicId}/reactivate", ReactivateAsync)
+        group.MapPatch("/{id}/reactivate", ReactivateAsync)
             .WithName("AdminReactivateUser")
             .WithSummary("Reactivate user");
     }
@@ -48,23 +48,23 @@ internal static class AdminUserEndpoints
     }
 
     private static async Task<IResult> GetAsync(
-        string publicId, ISender sender, CancellationToken cancellationToken)
+        string id, ISender sender, CancellationToken cancellationToken)
     {
-        var result = await sender.Send(new GetUserQuery(publicId), cancellationToken);
+        var result = await sender.Send(new GetUserQuery(id), cancellationToken);
         return result.ToHttpResult();
     }
 
     private static async Task<IResult> DeactivateAsync(
-        string publicId, ISender sender, CancellationToken cancellationToken)
+        string id, ISender sender, CancellationToken cancellationToken)
     {
-        var result = await sender.Send(new DeactivateUserCommand(publicId), cancellationToken);
+        var result = await sender.Send(new DeactivateUserCommand(id), cancellationToken);
         return result.ToHttpResult();
     }
 
     private static async Task<IResult> ReactivateAsync(
-        string publicId, ISender sender, CancellationToken cancellationToken)
+        string id, ISender sender, CancellationToken cancellationToken)
     {
-        var result = await sender.Send(new ReactivateUserCommand(publicId), cancellationToken);
+        var result = await sender.Send(new ReactivateUserCommand(id), cancellationToken);
         return result.ToHttpResult();
     }
 }

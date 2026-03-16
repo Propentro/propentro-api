@@ -5,11 +5,12 @@ using Propentro.Application.Features.Organizations.Roles.Commands.DeleteRole;
 using Propentro.Application.Features.Organizations.Roles.Commands.UpdateRole;
 using Propentro.Application.Features.Organizations.Roles.Permissions.Queries.GetPermissions;
 using Propentro.Application.Features.Organizations.Roles.Queries.GetOrganizationRoles;
+using Propentro.Application.Features.Organizations.Roles.Queries.GetRole;
 using Propentro.Contracts.Organizations.Roles;
 using Propentro.Contracts.Organizations.Roles.Permissions;
 using Propentro.Infrastructure.Authorization;
 
-namespace Propentro.Api.Endpoints;
+namespace Propentro.Api.Endpoints.Organizations;
 
 internal static class RolesEndpoints
 {
@@ -26,6 +27,11 @@ internal static class RolesEndpoints
             .Produces<IReadOnlyList<RoleResponse>>()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        group.MapGet("/{id}", GetRoleAsync)
+            .WithName("GetOrganizationRole")
+            .WithSummary("Get role detail")
+            .WithMetadata(new RequirePermissionAttribute("org:roles:read"));
 
         group.MapPost("/", CreateRoleAsync)
             .WithName("CreateRole")
@@ -74,6 +80,13 @@ internal static class RolesEndpoints
     private static async Task<IResult> GetRolesAsync(ISender sender, CancellationToken ct)
     {
         var result = await sender.Send(new GetOrganizationRolesQuery(), ct);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> GetRoleAsync(
+        string id, ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(new GetRoleQuery(id), ct);
         return result.ToHttpResult();
     }
 

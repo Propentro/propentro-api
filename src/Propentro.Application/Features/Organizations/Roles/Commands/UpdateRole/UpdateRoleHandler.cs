@@ -9,7 +9,8 @@ public sealed class UpdateRoleHandler(
     IAppDbContext dbContext,
     IUserContext currentUser,
     IPermissionService permissionService,
-    ICacheService cache) : ICommandHandler<UpdateRoleCommand>
+    ICacheService cache,
+    IDateTimeProvider dateTimeProvider) : ICommandHandler<UpdateRoleCommand>
 {
     public async Task<Result> Handle(UpdateRoleCommand request, CancellationToken cancellationToken)
     {
@@ -69,7 +70,7 @@ public sealed class UpdateRoleHandler(
                     {
                         RoleId = role.Id,
                         PermissionId = permission.Id,
-                        CreatedAt = DateTimeOffset.UtcNow
+                        CreatedAt = dateTimeProvider.UtcNow
                     });
                 }
             }

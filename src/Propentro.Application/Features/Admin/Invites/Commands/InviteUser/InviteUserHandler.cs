@@ -7,14 +7,15 @@ namespace Propentro.Application.Features.Admin.Invites.Commands.InviteUser;
 
 public sealed class InviteUserHandler(
     IAppDbContext dbContext,
-    IClerkOrganizationService clerkService) : ICommandHandler<InviteUserCommand>
+    IClerkOrganizationService clerkService,
+    IDateTimeProvider dateTimeProvider) : ICommandHandler<InviteUserCommand>
 {
     public async Task<Result> Handle(InviteUserCommand request, CancellationToken cancellationToken)
     {
         // 1. Resolve organization by PublicId
         var org = await dbContext.Organizations
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(o => o.PublicId == request.OrgPublicId && o.IsActive, cancellationToken);
+            .FirstOrDefaultAsync(o => o.PublicId == request.OrganizationId && o.IsActive, cancellationToken);
 
         if (org is null)
             return InviteErrors.OrganizationNotFound;
@@ -81,12 +82,15 @@ public sealed class InviteUserHandler(
             OrganizationId = org.Id,
             UserId = user.Id,
             RoleId = role.Id,
-            AssignedAt = DateTimeOffset.UtcNow,
+            AssignedAt = dateTimeProvider.UtcNow,
             AssignedBy = request.InvitedByUserId
         });
 
-        // Sync to Clerk if both external IDs exist
-        if (!string.IsNullOrEmpty(org.ExternalId) && !string.IsNullOrEmpty(user.ExternalId))
+        // Sync to Clerk — org and user must be linked
+        if (string.IsNullOrEmpty(org.ExternalId))
+            return Error.Validation("Organization.ClerkNotLinked", "Organisation is not linked to Clerk. Cannot send invite.");
+
+        if (!string.IsNullOrEmpty(user.ExternalId))
         {
             var clerkResult = await clerkService.AddMemberAsync(
                 org.ExternalId, user.ExternalId, "basic_member", cancellationToken);
@@ -105,7 +109,7 @@ public sealed class InviteUserHandler(
             RoleId = role.Id,
             Status = Invite.Statuses.Accepted,
             InvitedById = request.InvitedByUserId,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = dateTimeProvider.UtcNow
         });
 
         Log.Information(
@@ -133,15 +137,15 @@ public sealed class InviteUserHandler(
         if (hasPendingInvite)
             return InviteErrors.AlreadyInvited;
 
-        // Send Clerk invitation if org has ExternalId
-        if (!string.IsNullOrEmpty(org.ExternalId))
-        {
-            var clerkResult = await clerkService.InviteMemberAsync(
-                org.ExternalId, request.Email, "org:organization_viewer", cancellationToken);
+        // Send Clerk invitation — org must be linked to Clerk
+        if (string.IsNullOrEmpty(org.ExternalId))
+            return Error.Validation("Organization.ClerkNotLinked", "Organisation is not linked to Clerk. Cannot send invite.");
 
-            if (clerkResult.IsFailure)
-                return InviteErrors.ClerkSyncFailed;
-        }
+        var clerkResult = await clerkService.InviteMemberAsync(
+            org.ExternalId, request.Email, "org:organization_viewer", cancellationToken);
+
+        if (clerkResult.IsFailure)
+            return InviteErrors.ClerkSyncFailed;
 
         // Create Invite record as Pending
         dbContext.Invites.Add(new Invite
@@ -153,8 +157,8 @@ public sealed class InviteUserHandler(
             RoleId = role.Id,
             Status = Invite.Statuses.Pending,
             InvitedById = request.InvitedByUserId,
-            ExpiresAt = DateTimeOffset.UtcNow.AddDays(7),
-            CreatedAt = DateTimeOffset.UtcNow
+            ExpiresAt = dateTimeProvider.UtcNow.AddDays(7),
+            CreatedAt = dateTimeProvider.UtcNow
         });
 
         Log.Information(

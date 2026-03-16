@@ -7,7 +7,8 @@ public enum ErrorType
     NotFound,
     Conflict,
     Unauthorized,
-    Forbidden
+    Forbidden,
+    ExternalService
 }
 
 public sealed record Error(string Code, string Message, ErrorType Type = ErrorType.Failure, object? Details = null)
@@ -25,4 +26,7 @@ public sealed record Error(string Code, string Message, ErrorType Type = ErrorTy
 
     public static Error Conflict(string code, string message) =>
         new(code, message, ErrorType.Conflict);
+
+    public static Error ExternalService(string code, string message) =>
+        new(code, message, ErrorType.ExternalService);
 }

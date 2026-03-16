@@ -15,26 +15,26 @@ public sealed class GetOrganizationHandler(
 
         const string sql = """
             SELECT
-                o.public_id         AS OrganizationId,
-                o.name              AS Name,
-                o.slug              AS Slug,
-                o.contact_name      AS ContactName,
-                o.contact_email     AS ContactEmail,
-                o.contact_phone     AS ContactPhone,
-                o.currency_code     AS CurrencyCode,
-                o.timezone          AS Timezone,
-                o.subscription_plan AS SubscriptionPlan,
-                o.is_active         AS IsActive,
-                COUNT(ou.user_id)   AS MemberCount,
-                o.created_at        AS CreatedAt
+                o.public_id         AS organization_id,
+                o.name              AS name,
+                o.slug              AS slug,
+                o.contact_name      AS contact_name,
+                o.contact_email     AS contact_email,
+                o.contact_phone     AS contact_phone,
+                o.currency_code     AS currency_code,
+                o.timezone          AS timezone,
+                o.subscription_plan AS subscription_plan,
+                o.is_active         AS is_active,
+                COUNT(ou.user_id)   AS member_count,
+                o.created_at        AS created_at
             FROM organizations o
             LEFT JOIN organization_users ou ON ou.organization_id = o.id
-            WHERE o.public_id = @PublicId
+            WHERE o.public_id = @Id
             GROUP BY o.id
             """;
 
         var result = await connection.QueryFirstOrDefaultAsync<AdminOrganizationResponse>(
-            sql, new { request.PublicId });
+            sql, new { request.Id });
 
         if (result is null)
             return AdminOrganizationErrors.NotFound;

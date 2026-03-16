@@ -15,7 +15,7 @@ internal static class AdminInviteEndpoints
     public static void MapAdminInviteEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/v1/admin")
-            .WithTags("Admin — Invites")
+            .WithTags("Admin Invites")
             .RequireAuthorization()
             .WithMetadata(new RequireSystemAdministratorAttribute());
 
@@ -23,15 +23,15 @@ internal static class AdminInviteEndpoints
             .WithName("AdminListInvites")
             .WithSummary("List all invites");
 
-        group.MapPost("/organisations/{orgPublicId}/invites", InviteAsync)
+        group.MapPost("/organizations/{organizationId}/invites", InviteAsync)
             .WithName("AdminInviteUser")
-            .WithSummary("Invite user to organisation");
+            .WithSummary("Invite user to organization");
 
-        group.MapGet("/organisations/{orgPublicId}/invites", ListOrgInvitesAsync)
-            .WithName("AdminListOrganisationInvites")
-            .WithSummary("List organisation invites");
+        group.MapGet("/organizations/{organizationId}/invites", ListOrgInvitesAsync)
+            .WithName("AdminListOrganizationInvites")
+            .WithSummary("List organization invites");
 
-        group.MapDelete("/invites/{invitePublicId}", CancelAsync)
+        group.MapDelete("/invites/{id}", CancelAsync)
             .WithName("AdminCancelInvite")
             .WithSummary("Cancel invite");
     }
@@ -49,36 +49,38 @@ internal static class AdminInviteEndpoints
     }
 
     private static async Task<IResult> InviteAsync(
-        string orgPublicId,
+        string organizationId,
         InviteUserRequest request,
         ISender sender,
         IUserContext userContext,
         CancellationToken cancellationToken)
     {
         var command = new InviteUserCommand(
-            orgPublicId, request.Email, request.RoleId, userContext.UserId);
+            organizationId, request.Email, request.RoleId, userContext.UserId);
         var result = await sender.Send(command, cancellationToken);
         return result.ToHttpResult();
     }
 
     private static async Task<IResult> ListOrgInvitesAsync(
-        string orgPublicId,
+        string organizationId,
         ISender sender,
-        CancellationToken cancellationToken)
+        int page = 1,
+        int pageSize = 25,
+        CancellationToken cancellationToken = default)
     {
         var result = await sender.Send(
-            new GetOrganizationInvitesQuery(orgPublicId), cancellationToken);
+            new GetOrganizationInvitesQuery(organizationId, page, pageSize), cancellationToken);
         return result.ToHttpResult();
     }
 
     private static async Task<IResult> CancelAsync(
-        string invitePublicId,
+        string id,
         ISender sender,
         IUserContext userContext,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
-            new CancelInviteCommand(invitePublicId, userContext.UserId), cancellationToken);
+            new CancelInviteCommand(id, userContext.UserId), cancellationToken);
         return result.ToHttpResult();
     }
 }

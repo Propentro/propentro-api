@@ -5,35 +5,52 @@ using Propentro.Contracts.Admin.Invites;
 namespace Propentro.Application.Features.Admin.Invites.Queries.GetOrganizationInvites;
 
 public sealed class GetOrganizationInvitesHandler(
-    IDbConnectionFactory db) : IQueryHandler<GetOrganizationInvitesQuery, List<InviteResponse>>
+    IDbConnectionFactory db) : IQueryHandler<GetOrganizationInvitesQuery, PagedResult<InviteResponse>>
 {
-    public async Task<Result<List<InviteResponse>>> Handle(
+    public async Task<Result<PagedResult<InviteResponse>>> Handle(
         GetOrganizationInvitesQuery request, CancellationToken cancellationToken)
     {
         await using var connection = db.CreateConnection();
         await connection.OpenAsync(cancellationToken);
 
-        const string sql = """
+        var parameters = new DynamicParameters();
+        parameters.Add("OrganizationId", request.OrganizationId);
+        parameters.Add("Offset", (request.Page - 1) * request.PageSize);
+        parameters.Add("Limit", request.PageSize);
+
+        const string countSql = """
+            SELECT COUNT(*)
+            FROM invites i
+            WHERE i.organization_id = (SELECT id FROM organizations WHERE public_id = @OrganizationId)
+            """;
+
+        var total = await connection.ExecuteScalarAsync<int>(countSql, parameters);
+
+        if (total == 0)
+            return new PagedResult<InviteResponse>([], total, request.Page, request.PageSize);
+
+        const string listSql = """
             SELECT
-                i.public_id                              AS InviteId,
-                o.public_id                              AS OrganizationId,
-                o.name                                   AS OrganizationName,
-                i.email                                  AS Email,
-                r.name                                   AS RoleName,
-                i.status                                 AS Status,
-                COALESCE(u.first_name || ' ' || u.last_name, '') AS InvitedBy,
-                i.expires_at                             AS ExpiresAt,
-                i.created_at                             AS CreatedAt
+                i.public_id                              AS invite_id,
+                o.public_id                              AS organization_id,
+                o.name                                   AS organization_name,
+                i.email                                  AS email,
+                r.name                                   AS role_name,
+                i.status                                 AS status,
+                COALESCE(u.first_name || ' ' || u.last_name, '') AS invited_by,
+                i.expires_at                             AS expires_at,
+                i.created_at                             AS created_at
             FROM invites i
             JOIN organizations o ON o.id = i.organization_id
             JOIN roles r ON r.id = i.role_id
             LEFT JOIN users u ON u.id = i.invited_by_id
-            WHERE i.organization_id = (SELECT id FROM organizations WHERE public_id = @OrgPublicId)
+            WHERE i.organization_id = (SELECT id FROM organizations WHERE public_id = @OrganizationId)
             ORDER BY i.created_at DESC
+            OFFSET @Offset LIMIT @Limit
             """;
 
-        var items = (await connection.QueryAsync<InviteResponse>(sql, new { request.OrgPublicId })).ToList();
+        var items = (await connection.QueryAsync<InviteResponse>(listSql, parameters)).ToList();
 
-        return items;
+        return new PagedResult<InviteResponse>(items, total, request.Page, request.PageSize);
     }
 }

@@ -5,14 +5,14 @@ using Propentro.Application.Features.Organizations.Settings.Queries.GetOrganizat
 using Propentro.Contracts.Organizations.Settings;
 using Propentro.Infrastructure.Authorization;
 
-namespace Propentro.Api.Endpoints;
+namespace Propentro.Api.Endpoints.Organizations;
 
 internal static class SettingsEndpoints
 {
     public static void MapOrganizationSettingsEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/v1/organizations")
-            .WithTags("Organizations Settings")
+            .WithTags("Organization Settings")
             .RequireAuthorization();
 
         group.MapGet("/settings", GetSettingsAsync)
