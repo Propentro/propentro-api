@@ -10,18 +10,18 @@ internal static class AdminMemberEndpoints
 {
     public static void MapAdminMemberEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/v1/admin/organisations/{orgPublicId}/members")
-            .WithTags("Admin — Members")
+        var group = app.MapGroup("/v1/admin/organizations/{orgPublicId}/members")
+            .WithTags("Admin Members")
             .RequireAuthorization()
             .WithMetadata(new RequireSystemAdministratorAttribute());
 
         group.MapGet("/", ListAsync)
-            .WithName("AdminListOrganisationMembers")
-            .WithSummary("List organisation members");
+            .WithName("AdminListOrganizationMembers")
+            .WithSummary("List organization members");
 
         group.MapDelete("/{userPublicId}", RemoveAsync)
             .WithName("AdminRemoveMember")
-            .WithSummary("Remove member from organisation");
+            .WithSummary("Remove member from organization");
     }
 
     private static async Task<IResult> ListAsync(

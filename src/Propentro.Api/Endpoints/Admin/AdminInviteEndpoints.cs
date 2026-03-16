@@ -15,7 +15,7 @@ internal static class AdminInviteEndpoints
     public static void MapAdminInviteEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/v1/admin")
-            .WithTags("Admin — Invites")
+            .WithTags("Admin Invites")
             .RequireAuthorization()
             .WithMetadata(new RequireSystemAdministratorAttribute());
 
@@ -23,13 +23,13 @@ internal static class AdminInviteEndpoints
             .WithName("AdminListInvites")
             .WithSummary("List all invites");
 
-        group.MapPost("/organisations/{orgPublicId}/invites", InviteAsync)
+        group.MapPost("/organizations/{orgPublicId}/invites", InviteAsync)
             .WithName("AdminInviteUser")
-            .WithSummary("Invite user to organisation");
+            .WithSummary("Invite user to organization");
 
-        group.MapGet("/organisations/{orgPublicId}/invites", ListOrgInvitesAsync)
-            .WithName("AdminListOrganisationInvites")
-            .WithSummary("List organisation invites");
+        group.MapGet("/organizations/{orgPublicId}/invites", ListOrgInvitesAsync)
+            .WithName("AdminListOrganizationInvites")
+            .WithSummary("List organization invites");
 
         group.MapDelete("/invites/{invitePublicId}", CancelAsync)
             .WithName("AdminCancelInvite")

@@ -14,30 +14,30 @@ internal static class AdminOrganizationEndpoints
 {
     public static void MapAdminOrganizationEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/v1/admin/organisations")
-            .WithTags("Admin — Organisations")
+        var group = app.MapGroup("/v1/admin/organizations")
+            .WithTags("Admin Organizations")
             .RequireAuthorization()
             .WithMetadata(new RequireSystemAdministratorAttribute());
 
         group.MapGet("/", ListAsync)
-            .WithName("AdminListOrganisations")
-            .WithSummary("List all organisations");
+            .WithName("AdminListOrganizations")
+            .WithSummary("List all organizations");
 
         group.MapPost("/", CreateAsync)
-            .WithName("AdminCreateOrganisation")
-            .WithSummary("Create a new organisation");
+            .WithName("AdminCreateOrganization")
+            .WithSummary("Create a new organization");
 
         group.MapGet("/{publicId}", GetAsync)
-            .WithName("AdminGetOrganisation")
-            .WithSummary("Get organisation detail");
+            .WithName("AdminGetOrganization")
+            .WithSummary("Get organization detail");
 
         group.MapPut("/{publicId}", UpdateAsync)
-            .WithName("AdminUpdateOrganisation")
-            .WithSummary("Update organisation");
+            .WithName("AdminUpdateOrganization")
+            .WithSummary("Update organization");
 
         group.MapDelete("/{publicId}", DeactivateAsync)
-            .WithName("AdminDeactivateOrganisation")
-            .WithSummary("Deactivate organisation");
+            .WithName("AdminDeactivateOrganization")
+            .WithSummary("Deactivate organization");
     }
 
     private static async Task<IResult> ListAsync(

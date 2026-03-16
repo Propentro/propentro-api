@@ -13,7 +13,7 @@ internal static class AdminUserEndpoints
     public static void MapAdminUserEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/v1/admin/users")
-            .WithTags("Admin — Users")
+            .WithTags("Admin Users")
             .RequireAuthorization()
             .WithMetadata(new RequireSystemAdministratorAttribute());
 
