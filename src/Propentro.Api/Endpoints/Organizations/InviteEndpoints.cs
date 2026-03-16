@@ -2,8 +2,8 @@ using MediatR;
 using Propentro.Api.Extensions;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Features.Admin.Invites.Commands.CancelInvite;
-using Propentro.Application.Features.Admin.Invites.Commands.InviteUser;
-using Propentro.Application.Features.Admin.Invites.Queries.GetOrganizationInvites;
+using Propentro.Application.Features.Organizations.Invites.Commands.InviteToCurrentOrg;
+using Propentro.Application.Features.Organizations.Invites.Queries.GetCurrentOrgInvites;
 using Propentro.Contracts.Admin.Invites;
 using Propentro.Infrastructure.Authorization;
 
@@ -13,58 +13,61 @@ internal static class InviteEndpoints
 {
     public static void MapOrganizationInviteEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/v1/organisations/{orgPublicId}/invites")
-            .WithTags("Organisation Invites")
+        var group = app.MapGroup("/v1/organizations/invites")
+            .WithTags("Organization Invites")
             .RequireAuthorization();
 
         group.MapPost("/", InviteAsync)
-            .WithName("InviteOrgMember")
-            .WithSummary("Invite member to organisation")
+            .WithName("InviteToOrganization")
+            .WithSummary("Invite member to current organization")
             .WithMetadata(new RequirePermissionAttribute("org:members:manage"));
 
         group.MapGet("/", ListAsync)
-            .WithName("ListOrgInvites")
-            .WithSummary("List pending invites in organisation")
+            .WithName("ListOrganizationInvites")
+            .WithSummary("List pending invites in current organization")
             .WithMetadata(new RequirePermissionAttribute("org:members:manage"));
 
-        group.MapDelete("/{invitePublicId}", CancelAsync)
-            .WithName("CancelOrgInvite")
-            .WithSummary("Cancel invite in organisation")
+        group.MapPatch("/{id}/cancel", CancelAsync)
+            .WithName("CancelOrganizationInvite")
+            .WithSummary("Cancel a pending invite")
             .WithMetadata(new RequirePermissionAttribute("org:members:manage"));
     }
 
     private static async Task<IResult> InviteAsync(
-        string orgPublicId,
         InviteUserRequest request,
         ISender sender,
         IUserContext userContext,
         CancellationToken cancellationToken)
     {
-        var command = new InviteUserCommand(
-            orgPublicId, request.Email, request.RoleId, userContext.UserId);
+        var command = new InviteToCurrentOrgCommand(
+            request.Email, request.RoleId,
+            userContext.OrganizationId, userContext.UserId);
         var result = await sender.Send(command, cancellationToken);
         return result.ToHttpResult();
     }
 
     private static async Task<IResult> ListAsync(
-        string orgPublicId,
         ISender sender,
-        CancellationToken cancellationToken)
+        IUserContext userContext,
+        int page = 1,
+        int pageSize = 25,
+        CancellationToken cancellationToken = default)
     {
         var result = await sender.Send(
-            new GetOrganizationInvitesQuery(orgPublicId), cancellationToken);
+            new GetCurrentOrgInvitesQuery(userContext.OrganizationId, page, pageSize),
+            cancellationToken);
         return result.ToHttpResult();
     }
 
     private static async Task<IResult> CancelAsync(
-        string orgPublicId,
-        string invitePublicId,
+        string id,
         ISender sender,
         IUserContext userContext,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
-            new CancelInviteCommand(invitePublicId, userContext.UserId), cancellationToken);
+            new CancelInviteCommand(id, userContext.UserId, userContext.OrganizationId),
+            cancellationToken);
         return result.ToHttpResult();
     }
 }

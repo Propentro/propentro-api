@@ -19,8 +19,11 @@ public sealed class CancelInviteHandler(
         if (invite is null)
             return InviteErrors.InviteNotFound;
 
-        if (invite.Status != Invite.Statuses.Pending)
+        if (request.OrganizationId.HasValue && invite.OrganizationId != request.OrganizationId.Value)
             return InviteErrors.InviteNotFound;
+
+        if (invite.Status != Invite.Statuses.Pending)
+            return InviteErrors.NotCancellable;
 
         invite.Status = Invite.Statuses.Cancelled;
         invite.CancelledById = request.CancelledByUserId;
