@@ -122,6 +122,7 @@ internal static class WebhookEndpoints
         switch (webhookEvent.Type)
         {
             case "user.created":
+            case "user.updated":
                 var email = GetPrimaryEmail(data);
                 if (data.Id is null || email is null)
                 {
