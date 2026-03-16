@@ -47,13 +47,13 @@ public sealed class GetOrganizationsHandler(
 
         var listSql = $"""
             SELECT
-                o.public_id         AS OrganizationId,
-                o.name              AS Name,
-                o.slug              AS Slug,
-                o.subscription_plan AS SubscriptionPlan,
-                o.is_active         AS IsActive,
-                COUNT(ou.user_id)   AS MemberCount,
-                o.created_at        AS CreatedAt
+                o.public_id         AS organization_id,
+                o.name              AS name,
+                o.slug              AS slug,
+                o.subscription_plan AS subscription_plan,
+                o.is_active         AS is_active,
+                COUNT(ou.user_id)   AS member_count,
+                o.created_at        AS created_at
             FROM organizations o
             LEFT JOIN organization_users ou ON ou.organization_id = o.id
             {where}

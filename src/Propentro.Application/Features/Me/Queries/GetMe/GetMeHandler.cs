@@ -22,13 +22,13 @@ public sealed class GetMeHandler(
 
         const string userSql = """
             SELECT
-                u.public_id AS UserId,
-                u.email AS Email,
-                u.first_name AS FirstName,
-                u.last_name AS LastName,
-                o.public_id AS OrganizationId,
-                o.name AS OrganizationName,
-                o.slug AS OrganizationSlug
+                u.public_id AS user_id,
+                u.email AS email,
+                u.first_name AS first_name,
+                u.last_name AS last_name,
+                o.public_id AS organization_id,
+                o.name AS organization_name,
+                o.slug AS organization_slug
             FROM users u
             LEFT JOIN organization_users ou ON ou.user_id = u.id AND ou.organization_id = @OrganizationId AND ou.status =  'active'
             LEFT JOIN organizations o ON o.id = ou.organization_id AND o.is_active = true

@@ -9,8 +9,7 @@ public static class OrganizationSettingsErrors
         "Organization not found.",
         ErrorType.NotFound);
 
-    public static readonly Error ClerkSyncFailed = new(
+    public static readonly Error ClerkSyncFailed = Error.ExternalService(
         "Organization.ClerkSyncFailed",
-        "Failed to sync organization name with the auth provider. Please try again.",
-        ErrorType.Failure);
+        "Failed to sync organization name with the auth provider. Please try again.");
 }
