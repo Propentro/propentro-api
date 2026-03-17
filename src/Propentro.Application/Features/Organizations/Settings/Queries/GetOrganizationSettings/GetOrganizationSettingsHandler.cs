@@ -1,5 +1,6 @@
 using Dapper;
 using Propentro.Application.Common.Interfaces.Authentication;
+using Propentro.Application.Common.Errors;
 using Propentro.Application.Common.Models;
 using Propentro.Contracts.Organizations.Settings;
 
@@ -45,7 +46,7 @@ public sealed class GetOrganizationSettingsHandler(
             new { currentUser.OrganizationId });
 
         if (result is null)
-            return OrganizationSettingsErrors.NotFound;
+            return OrganizationErrors.NotFound;
 
         return result;
     }

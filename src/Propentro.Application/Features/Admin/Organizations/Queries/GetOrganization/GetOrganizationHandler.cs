@@ -1,4 +1,5 @@
 using Dapper;
+using Propentro.Application.Common.Errors;
 using Propentro.Application.Common.Models;
 using Propentro.Contracts.Admin.Organizations;
 
@@ -37,7 +38,7 @@ public sealed class GetOrganizationHandler(
             sql, new { request.Id });
 
         if (result is null)
-            return AdminOrganizationErrors.NotFound;
+            return OrganizationErrors.NotFound;
 
         return result;
     }

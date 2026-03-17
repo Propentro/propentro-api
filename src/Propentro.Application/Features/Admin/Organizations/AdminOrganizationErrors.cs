@@ -4,14 +4,8 @@ namespace Propentro.Application.Features.Admin.Organizations;
 
 public static class AdminOrganizationErrors
 {
-    public static readonly Error NotFound = Error.NotFound(
-        "Organization.NotFound", "Organization not found.");
-
     public static readonly Error SlugTaken = Error.Conflict(
         "Organization.SlugTaken", "An organization with this slug already exists.");
-
-    public static readonly Error SyncFailed = Error.ExternalService(
-        "Organization.SyncFailed", "Failed to sync organization. Please try again.");
 
     public static readonly Error AlreadyInactive = Error.Conflict(
         "Organization.AlreadyInactive", "Organization is already inactive.");
