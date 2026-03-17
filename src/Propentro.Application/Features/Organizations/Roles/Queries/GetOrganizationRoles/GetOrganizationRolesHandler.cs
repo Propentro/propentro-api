@@ -7,14 +7,30 @@ namespace Propentro.Application.Features.Organizations.Roles.Queries.GetOrganiza
 
 public sealed class GetOrganizationRolesHandler(
     IDbConnectionFactory db,
-    IUserContext currentUser) : IQueryHandler<GetOrganizationRolesQuery, IReadOnlyList<RoleResponse>>
+    IUserContext currentUser) : IQueryHandler<GetOrganizationRolesQuery, PagedResult<RoleResponse>>
 {
-    public async Task<Result<IReadOnlyList<RoleResponse>>> Handle(
+    public async Task<Result<PagedResult<RoleResponse>>> Handle(
         GetOrganizationRolesQuery request,
         CancellationToken cancellationToken)
     {
         await using var connection = db.CreateConnection();
         await connection.OpenAsync(cancellationToken);
+
+        var offset = (request.Page - 1) * request.PageSize;
+
+        const string countSql = """
+            SELECT COUNT(*)
+            FROM roles r
+            WHERE (r.organization_id = @OrganizationId OR r.is_system = true)
+              AND r.is_active = true
+            """;
+
+        var totalCount = await connection.ExecuteScalarAsync<int>(
+            countSql,
+            new { currentUser.OrganizationId });
+
+        if (totalCount == 0)
+            return new PagedResult<RoleResponse>([], totalCount, request.Page, request.PageSize);
 
         const string rolesSql = """
             SELECT
@@ -31,15 +47,16 @@ public sealed class GetOrganizationRolesHandler(
               AND r.is_active = true
             GROUP BY r.id, r.public_id, r.name, r.description, r.is_system
             ORDER BY r.is_system DESC, r.name
+            OFFSET @Offset LIMIT @PageSize
             """;
 
         var roles = (await connection.QueryAsync<RoleQueryResult>(
             rolesSql,
-            new { currentUser.OrganizationId }))
+            new { currentUser.OrganizationId, Offset = offset, request.PageSize }))
             .ToList();
 
         if (roles.Count == 0)
-            return Result.Success<IReadOnlyList<RoleResponse>>([]);
+            return new PagedResult<RoleResponse>([], totalCount, request.Page, request.PageSize);
 
         var roleInternalIds = roles.Select(r => r.RoleInternalId).ToArray();
 
@@ -73,7 +90,7 @@ public sealed class GetOrganizationRolesHandler(
             permissionsLookup.GetValueOrDefault(r.RoleInternalId, [])))
             .ToList();
 
-        return result;
+        return new PagedResult<RoleResponse>(result, totalCount, request.Page, request.PageSize);
     }
 
     private sealed class RoleQueryResult
