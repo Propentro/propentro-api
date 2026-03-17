@@ -6,4 +6,7 @@ public sealed record InviteToCurrentOrgCommand(
     string Email,
     string RoleId,
     Guid OrganizationId,
-    Guid InvitedByUserId) : ICommand<InviteResult>;
+    Guid InvitedByUserId) : ICommand<InviteResult>, ICacheInvalidating
+{
+    public IReadOnlyList<string> CacheKeysToInvalidate { get; } = ["user-permissions:*"];
+}

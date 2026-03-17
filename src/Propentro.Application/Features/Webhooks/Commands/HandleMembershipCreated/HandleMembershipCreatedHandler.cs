@@ -7,7 +7,8 @@ namespace Propentro.Application.Features.Webhooks.Commands.HandleMembershipCreat
 
 public sealed class HandleMembershipCreatedHandler(
     IAppDbContext dbContext,
-    IDateTimeProvider dateTimeProvider) : ICommandHandler<HandleMembershipCreatedCommand>
+    IDateTimeProvider dateTimeProvider,
+    ICacheService cache) : ICommandHandler<HandleMembershipCreatedCommand>
 {
     public async Task<Result> Handle(HandleMembershipCreatedCommand request, CancellationToken cancellationToken)
     {
@@ -124,6 +125,8 @@ public sealed class HandleMembershipCreatedHandler(
             user.PublicId, org.PublicId, pendingInvite.PublicId);
 
         dbContext.AddOutboxEvent(new InviteAcceptedEvent(pendingInvite.Id, org.Id));
+
+        await cache.RemoveByPatternAsync($"org:{org.Id}:user-permissions:*", cancellationToken);
 
         return Result.Success();
     }
