@@ -19,6 +19,6 @@ public static class AdminUserErrors
     public static readonly Error NotAMember = Error.NotFound(
         "AdminUser.NotAMember", "User is not a member of this organization.");
 
-    public static readonly Error ClerkSyncFailed = Error.ExternalService(
-        "AdminUser.ClerkSyncFailed", "Clerk synchronization failed.");
+    public static readonly Error SyncFailed = Error.ExternalService(
+        "AdminUser.SyncFailed", "Failed to sync user. Please try again.");
 }

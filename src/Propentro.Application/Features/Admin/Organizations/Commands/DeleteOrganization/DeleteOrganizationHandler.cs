@@ -25,7 +25,7 @@ public sealed class DeleteOrganizationHandler(
             var clerkResult = await clerkService.DeleteOrganizationAsync(
                 org.ExternalId, cancellationToken);
             if (clerkResult.IsFailure)
-                return AdminOrganizationErrors.ClerkSyncFailed;
+                return AdminOrganizationErrors.SyncFailed;
         }
 
         await permissionService.InvalidateOrganizationPermissionsCacheAsync(

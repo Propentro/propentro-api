@@ -42,7 +42,7 @@ public sealed class CreateOrganizationHandler(
             request.Name, request.Slug, cancellationToken);
 
         if (clerkResult.IsFailure)
-            return AdminOrganizationErrors.ClerkSyncFailed;
+            return AdminOrganizationErrors.SyncFailed;
 
         org.ExternalId = clerkResult.Value;
 

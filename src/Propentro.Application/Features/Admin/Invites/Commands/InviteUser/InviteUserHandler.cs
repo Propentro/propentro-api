@@ -97,7 +97,7 @@ public sealed class InviteUserHandler(
                 org.ExternalId, user.ExternalId, "basic_member", cancellationToken);
 
             if (clerkResult.IsFailure)
-                return InviteErrors.ClerkSyncFailed;
+                return InviteErrors.SyncFailed;
         }
 
         // Create Invite record as Accepted
@@ -146,7 +146,7 @@ public sealed class InviteUserHandler(
             org.ExternalId, request.Email, "org:organization_viewer", cancellationToken);
 
         if (clerkResult.IsFailure)
-            return InviteErrors.ClerkSyncFailed;
+            return InviteErrors.SyncFailed;
 
         // Create Invite record as Pending
         var invite = new Invite

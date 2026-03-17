@@ -37,7 +37,7 @@ public sealed class UpdateOrganizationSettingsHandler(
                     org.PublicId,
                     syncResult.Error.Message);
 
-                return OrganizationSettingsErrors.ClerkSyncFailed;
+                return OrganizationSettingsErrors.SyncFailed;
             }
         }
 

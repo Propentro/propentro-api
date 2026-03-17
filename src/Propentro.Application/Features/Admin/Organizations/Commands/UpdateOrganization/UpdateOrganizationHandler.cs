@@ -35,7 +35,7 @@ public sealed class UpdateOrganizationHandler(
                 org.ExternalId, request.Name, cancellationToken);
 
             if (clerkResult.IsFailure)
-                return AdminOrganizationErrors.ClerkSyncFailed;
+                return AdminOrganizationErrors.SyncFailed;
         }
 
         var memberCount = await dbContext.OrganizationUsers

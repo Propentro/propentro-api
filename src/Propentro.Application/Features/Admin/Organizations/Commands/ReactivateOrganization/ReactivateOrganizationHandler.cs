@@ -26,7 +26,7 @@ public sealed class ReactivateOrganizationHandler(
             org.Name, org.Slug, cancellationToken);
 
         if (clerkResult.IsFailure)
-            return AdminOrganizationErrors.ClerkSyncFailed;
+            return AdminOrganizationErrors.SyncFailed;
 
         org.ExternalId = clerkResult.Value;
         org.IsActive = true;

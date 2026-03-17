@@ -27,7 +27,7 @@ public sealed class DeactivateOrganizationHandler(
         {
             var clerkResult = await clerkService.DeleteOrganizationAsync(org.ExternalId, cancellationToken);
             if (clerkResult.IsFailure)
-                return AdminOrganizationErrors.ClerkSyncFailed;
+                return AdminOrganizationErrors.SyncFailed;
         }
 
         // Load memberships to get user IDs
