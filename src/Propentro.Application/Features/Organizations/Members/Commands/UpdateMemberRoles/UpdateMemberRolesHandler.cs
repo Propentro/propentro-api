@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Models;
+using Propentro.Domain.Entities.Identity.Events;
 
 namespace Propentro.Application.Features.Organizations.Members.Commands.UpdateMemberRoles;
 
@@ -99,6 +100,8 @@ public sealed class UpdateMemberRolesHandler(
         }
 
         await permissionService.InvalidatePermissionsCacheAsync(user.Id, currentUser.OrganizationId, cancellationToken);
+
+        dbContext.AddOutboxEvent(new MemberRolesUpdatedEvent(user.Id, currentUser.OrganizationId));
 
         return Result.Success();
     }

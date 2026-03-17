@@ -3,6 +3,7 @@ using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Errors;
 using Propentro.Application.Common.Models;
+using Propentro.Domain.Entities.Identity.Events;
 
 namespace Propentro.Application.Features.Admin.Organizations.Commands.DeactivateOrganization;
 
@@ -95,6 +96,8 @@ public sealed class DeactivateOrganizationHandler(
 
         Log.Information("Deactivated organization {PublicId} ({Name}) with {MemberCount} members",
             org.PublicId, org.Name, memberUserIds.Count);
+
+        dbContext.AddOutboxEvent(new OrganizationDeactivatedEvent(org.Id, org.Id, memberUserIds));
 
         return Result.Success();
     }
