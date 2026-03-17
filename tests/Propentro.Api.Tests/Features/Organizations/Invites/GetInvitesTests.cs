@@ -42,4 +42,14 @@ public sealed class GetInvitesTests(PropentroApiFactory factory)
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
+
+    [Fact]
+    public async Task Get_Invites_Without_Permission_Returns_403()
+    {
+        var client = factory.CreateClientAsUser2();
+
+        var response = await client.GetAsync(BaseUrl);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }
