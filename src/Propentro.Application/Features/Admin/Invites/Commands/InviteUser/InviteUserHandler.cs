@@ -26,7 +26,7 @@ public sealed class InviteUserHandler(
         var role = await dbContext.Roles
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(
-                r => r.PublicId == request.RolePublicId
+                r => r.PublicId == request.RoleId
                      && r.IsActive
                      && (r.IsSystem || r.OrganizationId == org.Id),
                 cancellationToken);
@@ -118,7 +118,7 @@ public sealed class InviteUserHandler(
             "Invited existing user {UserPublicId} to organization {OrgPublicId} with role {RolePublicId}",
             user.PublicId, org.PublicId, role.PublicId);
 
-        return new InviteResult(true, MemberPublicId: user.PublicId);
+        return new InviteResult(true, MemberId: user.PublicId);
     }
 
     private async Task<Result<InviteResult>> HandleNewUserAsync(
@@ -168,6 +168,6 @@ public sealed class InviteUserHandler(
             "Created pending invite for {Email} to organization {OrgPublicId}",
             request.Email, org.PublicId);
 
-        return new InviteResult(false, InvitePublicId: invite.PublicId);
+        return new InviteResult(false, InviteId: invite.PublicId);
     }
 }

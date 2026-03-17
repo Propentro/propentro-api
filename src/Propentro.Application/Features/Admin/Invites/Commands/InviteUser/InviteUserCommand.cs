@@ -5,5 +5,5 @@ namespace Propentro.Application.Features.Admin.Invites.Commands.InviteUser;
 public sealed record InviteUserCommand(
     string OrganizationId,
     string Email,
-    string RolePublicId,
+    string RoleId,
     Guid InvitedByUserId) : ICommand<InviteResult>;
