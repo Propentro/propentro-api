@@ -2,6 +2,7 @@ using MediatR;
 using Propentro.Api.Extensions;
 using Propentro.Application.Features.Admin.Organizations.Commands.CreateOrganization;
 using Propentro.Application.Features.Admin.Organizations.Commands.DeactivateOrganization;
+using Propentro.Application.Features.Admin.Organizations.Commands.ReactivateOrganization;
 using Propentro.Application.Features.Admin.Organizations.Commands.UpdateOrganization;
 using Propentro.Application.Features.Admin.Organizations.Queries.GetOrganization;
 using Propentro.Application.Features.Admin.Organizations.Queries.GetOrganizations;
@@ -38,6 +39,10 @@ internal static class AdminOrganizationEndpoints
         group.MapPatch("/{id}/deactivate", DeactivateAsync)
             .WithName("AdminDeactivateOrganization")
             .WithSummary("Deactivate organization");
+
+        group.MapPatch("/{id}/reactivate", ReactivateAsync)
+            .WithName("AdminReactivateOrganization")
+            .WithSummary("Reactivate organization");
     }
 
     private static async Task<IResult> ListAsync(
@@ -86,6 +91,13 @@ internal static class AdminOrganizationEndpoints
         string id, ISender sender, CancellationToken ct)
     {
         var result = await sender.Send(new DeactivateOrganizationCommand(id), ct);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> ReactivateAsync(
+        string id, ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(new ReactivateOrganizationCommand(id), ct);
         return result.ToHttpResult();
     }
 }

@@ -15,4 +15,7 @@ public static class AdminOrganizationErrors
 
     public static readonly Error AlreadyInactive = Error.Validation(
         "Organization.AlreadyInactive", "Organization is already inactive.");
+
+    public static readonly Error AlreadyActive = Error.Conflict(
+        "Organization.AlreadyActive", "Organization is already active.");
 }
