@@ -1,6 +1,7 @@
 using MediatR;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Models;
+using System.Linq;
 
 namespace Propentro.Application.Common.Behaviors;
 
@@ -77,12 +78,13 @@ public sealed class UnitOfWorkBehavior<TRequest, TResponse>(
             return;
         }
 
-        foreach (var key in cacheInvalidating.CacheKeysToInvalidate)
-        {
-            var cacheKey = cacheInvalidating.KeysAreFullyQualified
+        var cacheKeys = cacheInvalidating.CacheKeysToInvalidate.Select(key =>
+            cacheInvalidating.KeysAreFullyQualified
                 ? key
-                : $"org:{userContext.OrganizationId}:{key}";
+                : $"org:{userContext.OrganizationId}:{key}");
 
+        foreach (var cacheKey in cacheKeys)
+        {
             await cacheService.RemoveAsync(cacheKey, cancellationToken);
             Log.Debug("Cache invalidated for key {CacheKey} after {RequestName}", cacheKey, typeof(TRequest).Name);
         }
