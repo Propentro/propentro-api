@@ -8,4 +8,9 @@ public static class MeErrors
         "Me.UserNotFound",
         "Authenticated user was not found in the system.",
         ErrorType.NotFound);
+
+    public static readonly Error AdminNotFound = new(
+        "Me.AdminNotFound",
+        "Admin profile not found.",
+        ErrorType.NotFound);
 }
