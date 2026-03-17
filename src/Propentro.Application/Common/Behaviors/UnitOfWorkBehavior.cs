@@ -84,7 +84,11 @@ public sealed class UnitOfWorkBehavior<TRequest, TResponse>(
 
         foreach (var cacheKey in cacheKeys)
         {
-            await cacheService.RemoveAsync(cacheKey, cancellationToken);
+            if (cacheKey.Contains('*'))
+                await cacheService.RemoveByPatternAsync(cacheKey, cancellationToken);
+            else
+                await cacheService.RemoveAsync(cacheKey, cancellationToken);
+
             Log.Debug("Cache invalidated for key {CacheKey} after {RequestName}", cacheKey, typeof(TRequest).Name);
         }
     }
