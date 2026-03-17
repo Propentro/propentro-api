@@ -1,4 +1,5 @@
 using MediatR;
+using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Models;
 
 namespace Propentro.Application.Common.Behaviors;
@@ -7,9 +8,12 @@ namespace Propentro.Application.Common.Behaviors;
 /// MediatR pipeline behavior that wraps command execution in a database transaction.
 /// Automatically calls SaveChangesAsync and commits on success, rolls back on failure.
 /// Handlers should NOT call SaveChangesAsync — this behavior handles persistence.
+/// After successful commit, invalidates cache keys if the request implements <see cref="ICacheInvalidating"/>.
 /// </summary>
 public sealed class UnitOfWorkBehavior<TRequest, TResponse>(
-    IAppDbContext dbContext) : IPipelineBehavior<TRequest, TResponse>
+    IAppDbContext dbContext,
+    ICacheService cacheService,
+    IUserContext userContext) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
     public async Task<TResponse> Handle(
@@ -42,6 +46,8 @@ public sealed class UnitOfWorkBehavior<TRequest, TResponse>(
             await transaction.CommitAsync(cancellationToken);
             Log.Debug("Transaction committed for {RequestName}", typeof(TRequest).Name);
 
+            await InvalidateCacheAsync(request, cancellationToken);
+
             return response;
         }
         catch (Exception ex)
@@ -62,5 +68,23 @@ public sealed class UnitOfWorkBehavior<TRequest, TResponse>(
     private static bool IsFailureResult(TResponse response)
     {
         return response is Result { IsFailure: true };
+    }
+
+    private async Task InvalidateCacheAsync(TRequest request, CancellationToken cancellationToken)
+    {
+        if (request is not ICacheInvalidating cacheInvalidating)
+        {
+            return;
+        }
+
+        foreach (var key in cacheInvalidating.CacheKeysToInvalidate)
+        {
+            var cacheKey = cacheInvalidating.KeysAreFullyQualified
+                ? key
+                : $"org:{userContext.OrganizationId}:{key}";
+
+            await cacheService.RemoveAsync(cacheKey, cancellationToken);
+            Log.Debug("Cache invalidated for key {CacheKey} after {RequestName}", cacheKey, typeof(TRequest).Name);
+        }
     }
 }
