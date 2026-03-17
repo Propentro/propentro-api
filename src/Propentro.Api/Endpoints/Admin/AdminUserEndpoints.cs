@@ -5,6 +5,7 @@ using Propentro.Application.Features.Admin.Users.Commands.DeleteUser;
 using Propentro.Application.Features.Admin.Users.Commands.ReactivateUser;
 using Propentro.Application.Features.Admin.Users.Queries.GetUser;
 using Propentro.Application.Features.Admin.Users.Queries.GetUsers;
+using Propentro.Application.Common.Errors;
 using Propentro.Infrastructure.Authorization;
 
 namespace Propentro.Api.Endpoints.Admin;
@@ -82,10 +83,7 @@ internal static class AdminUserEndpoints
         var confirmHeader = httpContext.Request.Headers["X-Confirm-Delete"].FirstOrDefault();
         if (string.IsNullOrEmpty(confirmHeader) || confirmHeader != id)
         {
-            return Results.Problem(
-                statusCode: 400,
-                title: "Confirmation Required",
-                detail: "X-Confirm-Delete header must match the user ID.");
+            return ConfirmationErrors.DeleteNotConfirmed.ToHttpResult();
         }
 
         var result = await sender.Send(new DeleteUserCommand(id), cancellationToken);
