@@ -6,7 +6,7 @@
 
 ## Overview
 
-Define and implement a comprehensive test strategy for the Propentro API. All 37 endpoints must have integration tests. Unit tests are reserved for risky areas only. CLAUDE.md rules updated to enforce this going forward.
+Define and implement a comprehensive test strategy for the Propentro API. All 39 endpoints must have integration tests. Unit tests are reserved for risky areas only. CLAUDE.md rules updated to enforce this going forward.
 
 ## Philosophy
 
@@ -21,7 +21,7 @@ The Testing Trophy model (Kent C. Dodds / Google testing guidance):
 
 | Category | Total | Tested | Coverage |
 |---|---|---|---|
-| Endpoints (Integration) | 37 | 10 | 27% |
+| Endpoints (Integration) | 39 | 10 | 26% |
 | Validators (Unit) | 21 | 2 | 9.5% |
 | Outbox Event Handlers (Unit) | 9 | 3 | 33% |
 | Domain Entities (Unit) | ~43 | 1 | ~2% |
@@ -33,7 +33,7 @@ The Testing Trophy model (Kent C. Dodds / Google testing guidance):
 
 | Category | Target | Notes |
 |---|---|---|
-| Endpoints (Integration) | 37/37 (100%) | All endpoints, no exceptions |
+| Endpoints (Integration) | 39/39 (100%) | All endpoints, no exceptions |
 | Validators (Unit) | ~7 total | Only validators with 2+ rules or conditional logic |
 | Outbox Event Handlers (Unit) | ~7 total | Only handlers with side effects |
 | Domain Entities (Unit) | ~5 total | Only entities with state transition methods |
@@ -59,9 +59,9 @@ Every endpoint gets at minimum:
 | X-Confirm-Delete header | Hard delete endpoints |
 | Webhook signature validation | Webhook endpoints only |
 
-### Missing Integration Tests (27 endpoints)
+### Missing Integration Tests (29 endpoints)
 
-#### Org-Scoped Endpoints (9)
+#### Org-Scoped Endpoints (10)
 
 | Endpoint | Test File | Key Test Cases |
 |---|---|---|
@@ -70,12 +70,13 @@ Every endpoint gets at minimum:
 | `PATCH /members/{id}/roles` | `UpdateMemberRolesTests` | happy, 401, 403, 400, 404, cross-tenant |
 | `GET /roles` | `GetRolesTests` | happy, 401, 403 |
 | `GET /roles/{id}` | `GetRoleTests` | happy, 401, 403, 404, cross-tenant |
-| `PATCH /roles/{id}` | `UpdateRoleTests` | happy, 401, 403, 400, 404 |
+| `PATCH /roles/{roleId}` | `UpdateRoleTests` | happy, 401, 403, 400, 404 |
+| `GET /permissions` | `GetPermissionsTests` | happy, 401, 403 |
 | `PATCH /invites/{id}/cancel` | `CancelInviteTests` | happy, 401, 403, 404, 409 not pending |
 | `GET /invites` | `GetInvitesTests` | happy, 401, 403 |
 | `POST /webhooks/clerk` | `ClerkWebhookTests` | happy, invalid signature 401, idempotency |
 
-#### Admin Endpoints (18)
+#### Admin Endpoints (19)
 
 | Endpoint | Test File | Key Test Cases |
 |---|---|---|
@@ -90,11 +91,12 @@ Every endpoint gets at minimum:
 | `PATCH /admin/users/{id}/reactivate` | `ReactivateUserTests` | happy, 401, 403, 409 already active |
 | `DELETE /admin/users/{id}` | `DeleteUserTests` | happy, 401, 403, 404, X-Confirm-Delete |
 | `GET /admin/me` | `AdminGetProfileTests` | happy, 401, 403 |
-| `PATCH /admin/members/{orgId}/{userId}/deactivate` | `AdminDeactivateMemberTests` | happy, 401, 403, 404, 409 |
-| `PATCH /admin/members/{orgId}/{userId}/reactivate` | `AdminReactivateMemberTests` | happy, 401, 403, 404, 409 |
-| `DELETE /admin/members/{orgId}/{userId}` | `AdminRemoveMemberTests` | happy, 401, 403, 404, X-Confirm-Delete |
-| `GET /admin/members/{orgId}` | `AdminGetMembersTests` | happy, 401, 403, 404 |
-| `POST /admin/invites` | `AdminInviteUserTests` | happy, 401, 403, 400 |
+| `PATCH /admin/organizations/{organizationId}/members/{id}/deactivate` | `AdminDeactivateMemberTests` | happy, 401, 403, 404, 409 |
+| `PATCH /admin/organizations/{organizationId}/members/{id}/reactivate` | `AdminReactivateMemberTests` | happy, 401, 403, 404, 409 |
+| `DELETE /admin/organizations/{organizationId}/members/{id}` | `AdminRemoveMemberTests` | happy, 401, 403, 404 |
+| `GET /admin/organizations/{organizationId}/members` | `AdminGetMembersTests` | happy, 401, 403, 404 |
+| `POST /admin/organizations/{organizationId}/invites` | `AdminInviteUserTests` | happy, 401, 403, 400, 200 (existing user) vs 201 (new user) |
+| `GET /admin/organizations/{organizationId}/invites` | `AdminGetOrgInvitesTests` | happy, 401, 403, 404 |
 | `PATCH /admin/invites/{id}/cancel` | `AdminCancelInviteTests` | happy, 401, 403, 409 not pending |
 | `GET /admin/invites` | `AdminGetInvitesTests` | happy, 401, 403 |
 
@@ -201,6 +203,10 @@ Add to CLAUDE.md under Testing section:
 For the full testing philosophy, decision tree, and coverage matrix, see `docs/testing-strategy.md`.
 ```
 
+### Note on Existing Integration Tests
+
+The 10 existing integration test files should be audited in Phase 4 to ensure they cover the new required cases (cross-tenant 404, soft delete filtering, 409 state guards) where applicable. The existing `InviteUserTests` should also verify both 200 (existing user direct add) and 201 (new user invite) happy path branches.
+
 ## Test Strategy Document
 
 Create `docs/testing-strategy.md` with:
@@ -215,7 +221,7 @@ Create `docs/testing-strategy.md` with:
 ## Implementation Order
 
 1. **Phase 1: CLAUDE.md + strategy doc** — Rules first, so all future work follows them
-2. **Phase 2: Missing integration tests (27 endpoints)** — Coverage from 27% to 100%
+2. **Phase 2: Missing integration tests (29 endpoints)** — Coverage from 26% to 100%
 3. **Phase 3: Risky area unit tests** — Entity, event handler, and complex validator tests
 4. **Phase 4: Verify existing tests** — Ensure the 10 existing integration test files have all required cases (cross-tenant, soft delete, etc.)
 
@@ -223,7 +229,7 @@ Create `docs/testing-strategy.md` with:
 
 | Category | Current | Added | Total |
 |---|---|---|---|
-| Integration tests | 25 | ~110-130 | ~135-155 |
+| Integration tests | 25 | ~120-140 | ~145-165 |
 | Validator unit tests | 17 | ~25-30 | ~42-47 |
 | Event handler unit tests | 8 | ~8-12 | ~16-20 |
 | Entity unit tests | 12 | ~12-16 | ~24-28 |
