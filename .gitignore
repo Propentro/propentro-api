@@ -176,3 +176,4 @@ appsettings.*.json
 # Temporary files
 *.tmp
 *.temp
+.worktrees/

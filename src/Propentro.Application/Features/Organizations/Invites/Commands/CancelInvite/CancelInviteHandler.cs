@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Models;
-using Propentro.Application.Features.Admin.Invites;
+using Propentro.Application.Common.Errors;
 
 namespace Propentro.Application.Features.Organizations.Invites.Commands.CancelInvite;
 

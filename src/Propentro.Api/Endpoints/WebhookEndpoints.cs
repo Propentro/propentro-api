@@ -1,6 +1,6 @@
 using System.Text.Json;
 using MediatR;
-using Propentro.Application.Features.Webhooks.Commands.SyncUser;
+using Propentro.Application.Features.Webhooks.Commands.HandleMembershipCreated;
 using Propentro.Contracts.Webhooks;
 using Propentro.Infrastructure.Webhooks;
 using Serilog;
@@ -10,8 +10,6 @@ namespace Propentro.Api.Endpoints;
 
 internal static class WebhookEndpoints
 {
-    private const string _authProvider = "clerk";
-
     public static void MapWebhookEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/v1/webhooks")
@@ -121,37 +119,27 @@ internal static class WebhookEndpoints
 
         switch (webhookEvent.Type)
         {
-            case "user.created":
-            case "user.updated":
-                var email = GetPrimaryEmail(data);
-                if (data.Id is null || email is null)
+            case "organizationMembership.created":
+                var userData = data.PublicUserData;
+                var orgData = data.Organization;
+
+                if (userData?.UserId is null || userData.Identifier is null || orgData?.Id is null)
                 {
-                    Log.Warning("Skipping {EventType}: missing Id or email in payload", webhookEvent.Type);
+                    Log.Warning("Skipping organizationMembership.created: missing user or org data in payload");
                     break;
                 }
-                await sender.Send(new SyncUserCommand(
-                    data.Id, _authProvider, email, data.FirstName, data.LastName), ct);
+
+                await sender.Send(new HandleMembershipCreatedCommand(
+                    userData.UserId,
+                    userData.Identifier,
+                    userData.FirstName,
+                    userData.LastName,
+                    orgData.Id), ct);
                 break;
 
             default:
-                Log.Information("Unknown Clerk webhook event type: {EventType}", webhookEvent.Type);
+                Log.Information("Unhandled Clerk webhook event type: {EventType}", webhookEvent.Type);
                 break;
         }
-    }
-
-    private static string? GetPrimaryEmail(ClerkWebhookData data)
-    {
-        if (data.EmailAddresses is null || data.EmailAddresses.Length == 0)
-            return null;
-
-        if (data.PrimaryEmailAddressId is not null)
-        {
-            var primary = data.EmailAddresses
-                .FirstOrDefault(e => e.Id == data.PrimaryEmailAddressId);
-            if (primary?.EmailAddressValue is not null)
-                return primary.EmailAddressValue;
-        }
-
-        return data.EmailAddresses[0].EmailAddressValue;
     }
 }

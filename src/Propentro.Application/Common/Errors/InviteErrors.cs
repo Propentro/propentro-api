@@ -1,6 +1,6 @@
 using Propentro.Application.Common.Models;
 
-namespace Propentro.Application.Features.Admin.Invites;
+namespace Propentro.Application.Common.Errors;
 
 public static class InviteErrors
 {
