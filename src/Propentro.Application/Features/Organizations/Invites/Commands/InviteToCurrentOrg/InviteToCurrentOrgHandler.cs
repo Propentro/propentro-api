@@ -142,7 +142,7 @@ public sealed class InviteToCurrentOrgHandler(
                 cancellationToken);
 
         if (hasPendingInvite)
-            return InviteErrors.AlreadyInvited;
+            return InviteErrors.AlreadyPending;
 
         // Send Clerk invitation (orgExternalId already validated non-null above)
         var clerkResult = await clerkService.InviteMemberAsync(

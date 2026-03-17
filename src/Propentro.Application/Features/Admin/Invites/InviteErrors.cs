@@ -13,7 +13,7 @@ public static class InviteErrors
     public static readonly Error AlreadyMember = Error.Conflict(
         "Invite.AlreadyMember", "User is already a member of this organization.");
 
-    public static readonly Error AlreadyInvited = Error.Conflict(
+    public static readonly Error AlreadyPending = Error.Conflict(
         "Invite.AlreadyPending", "A pending invite already exists for this email and organization.");
 
     public static readonly Error SyncFailed = Error.ExternalService(

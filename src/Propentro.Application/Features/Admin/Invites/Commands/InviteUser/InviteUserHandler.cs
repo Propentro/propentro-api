@@ -137,7 +137,7 @@ public sealed class InviteUserHandler(
                 cancellationToken);
 
         if (hasPendingInvite)
-            return InviteErrors.AlreadyInvited;
+            return InviteErrors.AlreadyPending;
 
         // Send Clerk invitation — org must be linked to Clerk
         if (string.IsNullOrEmpty(org.ExternalId))
