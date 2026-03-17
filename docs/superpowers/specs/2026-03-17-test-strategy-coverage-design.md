@@ -83,12 +83,12 @@ Every endpoint gets at minimum:
 | `GET /admin/organizations` | `GetOrganizationsTests` | happy, 401, 403 |
 | `GET /admin/organizations/{id}` | `GetOrganizationTests` | happy, 401, 403, 404 |
 | `PATCH /admin/organizations/{id}` | `UpdateOrganizationTests` | happy, 401, 403, 400, 404 |
-| `PATCH /admin/organizations/{id}/reactivate` | `ReactivateOrganizationTests` | happy, 401, 403, 409 already active |
+| `PATCH /admin/organizations/{id}/reactivate` | `ReactivateOrganizationTests` | happy, 401, 403, 404, 409 already active |
 | `DELETE /admin/organizations/{id}` | `DeleteOrganizationTests` | happy, 401, 403, 404, X-Confirm-Delete |
 | `GET /admin/users` | `GetUsersTests` | happy, 401, 403 |
 | `GET /admin/users/{id}` | `GetUserTests` | happy, 401, 403, 404 |
 | `PATCH /admin/users/{id}/deactivate` | `DeactivateUserTests` | happy, 401, 403, 404, 409 already inactive |
-| `PATCH /admin/users/{id}/reactivate` | `ReactivateUserTests` | happy, 401, 403, 409 already active |
+| `PATCH /admin/users/{id}/reactivate` | `ReactivateUserTests` | happy, 401, 403, 404, 409 already active |
 | `DELETE /admin/users/{id}` | `DeleteUserTests` | happy, 401, 403, 404, X-Confirm-Delete |
 | `GET /admin/me` | `AdminGetProfileTests` | happy, 401, 403 |
 | `PATCH /admin/organizations/{organizationId}/members/{id}/deactivate` | `AdminDeactivateMemberTests` | happy, 401, 403, 404, 409 |
@@ -97,7 +97,7 @@ Every endpoint gets at minimum:
 | `GET /admin/organizations/{organizationId}/members` | `AdminGetMembersTests` | happy, 401, 403, 404 |
 | `POST /admin/organizations/{organizationId}/invites` | `AdminInviteUserTests` | happy, 401, 403, 400, 200 (existing user) vs 201 (new user) |
 | `GET /admin/organizations/{organizationId}/invites` | `AdminGetOrgInvitesTests` | happy, 401, 403, 404 |
-| `PATCH /admin/invites/{id}/cancel` | `AdminCancelInviteTests` | happy, 401, 403, 409 not pending |
+| `PATCH /admin/invites/{id}/cancel` | `AdminCancelInviteTests` | happy, 401, 403, 404, 409 not pending |
 | `GET /admin/invites` | `AdminGetInvitesTests` | happy, 401, 403 |
 
 ## Unit Test Strategy
