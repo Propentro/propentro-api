@@ -1,7 +1,25 @@
+using System.Data;
 using System.Data.Common;
+using Dapper;
 using Microsoft.Data.Sqlite;
 
 namespace Propentro.Application.Tests.Shared;
+
+/// <summary>
+/// Dapper type handler that maps Guid parameters to/from TEXT in SQLite.
+/// Without this, Dapper sends Guid values as binary blobs which do not match
+/// the text-formatted UUIDs stored by TestDbHelper.
+/// </summary>
+internal sealed class GuidTextTypeHandler : SqlMapper.TypeHandler<Guid>
+{
+    public static readonly GuidTextTypeHandler Instance = new();
+
+    public override void SetValue(IDbDataParameter parameter, Guid value)
+        => parameter.Value = value.ToString();
+
+    public override Guid Parse(object value)
+        => Guid.Parse((string)value);
+}
 
 /// <summary>
 /// Creates SQLite in-memory databases for testing outbox event handlers that use Dapper.
@@ -12,6 +30,13 @@ internal sealed class TestDbHelper : IDisposable
 {
     private readonly string _dbName = Guid.NewGuid().ToString("N");
     private readonly SqliteConnection _keepAlive;
+
+    static TestDbHelper()
+    {
+        SqlMapper.RemoveTypeMap(typeof(Guid));
+        SqlMapper.RemoveTypeMap(typeof(Guid?));
+        SqlMapper.AddTypeHandler(GuidTextTypeHandler.Instance);
+    }
 
     public TestDbHelper()
     {
