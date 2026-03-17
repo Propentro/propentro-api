@@ -12,6 +12,18 @@ namespace Propentro.Infrastructure.Authentication;
 public sealed class ClerkOrganizationService(HttpClient httpClient, IConfiguration configuration)
     : IClerkOrganizationService
 {
+    private static readonly Error NotConfiguredError = Error.ExternalService(
+        "ExternalService.NotConfigured",
+        "An external service is not properly configured. Please contact support.");
+
+    private static readonly Error UnavailableError = Error.ExternalService(
+        "ExternalService.Unavailable",
+        "An external service is temporarily unavailable. Please try again later.");
+
+    private static readonly Error SyncFailedError = Error.ExternalService(
+        "ExternalService.SyncFailed",
+        "An external service is temporarily unavailable. Please try again later.");
+
     private readonly string? _secretKey = configuration["Clerk:SecretKey"];
 
     public async Task<Result> UpdateOrganizationAsync(
@@ -20,7 +32,7 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_secretKey))
-            return Result.Failure(new Error("Clerk.NotConfigured", "Clerk secret key is not configured. Cannot sync to Clerk.", ErrorType.Failure));
+            return Result.Failure(NotConfiguredError);
 
         httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _secretKey);
@@ -45,12 +57,12 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
             Log.Warning("Clerk organization update returned {StatusCode} for {ExternalId}. Body: {Body}",
                 response.StatusCode, externalId, body);
 
-            return Result.Failure(new Error("Clerk.UpdateFailed", body, ErrorType.Failure));
+            return Result.Failure(SyncFailedError);
         }
         catch (HttpRequestException ex)
         {
             Log.Error(ex, "HTTP error syncing organization {ExternalId} to Clerk", externalId);
-            return Result.Failure(new Error("Clerk.Unavailable", ex.Message, ErrorType.Failure));
+            return Result.Failure(UnavailableError);
         }
     }
 
@@ -61,7 +73,7 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_secretKey))
-            return Result.Failure(new Error("Clerk.NotConfigured", "Clerk secret key is not configured. Cannot sync to Clerk.", ErrorType.Failure));
+            return Result.Failure(NotConfiguredError);
 
         httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _secretKey);
@@ -79,18 +91,18 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
 
             if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
-                return Result.Failure(new Error("Member.AlreadyInvited",
-                    "This user has already been invited or is already a member.", ErrorType.Conflict));
+                return Result.Failure(Error.Conflict(
+                    "Invite.AlreadyPending", "A pending invite already exists for this email and organization."));
 
             Log.Warning("Clerk invitation failed {StatusCode} for {Email}. Body: {Body}",
                 response.StatusCode, email, body);
 
-            return Result.Failure(new Error("Clerk.InvitationFailed", body, ErrorType.Failure));
+            return Result.Failure(SyncFailedError);
         }
         catch (HttpRequestException ex)
         {
             Log.Error(ex, "HTTP error inviting {Email} to organization {OrgExternalId}", email, orgExternalId);
-            return Result.Failure(new Error("Clerk.Unavailable", ex.Message, ErrorType.Failure));
+            return Result.Failure(UnavailableError);
         }
     }
 
@@ -101,7 +113,7 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_secretKey))
-            return Result.Failure(new Error("Clerk.NotConfigured", "Clerk secret key is not configured. Cannot sync to Clerk.", ErrorType.Failure));
+            return Result.Failure(NotConfiguredError);
 
         httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _secretKey);
@@ -126,12 +138,12 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
             Log.Warning("Clerk member add failed {StatusCode} for {UserExternalId}. Body: {Body}",
                 response.StatusCode, userExternalId, body);
 
-            return Result.Failure(new Error("Clerk.AddMemberFailed", body, ErrorType.Failure));
+            return Result.Failure(SyncFailedError);
         }
         catch (HttpRequestException ex)
         {
             Log.Error(ex, "HTTP error adding {UserExternalId} to organization {OrgExternalId}", userExternalId, orgExternalId);
-            return Result.Failure(new Error("Clerk.Unavailable", ex.Message, ErrorType.Failure));
+            return Result.Failure(UnavailableError);
         }
     }
 
@@ -141,7 +153,7 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_secretKey))
-            return Result.Failure(new Error("Clerk.NotConfigured", "Clerk secret key is not configured. Cannot sync to Clerk.", ErrorType.Failure));
+            return Result.Failure(NotConfiguredError);
 
         httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _secretKey);
@@ -165,12 +177,12 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
             Log.Warning("Clerk membership removal failed {StatusCode} for {UserExternalId}. Body: {Body}",
                 response.StatusCode, userExternalId, body);
 
-            return Result.Failure(new Error("Clerk.RemoveMemberFailed", body, ErrorType.Failure));
+            return Result.Failure(SyncFailedError);
         }
         catch (HttpRequestException ex)
         {
             Log.Error(ex, "HTTP error removing {UserExternalId} from organization {OrgExternalId}", userExternalId, orgExternalId);
-            return Result.Failure(new Error("Clerk.Unavailable", ex.Message, ErrorType.Failure));
+            return Result.Failure(UnavailableError);
         }
     }
 
@@ -178,7 +190,7 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
         string name, string slug, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_secretKey))
-            return Result.Failure<string>(new Error("Clerk.NotConfigured", "Clerk secret key is not configured. Cannot sync to Clerk.", ErrorType.Failure));
+            return Result.Failure<string>(NotConfiguredError);
 
         httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _secretKey);
@@ -202,12 +214,12 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
             Log.Warning("Clerk organization create failed {StatusCode}. Body: {Body}",
                 response.StatusCode, errorBody);
 
-            return Result.Failure<string>(new Error("Clerk.CreateOrgFailed", errorBody, ErrorType.Failure));
+            return Result.Failure<string>(SyncFailedError);
         }
         catch (HttpRequestException ex)
         {
             Log.Error(ex, "HTTP error creating organization in Clerk");
-            return Result.Failure<string>(new Error("Clerk.Unavailable", ex.Message, ErrorType.Failure));
+            return Result.Failure<string>(UnavailableError);
         }
     }
 
@@ -215,7 +227,7 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
         string externalId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_secretKey))
-            return Result.Failure(new Error("Clerk.NotConfigured", "Clerk secret key is not configured. Cannot sync to Clerk.", ErrorType.Failure));
+            return Result.Failure(NotConfiguredError);
 
         httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _secretKey);
@@ -242,12 +254,12 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
             Log.Warning("Clerk organization delete failed {StatusCode} for {ExternalId}. Body: {Body}",
                 response.StatusCode, externalId, body);
 
-            return Result.Failure(new Error("Clerk.DeleteOrgFailed", body, ErrorType.Failure));
+            return Result.Failure(SyncFailedError);
         }
         catch (HttpRequestException ex)
         {
             Log.Error(ex, "HTTP error deleting organization {ExternalId} from Clerk", externalId);
-            return Result.Failure(new Error("Clerk.Unavailable", ex.Message, ErrorType.Failure));
+            return Result.Failure(UnavailableError);
         }
     }
 
@@ -255,7 +267,7 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
         string externalOrgId, string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_secretKey))
-            return Result.Failure(new Error("Clerk.NotConfigured", "Clerk secret key is not configured. Cannot sync to Clerk.", ErrorType.Failure));
+            return Result.Failure(NotConfiguredError);
 
         httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _secretKey);
@@ -309,7 +321,7 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
         string userExternalId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_secretKey))
-            return Result.Failure(new Error("Clerk.NotConfigured", "Clerk secret key is not configured. Cannot sync to Clerk.", ErrorType.Failure));
+            return Result.Failure(NotConfiguredError);
 
         httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _secretKey);
@@ -336,12 +348,12 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
             Log.Warning("Clerk user delete failed {StatusCode} for {ExternalId}. Body: {Body}",
                 response.StatusCode, userExternalId, body);
 
-            return Result.Failure(new Error("Clerk.DeleteUserFailed", body, ErrorType.Failure));
+            return Result.Failure(SyncFailedError);
         }
         catch (HttpRequestException ex)
         {
             Log.Error(ex, "HTTP error deleting user {ExternalId} from Clerk", userExternalId);
-            return Result.Failure(new Error("Clerk.Unavailable", ex.Message, ErrorType.Failure));
+            return Result.Failure(UnavailableError);
         }
     }
 }
