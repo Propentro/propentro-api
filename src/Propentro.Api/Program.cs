@@ -6,6 +6,7 @@ using Propentro.Application;
 using Propentro.Infrastructure;
 using Scalar.AspNetCore;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Serilog;
 using Serilog.Events;
 
@@ -67,10 +68,18 @@ try
     });
 
     // Health Checks
-    builder.Services.AddHealthChecks()
+    var healthChecks = builder.Services.AddHealthChecks()
         .AddNpgSql(builder.Configuration.GetConnectionString("Database")!,
             name: "postgresql",
             tags: ["db", "ready"]);
+
+    var redisConnectionString = builder.Configuration.GetConnectionString("Cache");
+    if (!string.IsNullOrWhiteSpace(redisConnectionString))
+    {
+        healthChecks.AddRedis(redisConnectionString,
+            name: "redis",
+            tags: ["cache", "ready"]);
+    }
 
     // Rate Limiting
     builder.Services.AddRateLimiter(options =>
@@ -121,8 +130,16 @@ try
     // and endpoint-specific permissions (RequirePermissionAttribute)
     app.UseAuthorization();
 
-    // Health check endpoint (no auth required)
-    app.MapHealthChecks("/health").AllowAnonymous();
+    // Health check endpoints (no auth required)
+    app.MapHealthChecks("/health", new HealthCheckOptions
+    {
+        Predicate = _ => false
+    }).AllowAnonymous();
+
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("ready")
+    }).AllowAnonymous();
 
     // API Endpoints
     app.MapApiEndpoints();

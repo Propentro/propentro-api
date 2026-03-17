@@ -17,6 +17,7 @@
     <PackageReference Include="Scalar.AspNetCore" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" />
   </ItemGroup>
 
 </Project>
