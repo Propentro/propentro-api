@@ -1,6 +1,8 @@
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Propentro.Application.Common.Behaviors;
+using Propentro.Application.Common.Interfaces;
+using Propentro.Application.Common.Services;
 
 namespace Propentro.Application;
 
@@ -28,6 +30,8 @@ public static class DependencyInjection
         });
 
         services.AddValidatorsFromAssembly(assembly);
+
+        services.AddScoped<IInviteService, InviteService>();
 
         return services;
     }
