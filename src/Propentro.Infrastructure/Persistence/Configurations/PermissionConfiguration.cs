@@ -13,6 +13,7 @@ public sealed class PermissionConfiguration : IEntityTypeConfiguration<Permissio
 
         builder.Property(e => e.Id).HasColumnName("id");
         builder.Property(e => e.Code).HasColumnName("code").IsRequired();
+        builder.HasIndex(e => e.Code).IsUnique();
         builder.Property(e => e.GroupName).HasColumnName("group_name").IsRequired();
         builder.Property(e => e.Description).HasColumnName("description");
         builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");

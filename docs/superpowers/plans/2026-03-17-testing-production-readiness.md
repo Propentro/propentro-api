@@ -522,7 +522,6 @@ internal static class TestConstants
     // Headers used by TestAuthHandler
     public const string TestUserIdHeader = "X-Test-User-Id";
     public const string TestOrgIdHeader = "X-Test-Org-Id";
-    public const string TestIsAdminHeader = "X-Test-Is-Admin";
 }
 ```
 
@@ -587,8 +586,13 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 using Npgsql;
+using Propentro.Application.Common.Interfaces.Authentication;
+using Propentro.Application.Common.Interfaces.Email;
 using Propentro.Application.Common.Interfaces.Persistence;
+using Propentro.Application.Common.Interfaces.Storage;
+using Propentro.Application.Common.Models;
 using Propentro.Infrastructure.Persistence;
 using Testcontainers.PostgreSql;
 
@@ -610,6 +614,11 @@ public sealed class PropentroApiFactory : WebApplicationFactory<Program>, IAsync
         .WithUsername("test")
         .WithPassword("test")
         .Build();
+
+    /// <summary>
+    /// Instance-scoped seeder — access seeded IDs via factory.Seeder.Org1PublicId, etc.
+    /// </summary>
+    public DatabaseSeeder Seeder { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -643,6 +652,30 @@ public sealed class PropentroApiFactory : WebApplicationFactory<Program>, IAsync
                 d => d.ServiceType.FullName?.Contains("Quartz") == true).ToList();
             foreach (var descriptor in quartzDescriptors)
                 services.Remove(descriptor);
+
+            // Replace external services with NSubstitute mocks
+            // Prevents real HTTP calls to Clerk, Resend, Cloudflare R2
+            var clerkMock = Substitute.For<IClerkOrganizationService>();
+            clerkMock.CreateOrganizationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(Result.Success<string>("org_clerk_fake"));
+            clerkMock.InviteMemberAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(Result.Success());
+            clerkMock.AddMemberAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(Result.Success());
+            clerkMock.RemoveMemberAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(Result.Success());
+            clerkMock.UpdateOrganizationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(Result.Success());
+            clerkMock.DeleteOrganizationAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(Result.Success());
+            clerkMock.RevokeInvitationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(Result.Success());
+            clerkMock.DeleteUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns(Result.Success());
+
+            ReplaceService(services, clerkMock);
+            ReplaceService(services, Substitute.For<IEmailService>());
+            ReplaceService(services, Substitute.For<IBlobStorageService>());
         });
 
         builder.UseEnvironment("Testing");
@@ -661,6 +694,15 @@ public sealed class PropentroApiFactory : WebApplicationFactory<Program>, IAsync
     async Task IAsyncLifetime.DisposeAsync()
     {
         await _dbContainer.DisposeAsync();
+    }
+
+    private static void ReplaceService<T>(IServiceCollection services, T mock) where T : class
+    {
+        var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(T));
+        if (descriptor is not null)
+            services.Remove(descriptor);
+
+        services.AddSingleton(mock);
     }
 }
 ```
@@ -698,23 +740,28 @@ using Propentro.Infrastructure.Persistence;
 
 namespace Propentro.Api.Tests.Shared;
 
-internal static class DatabaseSeeder
+/// <summary>
+/// Instance-based seeder — each PropentroApiFactory owns its own seeder instance.
+/// This prevents static property race conditions when xUnit runs test classes in parallel
+/// (each class gets its own factory + container + seeder).
+/// </summary>
+internal sealed class DatabaseSeeder
 {
     // Known internal IDs for test assertions
-    public static Guid Org1Id { get; private set; }
-    public static Guid Org2Id { get; private set; }
-    public static Guid User1Id { get; private set; }
-    public static Guid User2Id { get; private set; }
-    public static Guid AdminUserId { get; private set; }
-    public static Guid DefaultRoleId { get; private set; }
-    public static string Org1PublicId { get; private set; } = default!;
-    public static string Org2PublicId { get; private set; } = default!;
-    public static string User1PublicId { get; private set; } = default!;
-    public static string User2PublicId { get; private set; } = default!;
-    public static string AdminUserPublicId { get; private set; } = default!;
-    public static string DefaultRolePublicId { get; private set; } = default!;
+    public Guid Org1Id { get; private set; }
+    public Guid Org2Id { get; private set; }
+    public Guid User1Id { get; private set; }
+    public Guid User2Id { get; private set; }
+    public Guid AdminUserId { get; private set; }
+    public Guid DefaultRoleId { get; private set; }
+    public string Org1PublicId { get; private set; } = default!;
+    public string Org2PublicId { get; private set; } = default!;
+    public string User1PublicId { get; private set; } = default!;
+    public string User2PublicId { get; private set; } = default!;
+    public string AdminUserPublicId { get; private set; } = default!;
+    public string DefaultRolePublicId { get; private set; } = default!;
 
-    public static async Task SeedAsync(IServiceProvider services)
+    public async Task SeedAsync(IServiceProvider services)
     {
         using var scope = services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -821,13 +868,16 @@ internal static class DatabaseSeeder
         dbContext.Roles.Add(defaultRole);
 
         // Assign all permissions to the default role
+        // Permissions must be seeded by EF Core migrations. If empty, the default role
+        // will have no permissions and authorization tests will fail with 403.
         var permissions = await dbContext.Permissions.ToListAsync();
         foreach (var permission in permissions)
         {
             dbContext.RolePermissions.Add(new RolePermission
             {
                 RoleId = defaultRole.Id,
-                PermissionId = permission.Id
+                PermissionId = permission.Id,
+                CreatedAt = DateTimeOffset.UtcNow
             });
         }
 
@@ -942,7 +992,7 @@ internal static class HttpClientExtensions
 In `PropentroApiFactory.InitializeAsync()`, add after `MigrateAsync()`:
 
 ```csharp
-await DatabaseSeeder.SeedAsync(Services);
+await Seeder.SeedAsync(Services);
 ```
 
 - [ ] **Step 4: Verify build**
@@ -1246,7 +1296,7 @@ public sealed class DeactivateMemberTests(PropentroApiFactory factory)
         var client = factory.CreateAnonymousClient();
 
         var response = await client.PatchAsync(
-            $"/v1/organizations/members/{DatabaseSeeder.User1PublicId}/deactivate", null);
+            $"/v1/organizations/members/{factory.Seeder.User1PublicId}/deactivate", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -1403,7 +1453,7 @@ public sealed class InviteUserTests(PropentroApiFactory factory)
     public async Task Invite_Unauthenticated_Returns_401()
     {
         var client = factory.CreateAnonymousClient();
-        var request = new { Email = "new@test.com", RoleId = DatabaseSeeder.DefaultRolePublicId };
+        var request = new { Email = "new@test.com", RoleId = factory.Seeder.DefaultRolePublicId };
 
         var response = await client.PostAsJsonAsync("/v1/organizations/invites", request);
 
@@ -1414,7 +1464,7 @@ public sealed class InviteUserTests(PropentroApiFactory factory)
     public async Task Invite_With_Invalid_Email_Returns_400()
     {
         var client = factory.CreateClientAsUser1();
-        var request = new { Email = "not-an-email", RoleId = DatabaseSeeder.DefaultRolePublicId };
+        var request = new { Email = "not-an-email", RoleId = factory.Seeder.DefaultRolePublicId };
 
         var response = await client.PostAsJsonAsync("/v1/organizations/invites", request);
 
@@ -1598,7 +1648,7 @@ public sealed class DeactivateOrganizationTests(PropentroApiFactory factory)
         var client = factory.CreateClientAsUser1();
 
         var response = await client.PatchAsync(
-            $"/v1/admin/organizations/{DatabaseSeeder.Org1PublicId}/deactivate", null);
+            $"/v1/admin/organizations/{factory.Seeder.Org1PublicId}/deactivate", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -1807,6 +1857,8 @@ git commit -m "test: add unit tests for PublicIdGenerator"
 
 ## Task 14: Application Unit Tests — Validators
 
+**Prerequisite:** Verify `FluentValidation.TestHelper` namespace is available in the test project. The `Propentro.Application` project references `FluentValidation.DependencyInjectionExtensions` which transitively includes `FluentValidation`. If `TestValidate()` is not found, add `<PackageReference Include="FluentValidation" />` to `tests/Propentro.Application.Tests/Propentro.Application.Tests.csproj`.
+
 **Files:**
 - Create: `tests/Propentro.Application.Tests/Validators/UpdateOrganizationSettingsValidatorTests.cs`
 - Create: `tests/Propentro.Application.Tests/Validators/CreateRoleValidatorTests.cs`
@@ -1997,7 +2049,7 @@ public async Task InvokeAsync(HttpContext context, IUserContext userContext)
 {
     // Correlation ID — use incoming header or generate new
     var correlationId = context.Request.Headers["X-Correlation-Id"].FirstOrDefault()
-        ?? Guid.NewGuid().ToString("N");
+        ?? Guid.NewGuid().ToString();
     context.Response.Headers["X-Correlation-Id"] = correlationId;
 
     // Initialize user context (resolves external IDs to internal IDs)
@@ -2092,7 +2144,13 @@ Replace the existing `MapHealthChecks` call:
 
 ```csharp
 // Health check endpoints (no auth required)
-app.MapHealthChecks("/health").AllowAnonymous();
+// /health = liveness only (app is running, no dependency checks)
+app.MapHealthChecks("/health", new()
+{
+    Predicate = _ => false
+}).AllowAnonymous();
+
+// /health/ready = readiness (PostgreSQL + Redis connectivity)
 app.MapHealthChecks("/health/ready", new()
 {
     Predicate = check => check.Tags.Contains("ready")
@@ -2215,8 +2273,11 @@ Replace `src/Propentro.Application/Common/Behaviors/UnitOfWorkBehavior.cs`:
 ```csharp
 using MediatR;
 using Propentro.Application.Common.Interfaces.Authentication;
-using Propentro.Application.Common.Interfaces.Caching;
 using Propentro.Application.Common.Models;
+
+// Note: ICacheService and ICacheInvalidating are available via global using
+// for Propentro.Application.Common.Interfaces.Caching — do NOT add an explicit using
+// (TreatWarningsAsErrors + IDE0005 would break the build).
 
 namespace Propentro.Application.Common.Behaviors;
 
@@ -2443,6 +2504,9 @@ The spec lists additional test files that are **not covered in this plan**. Thes
 - `Features/Admin/Members/AdminDeactivateMemberTests.cs`
 - `Features/Admin/Members/AdminReactivateMemberTests.cs`
 - `Features/Admin/Members/AdminRemoveMemberTests.cs`
+- `Features/Organizations/Roles/UpdateRoleTests.cs`
+- `Features/Admin/Organizations/UpdateOrganizationTests.cs`
+- `Features/Admin/Organizations/DeleteOrganizationTests.cs`
 - `Features/Admin/Invites/AdminInviteUserTests.cs`
 - `Features/Admin/Me/AdminMeTests.cs` (admin `/v1/admin/me` endpoint)
 - `Features/Webhooks/ClerkWebhookTests.cs`
@@ -2462,3 +2526,6 @@ The spec lists additional test files that are **not covered in this plan**. Thes
 - `Services/InviteServiceTests.cs`
 
 These tests follow the same patterns established in Tasks 6-14. Once the infrastructure is proven, adding them is straightforward.
+
+### Structural (deferred)
+- **Sensitive data destructuring policy** (spec section 6) — mask connection strings, API keys, tokens in log properties. Deferred because there's no production traffic yet; which fields need masking will become clear with real usage.

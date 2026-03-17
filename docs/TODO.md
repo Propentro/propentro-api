@@ -17,7 +17,7 @@ Items that become valuable when real users generate traffic.
 
 ## Documentation
 
-- [ ] **Endpoint flow documentation** — For each endpoint: validation rules → business logic → events raised → response. Short, scannable format for quick reference.
+- [x] **Endpoint flow documentation** — For each endpoint: validation rules → business logic → events raised → response. Short, scannable format for quick reference. See `docs/endpoints/`.
 
 ## Cross-Cutting Concerns Checklist
 

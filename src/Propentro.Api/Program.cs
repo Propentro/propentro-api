@@ -6,23 +6,33 @@ using Propentro.Application;
 using Propentro.Infrastructure;
 using Scalar.AspNetCore;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Serilog;
 using Serilog.Events;
 
 // Configure Dapper to match snake_case DB columns to PascalCase C# properties
 Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
 
-Log.Logger = new LoggerConfiguration()
+var loggerConfiguration = new LoggerConfiguration()
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
     .Enrich.FromLogContext()
     .Enrich.WithMachineName()
-    .Enrich.WithProperty("Application", "Propentro.Api")
-    .WriteTo.Console(
+    .Enrich.WithProperty("Application", "Propentro.Api");
+
+if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production")
+{
+    loggerConfiguration.WriteTo.Console(new Serilog.Formatting.Json.JsonFormatter());
+}
+else
+{
+    loggerConfiguration.WriteTo.Console(
         outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
-        formatProvider: CultureInfo.InvariantCulture)
-    .CreateLogger();
+        formatProvider: CultureInfo.InvariantCulture);
+}
+
+Log.Logger = loggerConfiguration.CreateLogger();
 
 try
 {
@@ -67,10 +77,23 @@ try
     });
 
     // Health Checks
-    builder.Services.AddHealthChecks()
-        .AddNpgSql(builder.Configuration.GetConnectionString("Database")!,
+    var healthChecks = builder.Services.AddHealthChecks();
+
+    var dbConnectionString = builder.Configuration.GetConnectionString("Database");
+    if (!string.IsNullOrWhiteSpace(dbConnectionString))
+    {
+        healthChecks.AddNpgSql(dbConnectionString,
             name: "postgresql",
             tags: ["db", "ready"]);
+    }
+
+    var redisConnectionString = builder.Configuration.GetConnectionString("Cache");
+    if (!string.IsNullOrWhiteSpace(redisConnectionString))
+    {
+        healthChecks.AddRedis(redisConnectionString,
+            name: "redis",
+            tags: ["cache", "ready"]);
+    }
 
     // Rate Limiting
     builder.Services.AddRateLimiter(options =>
@@ -121,8 +144,16 @@ try
     // and endpoint-specific permissions (RequirePermissionAttribute)
     app.UseAuthorization();
 
-    // Health check endpoint (no auth required)
-    app.MapHealthChecks("/health").AllowAnonymous();
+    // Health check endpoints (no auth required)
+    app.MapHealthChecks("/health", new HealthCheckOptions
+    {
+        Predicate = _ => false
+    }).AllowAnonymous();
+
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("ready")
+    }).AllowAnonymous();
 
     // API Endpoints
     app.MapApiEndpoints();

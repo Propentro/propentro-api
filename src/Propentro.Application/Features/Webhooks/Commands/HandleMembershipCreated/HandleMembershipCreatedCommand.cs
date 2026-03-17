@@ -4,7 +4,7 @@ namespace Propentro.Application.Features.Webhooks.Commands.HandleMembershipCreat
 /// Processes a Clerk organizationMembership.created webhook.
 /// Upserts the user and resolves pending invites for this org.
 /// </summary>
-public record HandleMembershipCreatedCommand(
+public sealed record HandleMembershipCreatedCommand(
     string UserExternalId,
     string Email,
     string? FirstName,

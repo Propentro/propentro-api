@@ -74,6 +74,7 @@ dotnet restore Propentro.slnx && dotnet build Propentro.slnx --configuration Rel
 - **Private fields**: `_camelCase` prefix (enforced by `.editorconfig`).
 - **Namespaces**: File-scoped.
 - **Endpoints**: Grouped in `Api/Endpoints/`, composed via `MapApiEndpoints()`.
+- **Endpoint documentation**: Every endpoint must have a corresponding entry in `docs/endpoints/` following the structure mirroring `Api/Endpoints/`. When adding a new endpoint, add its documentation. When modifying a handler's business logic, validation, auth, or events, update the corresponding documentation. Format must match existing entries.
 - **GlobalUsings.cs**: After adding a global using, grep for and remove duplicate explicit `using` statements across the project (prevents `IDE0005` errors).
 - **Entity patterns**: `AggregateRoot` for aggregates, `OrganizationEntity` for tenant-scoped, `Entity` for base. Soft delete via `IsActive`. Audit fields via `IAuditableEntity`. Public IDs via `PublicIdGenerator` with entity-specific prefix.
 - **Public ID naming in DTOs/Commands**: Never expose the term "PublicId" in Contracts, Commands, or API responses. The external world sees only `Id`, `UserId`, `RoleId`, `InviteId`, etc. The fact that these are public IDs is an internal implementation detail. Handlers resolve these IDs internally via `entity.PublicId == request.Id`. Internal logs may use `PublicId` in structured property names (e.g., `{UserPublicId}`) since they are not client-facing.
@@ -93,10 +94,42 @@ dotnet restore Propentro.slnx && dotnet build Propentro.slnx --configuration Rel
 
 ## Testing
 
-- **Frameworks**: xUnit, FluentAssertions, NSubstitute
-- **Integration tests**: Testcontainers with `PostgreSqlBuilder("postgres:17-alpine")`. Requires Docker Desktop running. Uses `IClassFixture` — tests share one server; avoid destructive DB operations.
+- **Frameworks**: xUnit, FluentAssertions (7.x — MIT license, do NOT upgrade to 8.x), NSubstitute
 - **Test naming**: Underscores allowed (CA1707 suppressed in `/tests/.editorconfig`).
 - Integration tests use `InternalsVisibleTo` — `Program` is `public partial class` in Api.csproj.
+
+### Test Projects
+
+| Project | Type | What it tests | Location pattern |
+|---|---|---|---|
+| `Propentro.Api.Tests` | Integration | Endpoints end-to-end (HTTP → DB → response) | `Features/` mirrors `Api/Endpoints/` |
+| `Propentro.Architecture.Tests` | Architecture | Layer dependencies, CQRS conventions | Root-level test classes |
+| `Propentro.Domain.Tests` | Unit | Entity logic, value objects, pure functions | `Entities/` mirrors `Domain/Entities/` |
+| `Propentro.Application.Tests` | Unit | Validators, outbox event handlers | `Validators/` + `Features/.../EventHandlers/` |
+| `Propentro.Infrastructure.Tests` | Unit | Email templates, external service logic | Mirrors `Infrastructure/` structure |
+
+### When to Write Which Test
+
+| You added/changed... | Required test |
+|---|---|
+| New endpoint | Integration test in `Api.Tests/Features/` |
+| New validator | Unit test in `Application.Tests/Validators/` |
+| New outbox event handler | Unit test in `Application.Tests/Features/.../EventHandlers/` |
+| Business logic in entity | Unit test in `Domain.Tests/Entities/` |
+| Infrastructure service logic | Unit test in `Infrastructure.Tests/` |
+| New layer/convention rule | Architecture test in `Architecture.Tests/` (rare) |
+
+### Integration Tests (`Api.Tests`)
+
+- Testcontainers with `PostgreSqlBuilder("postgres:17-alpine")`. Requires Docker Desktop running.
+- `IClassFixture<PropentroApiFactory>` — all tests in a class share one server instance; avoid destructive DB operations.
+- `DatabaseSeeder` seeds 2 orgs, 3 users, roles, permissions via raw SQL (bypasses EF Core filters).
+- Use `HttpClientExtensions` helpers: `CreateClientAsUser1()`, `CreateClientAsUser2()`, `CreateClientAsAdmin()`, `CreateClientAsAnonymous()`.
+- Each endpoint test class must cover at minimum: happy path, auth (401/403), and validation (400) where applicable.
+
+### Test Coverage Rule
+
+**Every endpoint must have a corresponding integration test file.** No endpoint ships without tests.
 
 ## Error Handling
 
