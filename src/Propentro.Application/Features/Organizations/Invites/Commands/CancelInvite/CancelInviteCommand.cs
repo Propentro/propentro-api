@@ -1,4 +1,4 @@
-namespace Propentro.Application.Features.Admin.Invites.Commands.CancelInvite;
+namespace Propentro.Application.Features.Organizations.Invites.Commands.CancelInvite;
 
 public sealed record CancelInviteCommand(
     string Id,

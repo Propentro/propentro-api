@@ -1,7 +1,7 @@
 using MediatR;
 using Propentro.Api.Extensions;
 using Propentro.Application.Common.Interfaces.Authentication;
-using Propentro.Application.Features.Admin.Invites.Commands.CancelInvite;
+using Propentro.Application.Features.Organizations.Invites.Commands.CancelInvite;
 using Propentro.Application.Features.Admin.Invites.Commands.InviteUser;
 using Propentro.Application.Features.Admin.Invites.Queries.GetInvites;
 using Propentro.Application.Features.Admin.Invites.Queries.GetOrganizationInvites;

@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Models;
+using Propentro.Application.Features.Admin.Invites;
 
-namespace Propentro.Application.Features.Admin.Invites.Commands.CancelInvite;
+namespace Propentro.Application.Features.Organizations.Invites.Commands.CancelInvite;
 
 public sealed class CancelInviteHandler(
     IAppDbContext dbContext,
