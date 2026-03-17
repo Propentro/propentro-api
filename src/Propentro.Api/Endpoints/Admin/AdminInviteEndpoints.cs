@@ -1,7 +1,7 @@
 using MediatR;
 using Propentro.Api.Extensions;
 using Propentro.Application.Common.Interfaces.Authentication;
-using Propentro.Application.Features.Admin.Invites.Commands.CancelInvite;
+using Propentro.Application.Features.Organizations.Invites.Commands.CancelInvite;
 using Propentro.Application.Features.Admin.Invites.Commands.InviteUser;
 using Propentro.Application.Features.Admin.Invites.Queries.GetInvites;
 using Propentro.Application.Features.Admin.Invites.Queries.GetOrganizationInvites;
@@ -31,7 +31,7 @@ internal static class AdminInviteEndpoints
             .WithName("AdminListOrganizationInvites")
             .WithSummary("List organization invites");
 
-        group.MapDelete("/invites/{id}", CancelAsync)
+        group.MapPatch("/invites/{id}/cancel", CancelAsync)
             .WithName("AdminCancelInvite")
             .WithSummary("Cancel invite");
     }
@@ -58,7 +58,11 @@ internal static class AdminInviteEndpoints
         var command = new InviteUserCommand(
             organizationId, request.Email, request.RoleId, userContext.UserId);
         var result = await sender.Send(command, cancellationToken);
-        return result.ToHttpResult();
+        return result.Match(
+            inviteResult => inviteResult.IsDirectAdd
+                ? Results.Ok(inviteResult)
+                : Results.Created($"/invites/{inviteResult.InvitePublicId}", inviteResult),
+            error => error.ToHttpResult());
     }
 
     private static async Task<IResult> ListOrgInvitesAsync(

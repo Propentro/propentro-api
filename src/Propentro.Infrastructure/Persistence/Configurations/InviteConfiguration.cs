@@ -18,7 +18,7 @@ public sealed class InviteConfiguration : IEntityTypeConfiguration<Invite>
         builder.Property(e => e.RoleId).HasColumnName("role_id").IsRequired();
         builder.Property(e => e.Status).HasColumnName("status").IsRequired().HasDefaultValue("pending");
         builder.Property(e => e.InvitedById).HasColumnName("invited_by_id");
-        builder.Property(e => e.CancelledById).HasColumnName("cancelled_by_id");
+        builder.Property(e => e.CanceledById).HasColumnName("canceled_by_id");
         builder.Property(e => e.ExpiresAt).HasColumnName("expires_at");
         builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
         builder.Property(e => e.UpdatedAt).HasColumnName("updated_at");
@@ -38,9 +38,9 @@ public sealed class InviteConfiguration : IEntityTypeConfiguration<Invite>
             .HasForeignKey(e => e.InvitedById)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasOne(e => e.CancelledByUser)
+        builder.HasOne(e => e.CanceledByUser)
             .WithMany()
-            .HasForeignKey(e => e.CancelledById)
+            .HasForeignKey(e => e.CanceledById)
             .OnDelete(DeleteBehavior.SetNull);
     }
 }

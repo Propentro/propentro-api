@@ -19,8 +19,4 @@ public static class RoleErrors
         "A role with this name already exists in the organization.",
         ErrorType.Conflict);
 
-    public static readonly Error HasActiveMembers = new(
-        "Role.HasActiveMembers",
-        "Cannot delete a role that has active members assigned to it.",
-        ErrorType.Conflict);
 }

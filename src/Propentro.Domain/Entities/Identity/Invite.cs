@@ -10,7 +10,7 @@ public sealed class Invite : Entity
     {
         public const string Pending = "pending";
         public const string Accepted = "accepted";
-        public const string Cancelled = "cancelled";
+        public const string Canceled = "canceled";
     }
 
     public Guid OrganizationId { get; set; }
@@ -18,19 +18,19 @@ public sealed class Invite : Entity
     public Guid RoleId { get; set; }
     public string Status { get; set; } = Statuses.Pending;
     public Guid? InvitedById { get; set; }
-    public Guid? CancelledById { get; set; }
+    public Guid? CanceledById { get; set; }
     public DateTimeOffset? ExpiresAt { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? UpdatedAt { get; set; }
 
     // Navigation — does NOT implement IAuditableEntity since it uses
-    // InvitedById/CancelledById instead of standard CreatedById/UpdatedById
+    // InvitedById/CanceledById instead of standard CreatedById/UpdatedById
     public Organization Organization { get; set; } = default!;
     public Role Role { get; set; } = default!;
     public User? InvitedByUser { get; set; }
-    public User? CancelledByUser { get; set; }
+    public User? CanceledByUser { get; set; }
 
-    public bool IsExpired => ExpiresAt.HasValue && ExpiresAt.Value < DateTimeOffset.UtcNow;
-    public bool IsPendingAndValid => Status == Statuses.Pending && !IsExpired;
+    public bool IsExpired(DateTimeOffset utcNow) => ExpiresAt.HasValue && ExpiresAt.Value < utcNow;
+    public bool IsPendingAndValid(DateTimeOffset utcNow) => Status == Statuses.Pending && !IsExpired(utcNow);
 }

@@ -32,6 +32,9 @@ public sealed class DeactivateMemberHandler(
         if (membership.Status == OrganizationUser.Statuses.Deactivated)
             return MemberErrors.AlreadyDeactivated;
 
+        if (user.Id == currentUser.UserId)
+            return MemberErrors.CannotDeactivateSelf;
+
         // Guard: cannot deactivate the last owner
         var ownerRole = await dbContext.Roles
             .IgnoreQueryFilters()

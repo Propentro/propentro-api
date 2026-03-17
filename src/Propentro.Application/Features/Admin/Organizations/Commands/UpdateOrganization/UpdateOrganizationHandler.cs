@@ -42,7 +42,7 @@ public sealed class UpdateOrganizationHandler(
             .IgnoreQueryFilters()
             .CountAsync(ou => ou.OrganizationId == org.Id, cancellationToken);
 
-        Log.Information("Updated organisation {PublicId} ({Name})", org.PublicId, org.Name);
+        Log.Information("Updated organization {PublicId} ({Name})", org.PublicId, org.Name);
 
         return new AdminOrganizationResponse
         {

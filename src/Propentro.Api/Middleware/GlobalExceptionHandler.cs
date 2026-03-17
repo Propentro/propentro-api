@@ -78,14 +78,14 @@ internal sealed class GlobalExceptionHandler(IWebHostEnvironment env) : IExcepti
     {
         return (499, new ProblemDetails
         {
-            Type = "https://propentro.com/errors/cancelled",
-            Title = "Request Cancelled",
+            Type = "https://propentro.com/errors/canceled",
+            Title = "Request Canceled",
             Status = 499,
-            Detail = "The request was cancelled by the client.",
+            Detail = "The request was canceled by the client.",
             Instance = traceId,
             Extensions =
             {
-                ["code"] = "REQUEST_CANCELLED",
+                ["code"] = "REQUEST_CANCELED",
                 ["timestamp"] = DateTimeOffset.UtcNow
             }
         });

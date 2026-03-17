@@ -1,7 +1,7 @@
 using MediatR;
 using Propentro.Api.Extensions;
 using Propentro.Application.Common.Interfaces.Authentication;
-using Propentro.Application.Features.Admin.Invites.Commands.CancelInvite;
+using Propentro.Application.Features.Organizations.Invites.Commands.CancelInvite;
 using Propentro.Application.Features.Organizations.Invites.Commands.InviteToCurrentOrg;
 using Propentro.Application.Features.Organizations.Invites.Queries.GetCurrentOrgInvites;
 using Propentro.Contracts.Admin.Invites;
@@ -43,7 +43,11 @@ internal static class InviteEndpoints
             request.Email, request.RoleId,
             userContext.OrganizationId, userContext.UserId);
         var result = await sender.Send(command, cancellationToken);
-        return result.ToHttpResult();
+        return result.Match(
+            inviteResult => inviteResult.IsDirectAdd
+                ? Results.Ok(inviteResult)
+                : Results.Created($"/invites/{inviteResult.InvitePublicId}", inviteResult),
+            error => error.ToHttpResult());
     }
 
     private static async Task<IResult> ListAsync(

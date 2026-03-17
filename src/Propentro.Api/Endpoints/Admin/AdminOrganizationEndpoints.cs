@@ -2,6 +2,8 @@ using MediatR;
 using Propentro.Api.Extensions;
 using Propentro.Application.Features.Admin.Organizations.Commands.CreateOrganization;
 using Propentro.Application.Features.Admin.Organizations.Commands.DeactivateOrganization;
+using Propentro.Application.Features.Admin.Organizations.Commands.DeleteOrganization;
+using Propentro.Application.Features.Admin.Organizations.Commands.ReactivateOrganization;
 using Propentro.Application.Features.Admin.Organizations.Commands.UpdateOrganization;
 using Propentro.Application.Features.Admin.Organizations.Queries.GetOrganization;
 using Propentro.Application.Features.Admin.Organizations.Queries.GetOrganizations;
@@ -38,6 +40,14 @@ internal static class AdminOrganizationEndpoints
         group.MapPatch("/{id}/deactivate", DeactivateAsync)
             .WithName("AdminDeactivateOrganization")
             .WithSummary("Deactivate organization");
+
+        group.MapPatch("/{id}/reactivate", ReactivateAsync)
+            .WithName("AdminReactivateOrganization")
+            .WithSummary("Reactivate organization");
+
+        group.MapDelete("/{id}", DeleteAsync)
+            .WithName("AdminDeleteOrganization")
+            .WithSummary("Hard delete organization (irreversible)");
     }
 
     private static async Task<IResult> ListAsync(
@@ -86,6 +96,29 @@ internal static class AdminOrganizationEndpoints
         string id, ISender sender, CancellationToken ct)
     {
         var result = await sender.Send(new DeactivateOrganizationCommand(id), ct);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> ReactivateAsync(
+        string id, ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(new ReactivateOrganizationCommand(id), ct);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> DeleteAsync(
+        string id, HttpContext httpContext, ISender sender, CancellationToken ct)
+    {
+        var confirmHeader = httpContext.Request.Headers["X-Confirm-Delete"].FirstOrDefault();
+        if (string.IsNullOrEmpty(confirmHeader) || confirmHeader != id)
+        {
+            return Results.Problem(
+                statusCode: 400,
+                title: "Confirmation Required",
+                detail: "X-Confirm-Delete header must match the organization ID.");
+        }
+
+        var result = await sender.Send(new DeleteOrganizationCommand(id), ct);
         return result.ToHttpResult();
     }
 }

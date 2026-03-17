@@ -1,5 +1,6 @@
 using MediatR;
 using Propentro.Api.Extensions;
+using Propentro.Application.Common.Models;
 using Propentro.Application.Features.Organizations.Roles.Commands.CreateRole;
 using Propentro.Application.Features.Organizations.Roles.Commands.DeleteRole;
 using Propentro.Application.Features.Organizations.Roles.Commands.UpdateRole;
@@ -24,7 +25,7 @@ internal static class RolesEndpoints
             .WithName("GetOrganizationRoles")
             .WithSummary("Get all roles for the organization")
             .WithMetadata(new RequirePermissionAttribute("org:roles:read"))
-            .Produces<IReadOnlyList<RoleResponse>>()
+            .Produces<PagedResult<RoleResponse>>()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);
 
@@ -77,9 +78,13 @@ internal static class RolesEndpoints
             .ProducesProblem(StatusCodes.Status403Forbidden);
     }
 
-    private static async Task<IResult> GetRolesAsync(ISender sender, CancellationToken ct)
+    private static async Task<IResult> GetRolesAsync(
+        ISender sender,
+        int page = 1,
+        int pageSize = 25,
+        CancellationToken ct = default)
     {
-        var result = await sender.Send(new GetOrganizationRolesQuery(), ct);
+        var result = await sender.Send(new GetOrganizationRolesQuery(page, pageSize), ct);
         return result.ToHttpResult();
     }
 
