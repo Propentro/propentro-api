@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
-using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Models;
 
 namespace Propentro.Application.Features.Organizations.Roles.Commands.UpdateRole;
@@ -8,8 +7,6 @@ namespace Propentro.Application.Features.Organizations.Roles.Commands.UpdateRole
 public sealed class UpdateRoleHandler(
     IAppDbContext dbContext,
     IUserContext currentUser,
-    IPermissionService permissionService,
-    ICacheService cache,
     IDateTimeProvider dateTimeProvider) : ICommandHandler<UpdateRoleCommand>
 {
     public async Task<Result> Handle(UpdateRoleCommand request, CancellationToken cancellationToken)
@@ -49,7 +46,6 @@ public sealed class UpdateRoleHandler(
 
         if (request.PermissionCodes is not null)
         {
-            // Remove old RolePermissions
             var existingPermissions = await dbContext.RolePermissions
                 .Where(rp => rp.RoleId == role.Id)
                 .ToListAsync(cancellationToken);
@@ -57,7 +53,6 @@ public sealed class UpdateRoleHandler(
             foreach (var existing in existingPermissions)
                 dbContext.RolePermissions.Remove(existing);
 
-            // Add new RolePermissions
             if (request.PermissionCodes.Length > 0)
             {
                 var permissions = await dbContext.Permissions
@@ -75,9 +70,6 @@ public sealed class UpdateRoleHandler(
                 }
             }
         }
-
-        await permissionService.InvalidateOrganizationPermissionsCacheAsync(currentUser.OrganizationId, cancellationToken);
-        await cache.RemoveAsync($"org:{currentUser.OrganizationId}:roles", cancellationToken);
 
         return Result.Success();
     }
