@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Spelling — MANDATORY
+
+**American English everywhere.** Code, comments, log messages, error messages, UI text, documentation — no exceptions.
+- `organization` (not ~~organisation~~), `color` (not ~~colour~~), `favorite` (not ~~favourite~~), `canceled` (not ~~cancelled~~), `center` (not ~~centre~~), `license` (not ~~licence~~)
+- This applies to string literals in `Log.*` calls, error messages, XML doc comments, and all other text
+- When modifying a file, fix any existing British spellings you encounter in the lines you touch
+
 ## System Context
 
 This repo is part of the **Propentro** multi-repo ecosystem. See `../CLAUDE.md` for system-wide conventions, data flow, and cross-repo navigation.
@@ -67,6 +74,11 @@ dotnet restore Propentro.slnx && dotnet build Propentro.slnx --configuration Rel
 - Cross-feature business logic goes in `Application/Common/Services/` with an interface in `Application/Common/Interfaces/`.
 - Register as `Scoped` in `DependencyInjection.cs` after `AddValidatorsFromAssembly`.
 - Example: `IInviteService` — shared invite logic used by both org-scoped and admin invite handlers.
+
+### Cache Invalidation
+- **Org-scoped commands:** Implement `ICacheInvalidating` on the command record. `UnitOfWorkBehavior` handles post-commit invalidation with automatic `org:{OrgId}:` prefix. Wildcard keys (e.g., `"roles-*"`) use `RemoveByPatternAsync`.
+- **Admin commands:** Use `ICacheService` directly in the handler with fully-qualified keys (e.g., `$"org:{org.Id}:user-permissions:*"`). Admin commands have no org context, so `ICacheInvalidating` cannot be used.
+- **Permission cache key format:** `org:{orgId}:user-permissions:{userId}` — follows the `org:{OrgId}:` prefix convention.
 
 ## Key Conventions
 
