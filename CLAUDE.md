@@ -67,6 +67,19 @@ dotnet restore Propentro.slnx && dotnet build Propentro.slnx --configuration Rel
 - **GlobalUsings.cs**: After adding a global using, grep for and remove duplicate explicit `using` statements across the project (prevents `IDE0005` errors).
 - **Entity patterns**: `AggregateRoot` for aggregates, `OrganizationEntity` for tenant-scoped, `Entity` for base. Soft delete via `IsActive`. Audit fields via `IAuditableEntity`. Public IDs via `PublicIdGenerator` with entity-specific prefix.
 
+### Entity Lifecycle Rules
+- **Organization**: Deactivate (`is_active = false`) or CASCADE hard delete (super admin only)
+- **User**: Deactivate (`is_active = false`) or hard delete with SET NULL FKs (GDPR, super admin only)
+- **Membership**: Deactivate (`status = 'deactivated'`, temporary) or hard delete (`organization_users` row deleted, permanent)
+- Org deactivate → all members deactivated. Org reactivate → org active, members stay deactivated.
+- Self-deactivation prohibited (`Member.CannotDeactivateSelf`)
+- Hard deletes require `X-Confirm-Delete` header matching the resource public ID
+
+### Invite Flow
+- **Existing Clerk user**: Direct add to org → `organization_users` (active) + `organization_user_roles` + invite record (accepted, audit trail) → HTTP 200
+- **New user**: Create invite record (pending) + send Clerk invitation email → HTTP 201
+- Expired invites cannot be accepted. Only pending invites can be canceled.
+
 ## Testing
 
 - **Frameworks**: xUnit, FluentAssertions, NSubstitute

@@ -75,17 +75,17 @@ internal static class AdminUserEndpoints
 
     private static async Task<IResult> DeleteAsync(
         string id,
-        HttpRequest request,
+        HttpContext httpContext,
         ISender sender,
         CancellationToken cancellationToken)
     {
-        if (!request.Headers.TryGetValue("X-Confirm-Delete", out var confirmHeader) ||
-            !string.Equals(confirmHeader, "true", StringComparison.OrdinalIgnoreCase))
+        var confirmHeader = httpContext.Request.Headers["X-Confirm-Delete"].FirstOrDefault();
+        if (string.IsNullOrEmpty(confirmHeader) || confirmHeader != id)
         {
             return Results.Problem(
-                statusCode: StatusCodes.Status400BadRequest,
+                statusCode: 400,
                 title: "Confirmation Required",
-                detail: "Include the 'X-Confirm-Delete: true' header to confirm this irreversible operation.");
+                detail: "X-Confirm-Delete header must match the user ID.");
         }
 
         var result = await sender.Send(new DeleteUserCommand(id), cancellationToken);
