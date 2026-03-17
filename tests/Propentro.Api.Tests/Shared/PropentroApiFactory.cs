@@ -110,10 +110,10 @@ public sealed class PropentroApiFactory : WebApplicationFactory<Program>, IAsync
     {
         await _dbContainer.StartAsync();
 
-        // Run EF Core migrations on the test container
+        // Create schema from EF Core model (no migrations — schema managed by propentro-db)
         using var scope = Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await dbContext.Database.MigrateAsync();
+        await dbContext.Database.EnsureCreatedAsync();
 
         // Seed baseline test data
         await Seeder.SeedAsync(scope.ServiceProvider);
