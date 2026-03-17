@@ -38,4 +38,8 @@ public static class MemberErrors
         "Member.CannotDeactivateSelf",
         "You cannot deactivate your own membership.",
         ErrorType.Forbidden);
+
+    public static readonly Error SyncFailed = Error.ExternalService(
+        "Member.SyncFailed",
+        "Failed to sync member changes. Please try again.");
 }

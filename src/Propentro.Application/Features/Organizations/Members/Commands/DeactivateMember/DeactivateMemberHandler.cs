@@ -72,7 +72,7 @@ public sealed class DeactivateMemberHandler(
             if (clerkResult.IsFailure)
             {
                 Log.Warning("Failed to remove user {UserId} from Clerk org — aborting deactivation", user.PublicId);
-                return clerkResult;
+                return MemberErrors.SyncFailed;
             }
         }
 
