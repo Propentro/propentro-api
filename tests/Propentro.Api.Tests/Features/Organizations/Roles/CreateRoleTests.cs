@@ -66,4 +66,18 @@ public sealed class CreateRoleTests(PropentroApiFactory factory)
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
+
+    [Fact]
+    public async Task Create_Role_Without_Permission_Returns_403()
+    {
+        var client = factory.CreateClientAsUser2();
+        var request = new CreateRoleRequest(
+            Name: "Forbidden Role",
+            Description: null,
+            PermissionCodes: ["org:settings:read"]);
+
+        var response = await client.PostAsJsonAsync("/v1/organizations/roles", request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }

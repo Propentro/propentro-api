@@ -54,4 +54,16 @@ public sealed class AdminInviteUserTests(PropentroApiFactory factory)
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task Invite_To_Nonexistent_Organization_Returns_404()
+    {
+        var client = factory.CreateClientAsAdmin();
+        var fakeOrgId = "org_000000000000";
+        var request = new InviteUserRequest("newuser@example.com", factory.Seeder.DefaultRolePublicId);
+
+        var response = await client.PostAsJsonAsync(InviteUrl(fakeOrgId), request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }

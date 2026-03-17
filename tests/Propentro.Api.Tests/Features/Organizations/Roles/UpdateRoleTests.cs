@@ -82,4 +82,18 @@ public sealed class UpdateRoleTests(PropentroApiFactory factory)
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task Update_Role_Without_Permission_Returns_403()
+    {
+        var client = factory.CreateClientAsUser2();
+        var request = new UpdateRoleRequest(
+            Name: "Forbidden Update",
+            Description: null,
+            PermissionCodes: null);
+
+        var response = await client.PatchAsJsonAsync($"{BaseUrl}/rol_000000000000", request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }
