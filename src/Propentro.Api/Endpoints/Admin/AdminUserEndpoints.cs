@@ -1,6 +1,7 @@
 using MediatR;
 using Propentro.Api.Extensions;
 using Propentro.Application.Features.Admin.Users.Commands.DeactivateUser;
+using Propentro.Application.Features.Admin.Users.Commands.DeleteUser;
 using Propentro.Application.Features.Admin.Users.Commands.ReactivateUser;
 using Propentro.Application.Features.Admin.Users.Queries.GetUser;
 using Propentro.Application.Features.Admin.Users.Queries.GetUsers;
@@ -32,6 +33,10 @@ internal static class AdminUserEndpoints
         group.MapPatch("/{id}/reactivate", ReactivateAsync)
             .WithName("AdminReactivateUser")
             .WithSummary("Reactivate user");
+
+        group.MapDelete("/{id}", DeleteAsync)
+            .WithName("AdminDeleteUser")
+            .WithSummary("Hard delete user (GDPR, irreversible)");
     }
 
     private static async Task<IResult> ListAsync(
@@ -65,6 +70,25 @@ internal static class AdminUserEndpoints
         string id, ISender sender, CancellationToken cancellationToken)
     {
         var result = await sender.Send(new ReactivateUserCommand(id), cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> DeleteAsync(
+        string id,
+        HttpRequest request,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        if (!request.Headers.TryGetValue("X-Confirm-Delete", out var confirmHeader) ||
+            !string.Equals(confirmHeader, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            return Results.Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Confirmation Required",
+                detail: "Include the 'X-Confirm-Delete: true' header to confirm this irreversible operation.");
+        }
+
+        var result = await sender.Send(new DeleteUserCommand(id), cancellationToken);
         return result.ToHttpResult();
     }
 }
