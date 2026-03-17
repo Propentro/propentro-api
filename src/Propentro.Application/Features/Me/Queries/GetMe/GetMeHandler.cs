@@ -64,16 +64,6 @@ public sealed class GetMeHandler(
             userContext.OrganizationId,
             cancellationToken);
 
-        const string adminSql = """
-            SELECT EXISTS (
-                SELECT 1 FROM system_administrators
-                WHERE user_id = @UserId AND is_active = true
-            )
-            """;
-
-        var isSystemAdmin = await connection.ExecuteScalarAsync<bool>(
-            adminSql, new { userContext.UserId });
-
         var response = new MeResponse(
             result.UserId,
             result.Email,
@@ -84,8 +74,7 @@ public sealed class GetMeHandler(
                 result.OrganizationName,
                 result.OrganizationSlug),
             roles,
-            permissions.Order().ToList(),
-            isSystemAdmin);
+            permissions.Order().ToList());
 
         return response;
     }
