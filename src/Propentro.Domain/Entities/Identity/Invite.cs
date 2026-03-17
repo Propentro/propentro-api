@@ -31,6 +31,6 @@ public sealed class Invite : Entity
     public User? InvitedByUser { get; set; }
     public User? CancelledByUser { get; set; }
 
-    public bool IsExpired => ExpiresAt.HasValue && ExpiresAt.Value < DateTimeOffset.UtcNow;
-    public bool IsPendingAndValid => Status == Statuses.Pending && !IsExpired;
+    public bool IsExpired(DateTimeOffset utcNow) => ExpiresAt.HasValue && ExpiresAt.Value < utcNow;
+    public bool IsPendingAndValid(DateTimeOffset utcNow) => Status == Statuses.Pending && !IsExpired(utcNow);
 }
