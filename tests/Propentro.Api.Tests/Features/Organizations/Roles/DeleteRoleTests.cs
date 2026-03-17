@@ -33,4 +33,15 @@ public sealed class DeleteRoleTests(PropentroApiFactory factory)
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
+
+    [Fact]
+    public async Task Delete_Role_As_User_Without_Permission_Returns_403()
+    {
+        var client = factory.CreateClientAsUser2();
+        var roleId = factory.Seeder.DefaultRolePublicId;
+
+        var response = await client.DeleteAsync($"/v1/organizations/roles/{roleId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }

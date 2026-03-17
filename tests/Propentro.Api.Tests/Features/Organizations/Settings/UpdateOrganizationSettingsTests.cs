@@ -113,4 +113,30 @@ public sealed class UpdateOrganizationSettingsTests(PropentroApiFactory factory)
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
+
+    [Fact]
+    public async Task Update_Settings_Without_Permission_Returns_403()
+    {
+        var client = factory.CreateClientAsUser2();
+        var request = new UpdateOrganizationSettingsRequest(
+            Name: "Forbidden Update",
+            ContactName: null,
+            ContactEmail: null,
+            ContactPhone: null,
+            AddressLine1: null,
+            AddressLine2: null,
+            City: null,
+            Region: null,
+            PostalCode: null,
+            CountryCode: null,
+            LegalName: null,
+            TaxNumber: null,
+            TaxCountry: null,
+            CurrencyCode: "EUR",
+            Timezone: "UTC");
+
+        var response = await client.PatchAsJsonAsync("/v1/organizations/settings", request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }

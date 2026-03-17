@@ -38,4 +38,15 @@ public sealed class InviteUserTests(PropentroApiFactory factory)
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task Invite_As_User_Without_Permission_Returns_403()
+    {
+        var client = factory.CreateClientAsUser2();
+        var request = new InviteUserRequest("new@example.com", "rol_000000000000");
+
+        var response = await client.PostAsJsonAsync(InviteUrl, request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }
