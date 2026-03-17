@@ -43,7 +43,11 @@ internal static class InviteEndpoints
             request.Email, request.RoleId,
             userContext.OrganizationId, userContext.UserId);
         var result = await sender.Send(command, cancellationToken);
-        return result.ToHttpResult();
+        return result.Match(
+            inviteResult => inviteResult.IsDirectAdd
+                ? Results.Ok(inviteResult)
+                : Results.Created($"/invites/{inviteResult.InvitePublicId}", inviteResult),
+            error => error.ToHttpResult());
     }
 
     private static async Task<IResult> ListAsync(

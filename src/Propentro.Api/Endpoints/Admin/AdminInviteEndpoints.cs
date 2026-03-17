@@ -58,7 +58,11 @@ internal static class AdminInviteEndpoints
         var command = new InviteUserCommand(
             organizationId, request.Email, request.RoleId, userContext.UserId);
         var result = await sender.Send(command, cancellationToken);
-        return result.ToHttpResult();
+        return result.Match(
+            inviteResult => inviteResult.IsDirectAdd
+                ? Results.Ok(inviteResult)
+                : Results.Created($"/invites/{inviteResult.InvitePublicId}", inviteResult),
+            error => error.ToHttpResult());
     }
 
     private static async Task<IResult> ListOrgInvitesAsync(

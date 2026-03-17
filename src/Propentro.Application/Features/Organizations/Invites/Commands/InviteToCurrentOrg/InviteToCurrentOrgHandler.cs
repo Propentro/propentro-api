@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Models;
 using Propentro.Application.Features.Admin.Invites;
+using Propentro.Contracts.Organizations.Invites;
 using Propentro.Domain.Common;
 
 namespace Propentro.Application.Features.Organizations.Invites.Commands.InviteToCurrentOrg;
@@ -9,9 +10,9 @@ namespace Propentro.Application.Features.Organizations.Invites.Commands.InviteTo
 public sealed class InviteToCurrentOrgHandler(
     IAppDbContext dbContext,
     IClerkOrganizationService clerkService,
-    IDateTimeProvider dateTimeProvider) : ICommandHandler<InviteToCurrentOrgCommand>
+    IDateTimeProvider dateTimeProvider) : ICommandHandler<InviteToCurrentOrgCommand, InviteResult>
 {
-    public async Task<Result> Handle(InviteToCurrentOrgCommand request, CancellationToken cancellationToken)
+    public async Task<Result<InviteResult>> Handle(InviteToCurrentOrgCommand request, CancellationToken cancellationToken)
     {
         // 1. Resolve organization by internal Id
         var org = await dbContext.Organizations
@@ -53,7 +54,7 @@ public sealed class InviteToCurrentOrgHandler(
         return await HandleNewUserAsync(org, orgExternalId, role, request, cancellationToken);
     }
 
-    private async Task<Result> HandleExistingUserAsync(
+    private async Task<Result<InviteResult>> HandleExistingUserAsync(
         Organization org,
         string orgExternalId,
         Role role,
@@ -120,10 +121,10 @@ public sealed class InviteToCurrentOrgHandler(
             "Invited existing user {UserPublicId} to organisation {OrgPublicId} with role {RolePublicId}",
             user.PublicId, org.PublicId, role.PublicId);
 
-        return Result.Success();
+        return new InviteResult(true, MemberPublicId: user.PublicId);
     }
 
-    private async Task<Result> HandleNewUserAsync(
+    private async Task<Result<InviteResult>> HandleNewUserAsync(
         Organization org,
         string orgExternalId,
         Role role,
@@ -150,7 +151,7 @@ public sealed class InviteToCurrentOrgHandler(
             return InviteErrors.ClerkSyncFailed;
 
         // Create Invite record as Pending
-        dbContext.Invites.Add(new Invite
+        var invite = new Invite
         {
             Id = Guid.CreateVersion7(),
             PublicId = PublicIdGenerator.Generate(Invite.PublicIdPrefix),
@@ -161,12 +162,13 @@ public sealed class InviteToCurrentOrgHandler(
             InvitedById = request.InvitedByUserId,
             ExpiresAt = dateTimeProvider.UtcNow.AddDays(7),
             CreatedAt = dateTimeProvider.UtcNow
-        });
+        };
+        dbContext.Invites.Add(invite);
 
         Log.Information(
             "Created pending invite for {Email} to organisation {OrgPublicId}",
             request.Email, org.PublicId);
 
-        return Result.Success();
+        return new InviteResult(false, InvitePublicId: invite.PublicId);
     }
 }
