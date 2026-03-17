@@ -33,4 +33,9 @@ public static class MemberErrors
         "Member.AlreadyActive",
         "This member is already active.",
         ErrorType.Conflict);
+
+    public static readonly Error CannotDeactivateSelf = new(
+        "Member.CannotDeactivateSelf",
+        "You cannot deactivate your own membership.",
+        ErrorType.Forbidden);
 }
