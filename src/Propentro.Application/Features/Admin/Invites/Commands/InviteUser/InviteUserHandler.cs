@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Models;
+using Propentro.Contracts.Organizations.Invites;
 using Propentro.Domain.Common;
 
 namespace Propentro.Application.Features.Admin.Invites.Commands.InviteUser;
@@ -8,9 +9,9 @@ namespace Propentro.Application.Features.Admin.Invites.Commands.InviteUser;
 public sealed class InviteUserHandler(
     IAppDbContext dbContext,
     IClerkOrganizationService clerkService,
-    IDateTimeProvider dateTimeProvider) : ICommandHandler<InviteUserCommand>
+    IDateTimeProvider dateTimeProvider) : ICommandHandler<InviteUserCommand, InviteResult>
 {
-    public async Task<Result> Handle(InviteUserCommand request, CancellationToken cancellationToken)
+    public async Task<Result<InviteResult>> Handle(InviteUserCommand request, CancellationToken cancellationToken)
     {
         // 1. Resolve organization by PublicId
         var org = await dbContext.Organizations
@@ -47,7 +48,7 @@ public sealed class InviteUserHandler(
         return await HandleNewUserAsync(org, role, request, cancellationToken);
     }
 
-    private async Task<Result> HandleExistingUserAsync(
+    private async Task<Result<InviteResult>> HandleExistingUserAsync(
         Organization org,
         Role role,
         User user,
@@ -116,10 +117,10 @@ public sealed class InviteUserHandler(
             "Invited existing user {UserPublicId} to organization {OrgPublicId} with role {RolePublicId}",
             user.PublicId, org.PublicId, role.PublicId);
 
-        return Result.Success();
+        return new InviteResult(true, MemberPublicId: user.PublicId);
     }
 
-    private async Task<Result> HandleNewUserAsync(
+    private async Task<Result<InviteResult>> HandleNewUserAsync(
         Organization org,
         Role role,
         InviteUserCommand request,
@@ -148,7 +149,7 @@ public sealed class InviteUserHandler(
             return InviteErrors.ClerkSyncFailed;
 
         // Create Invite record as Pending
-        dbContext.Invites.Add(new Invite
+        var invite = new Invite
         {
             Id = Guid.CreateVersion7(),
             PublicId = PublicIdGenerator.Generate(Invite.PublicIdPrefix),
@@ -159,12 +160,13 @@ public sealed class InviteUserHandler(
             InvitedById = request.InvitedByUserId,
             ExpiresAt = dateTimeProvider.UtcNow.AddDays(7),
             CreatedAt = dateTimeProvider.UtcNow
-        });
+        };
+        dbContext.Invites.Add(invite);
 
         Log.Information(
             "Created pending invite for {Email} to organization {OrgPublicId}",
             request.Email, org.PublicId);
 
-        return Result.Success();
+        return new InviteResult(false, InvitePublicId: invite.PublicId);
     }
 }
