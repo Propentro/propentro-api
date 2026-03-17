@@ -36,7 +36,7 @@ public sealed class CancelInviteHandler(
                 invite.Organization.ExternalId, invite.Email, cancellationToken);
         }
 
-        Log.Information("Cancelled invite {InvitePublicId} for {Email}",
+        Log.Information("Canceled invite {InvitePublicId} for {Email}",
             invite.PublicId, invite.Email);
 
         return Result.Success();

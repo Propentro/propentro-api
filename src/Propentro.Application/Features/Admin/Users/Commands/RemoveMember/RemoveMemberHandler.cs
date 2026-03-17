@@ -71,7 +71,7 @@ public sealed class RemoveMemberHandler(
         await permissionService.InvalidatePermissionsCacheAsync(user.Id, org.Id, cancellationToken);
 
         Log.Information(
-            "Removed user {UserPublicId} from organisation {OrgPublicId}",
+            "Removed user {UserPublicId} from organization {OrgPublicId}",
             user.PublicId, org.PublicId);
 
         return Result.Success();

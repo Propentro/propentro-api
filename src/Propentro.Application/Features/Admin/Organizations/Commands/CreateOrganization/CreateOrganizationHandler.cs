@@ -46,7 +46,7 @@ public sealed class CreateOrganizationHandler(
 
         org.ExternalId = clerkResult.Value;
 
-        Log.Information("Created organisation {PublicId} ({Name})", org.PublicId, org.Name);
+        Log.Information("Created organization {PublicId} ({Name})", org.PublicId, org.Name);
 
         return new AdminOrganizationResponse
         {
