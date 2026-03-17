@@ -13,17 +13,26 @@ using Serilog.Events;
 // Configure Dapper to match snake_case DB columns to PascalCase C# properties
 Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
 
-Log.Logger = new LoggerConfiguration()
+var loggerConfiguration = new LoggerConfiguration()
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
     .Enrich.FromLogContext()
     .Enrich.WithMachineName()
-    .Enrich.WithProperty("Application", "Propentro.Api")
-    .WriteTo.Console(
+    .Enrich.WithProperty("Application", "Propentro.Api");
+
+if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production")
+{
+    loggerConfiguration.WriteTo.Console(new Serilog.Formatting.Json.JsonFormatter());
+}
+else
+{
+    loggerConfiguration.WriteTo.Console(
         outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
-        formatProvider: CultureInfo.InvariantCulture)
-    .CreateLogger();
+        formatProvider: CultureInfo.InvariantCulture);
+}
+
+Log.Logger = loggerConfiguration.CreateLogger();
 
 try
 {
