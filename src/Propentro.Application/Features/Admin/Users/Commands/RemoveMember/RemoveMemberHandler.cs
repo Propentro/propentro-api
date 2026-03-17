@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
-using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Models;
 using Propentro.Domain.Entities.Identity.Events;
 
@@ -9,7 +8,7 @@ namespace Propentro.Application.Features.Admin.Users.Commands.RemoveMember;
 public sealed class RemoveMemberHandler(
     IAppDbContext dbContext,
     IClerkOrganizationService clerkService,
-    IPermissionService permissionService) : ICommandHandler<RemoveMemberCommand>
+    ICacheService cache) : ICommandHandler<RemoveMemberCommand>
 {
     public async Task<Result> Handle(RemoveMemberCommand request, CancellationToken cancellationToken)
     {
@@ -36,17 +35,13 @@ public sealed class RemoveMemberHandler(
         if (membership is null)
             return AdminUserErrors.NotAMember;
 
-        // Hard delete OrganizationUserRoles for this user+org
         var roles = await dbContext.OrganizationUserRoles
             .Where(our => our.OrganizationId == org.Id && our.UserId == user.Id)
             .ToListAsync(cancellationToken);
 
         dbContext.OrganizationUserRoles.RemoveRange(roles);
-
-        // Hard delete OrganizationUsers membership
         dbContext.OrganizationUsers.Remove(membership);
 
-        // Clerk sync — remove member if both external IDs exist
         if (org.ExternalId is not null && user.ExternalId is not null)
         {
             var clerkResult = await clerkService.RemoveMemberAsync(
@@ -56,7 +51,6 @@ public sealed class RemoveMemberHandler(
                 return AdminUserErrors.SyncFailed;
         }
 
-        // Check if user has other org memberships; if not, deactivate
         var hasOtherOrgs = await dbContext.OrganizationUsers
             .IgnoreQueryFilters()
             .AnyAsync(
@@ -68,8 +62,7 @@ public sealed class RemoveMemberHandler(
             user.IsActive = false;
         }
 
-        // Invalidate permission cache for this user+org
-        await permissionService.InvalidatePermissionsCacheAsync(user.Id, org.Id, cancellationToken);
+        await cache.RemoveByPatternAsync($"org:{org.Id}:user-permissions:*", cancellationToken);
 
         Log.Information(
             "Removed user {UserPublicId} from organization {OrgPublicId}",

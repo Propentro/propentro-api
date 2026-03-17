@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Models;
 using Propentro.Application.Features.Organizations.Members;
 using Propentro.Domain.Entities.Identity.Events;
@@ -8,7 +7,7 @@ namespace Propentro.Application.Features.Admin.Users.Commands.DeactivateMember;
 
 public sealed class AdminDeactivateMemberHandler(
     IAppDbContext dbContext,
-    IPermissionService permissionService) : ICommandHandler<AdminDeactivateMemberCommand>
+    ICacheService cache) : ICommandHandler<AdminDeactivateMemberCommand>
 {
     public async Task<Result> Handle(AdminDeactivateMemberCommand request, CancellationToken cancellationToken)
     {
@@ -50,10 +49,10 @@ public sealed class AdminDeactivateMemberHandler(
         if (!hasOtherActiveMemberships)
             user.IsActive = false;
 
-        await permissionService.InvalidatePermissionsCacheAsync(user.Id, org.Id, cancellationToken);
+        await cache.RemoveByPatternAsync($"org:{org.Id}:user-permissions:*", cancellationToken);
 
         Log.Information(
-            "Admin deactivated member {UserPublicId} in organisation {OrgPublicId}",
+            "Admin deactivated member {UserPublicId} in organization {OrgPublicId}",
             user.PublicId, org.PublicId);
 
         dbContext.AddOutboxEvent(new MemberDeactivatedEvent(user.Id, org.Id));
