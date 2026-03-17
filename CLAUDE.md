@@ -74,6 +74,7 @@ dotnet restore Propentro.slnx && dotnet build Propentro.slnx --configuration Rel
 - **Private fields**: `_camelCase` prefix (enforced by `.editorconfig`).
 - **Namespaces**: File-scoped.
 - **Endpoints**: Grouped in `Api/Endpoints/`, composed via `MapApiEndpoints()`.
+- **Endpoint documentation**: Every endpoint must have a corresponding entry in `docs/endpoints/` following the structure mirroring `Api/Endpoints/`. When adding a new endpoint, add its documentation. When modifying a handler's business logic, validation, auth, or events, update the corresponding documentation. Format must match existing entries.
 - **GlobalUsings.cs**: After adding a global using, grep for and remove duplicate explicit `using` statements across the project (prevents `IDE0005` errors).
 - **Entity patterns**: `AggregateRoot` for aggregates, `OrganizationEntity` for tenant-scoped, `Entity` for base. Soft delete via `IsActive`. Audit fields via `IAuditableEntity`. Public IDs via `PublicIdGenerator` with entity-specific prefix.
 - **Public ID naming in DTOs/Commands**: Never expose the term "PublicId" in Contracts, Commands, or API responses. The external world sees only `Id`, `UserId`, `RoleId`, `InviteId`, etc. The fact that these are public IDs is an internal implementation detail. Handlers resolve these IDs internally via `entity.PublicId == request.Id`. Internal logs may use `PublicId` in structured property names (e.g., `{UserPublicId}`) since they are not client-facing.
