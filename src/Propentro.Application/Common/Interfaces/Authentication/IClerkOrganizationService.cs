@@ -11,4 +11,5 @@ public interface IClerkOrganizationService
     Task<Result<string>> CreateOrganizationAsync(string name, string slug, CancellationToken cancellationToken = default);
     Task<Result> DeleteOrganizationAsync(string externalId, CancellationToken cancellationToken = default);
     Task<Result> RevokeInvitationAsync(string externalOrgId, string email, CancellationToken cancellationToken = default);
+    Task<Result> DeleteUserAsync(string userExternalId, CancellationToken cancellationToken = default);
 }

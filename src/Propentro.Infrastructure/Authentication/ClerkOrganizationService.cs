@@ -304,4 +304,44 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
             return Result.Success(); // Best effort — don't fail the operation
         }
     }
+
+    public async Task<Result> DeleteUserAsync(
+        string userExternalId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_secretKey))
+            return Result.Failure(new Error("Clerk.NotConfigured", "Clerk secret key is not configured. Cannot sync to Clerk.", ErrorType.Failure));
+
+        httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", _secretKey);
+
+        try
+        {
+            var response = await httpClient.DeleteAsync(
+                $"users/{userExternalId}",
+                cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Log.Information("Deleted user from Clerk: {ExternalId}", userExternalId);
+                return Result.Success();
+            }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                Log.Warning("User {ExternalId} not found in Clerk — already deleted", userExternalId);
+                return Result.Success();
+            }
+
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            Log.Warning("Clerk user delete failed {StatusCode} for {ExternalId}. Body: {Body}",
+                response.StatusCode, userExternalId, body);
+
+            return Result.Failure(new Error("Clerk.DeleteUserFailed", body, ErrorType.Failure));
+        }
+        catch (HttpRequestException ex)
+        {
+            Log.Error(ex, "HTTP error deleting user {ExternalId} from Clerk", userExternalId);
+            return Result.Failure(new Error("Clerk.Unavailable", ex.Message, ErrorType.Failure));
+        }
+    }
 }
