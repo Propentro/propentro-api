@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
+using Propentro.Application.Common.Errors;
 using Propentro.Application.Common.Models;
 using Propentro.Application.Features.Admin.Invites;
 using Propentro.Contracts.Organizations.Invites;
@@ -23,7 +24,7 @@ public sealed class InviteToCurrentOrgHandler(
             return InviteErrors.OrganizationNotFound;
 
         if (string.IsNullOrEmpty(org.ExternalId))
-            return Error.Validation("Organization.ClerkNotLinked", "Organization is not linked to Clerk. Cannot send invite.");
+            return OrganizationErrors.NotLinkedToAuthProvider;
 
         var orgExternalId = org.ExternalId;
 
