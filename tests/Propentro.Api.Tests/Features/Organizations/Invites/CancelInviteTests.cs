@@ -36,4 +36,15 @@ public sealed class CancelInviteTests(PropentroApiFactory factory)
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
+
+    [Fact]
+    public async Task Cancel_Invite_Without_Permission_Returns_403()
+    {
+        var client = factory.CreateClientAsUser2();
+        var fakeId = "inv_000000000000";
+
+        var response = await client.PatchAsync($"{BaseUrl}/{fakeId}/cancel", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }
