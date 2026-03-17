@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Models;
+using Propentro.Domain.Entities.Identity.Events;
 
 namespace Propentro.Application.Features.Admin.Users.Commands.RemoveMember;
 
@@ -73,6 +74,8 @@ public sealed class RemoveMemberHandler(
         Log.Information(
             "Removed user {UserPublicId} from organization {OrgPublicId}",
             user.PublicId, org.PublicId);
+
+        dbContext.AddOutboxEvent(new MemberRemovedEvent(user.Id, org.Id));
 
         return Result.Success();
     }

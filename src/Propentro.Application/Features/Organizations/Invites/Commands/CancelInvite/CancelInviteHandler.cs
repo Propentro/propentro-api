@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Models;
 using Propentro.Application.Common.Errors;
+using Propentro.Domain.Entities.Identity.Events;
 
 namespace Propentro.Application.Features.Organizations.Invites.Commands.CancelInvite;
 
@@ -39,6 +40,8 @@ public sealed class CancelInviteHandler(
 
         Log.Information("Canceled invite {InvitePublicId} for {Email}",
             invite.PublicId, invite.Email);
+
+        dbContext.AddOutboxEvent(new InviteCanceledEvent(invite.Id, invite.OrganizationId));
 
         return Result.Success();
     }

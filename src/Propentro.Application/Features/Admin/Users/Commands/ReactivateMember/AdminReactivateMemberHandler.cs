@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Models;
 using Propentro.Application.Features.Organizations.Members;
+using Propentro.Domain.Entities.Identity.Events;
 
 namespace Propentro.Application.Features.Admin.Users.Commands.ReactivateMember;
 
@@ -45,6 +46,8 @@ public sealed class AdminReactivateMemberHandler(
         Log.Information(
             "Admin reactivated member {UserPublicId} in organisation {OrgPublicId}",
             user.PublicId, org.PublicId);
+
+        dbContext.AddOutboxEvent(new MemberReactivatedEvent(user.Id, org.Id));
 
         return Result.Success();
     }

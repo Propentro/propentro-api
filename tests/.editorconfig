@@ -1,0 +1,6 @@
+[*.cs]
+# Allow underscores in test method names
+dotnet_diagnostic.CA1707.severity = none
+
+# Allow constant arrays in test data
+dotnet_diagnostic.CA1861.severity = none

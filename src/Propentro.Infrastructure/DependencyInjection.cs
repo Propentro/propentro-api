@@ -224,6 +224,8 @@ public static class DependencyInjection
         })
         .AddStandardResilience();
 
+        services.AddSingleton<IEmailTemplateService, EmailTemplateService>();
+
         return services;
     }
 }

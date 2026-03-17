@@ -10,5 +10,6 @@
     <Project Path="tests/Propentro.Api.Tests/Propentro.Api.Tests.csproj" />
     <Project Path="tests/Propentro.Application.Tests/Propentro.Application.Tests.csproj" />
     <Project Path="tests/Propentro.Domain.Tests/Propentro.Domain.Tests.csproj" />
+    <Project Path="tests/Propentro.Infrastructure.Tests/Propentro.Infrastructure.Tests.csproj" />
   </Folder>
 </Solution>

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Models;
 using Propentro.Domain.Common;
+using Propentro.Domain.Entities.Identity.Events;
 
 namespace Propentro.Application.Features.Webhooks.Commands.HandleMembershipCreated;
 
@@ -121,6 +122,8 @@ public sealed class HandleMembershipCreatedHandler(
         Log.Information(
             "Created membership for user {UserPublicId} in org {OrgPublicId} via invite {InvitePublicId}",
             user.PublicId, org.PublicId, pendingInvite.PublicId);
+
+        dbContext.AddOutboxEvent(new InviteAcceptedEvent(pendingInvite.Id, org.Id));
 
         return Result.Success();
     }
