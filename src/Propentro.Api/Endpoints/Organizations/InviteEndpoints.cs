@@ -46,7 +46,7 @@ internal static class InviteEndpoints
         return result.Match(
             inviteResult => inviteResult.IsDirectAdd
                 ? Results.Ok(inviteResult)
-                : Results.Created($"/invites/{inviteResult.InvitePublicId}", inviteResult),
+                : Results.Created($"/invites/{inviteResult.InviteId}", inviteResult),
             error => error.ToHttpResult());
     }
 

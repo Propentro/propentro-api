@@ -66,6 +66,7 @@ dotnet restore Propentro.slnx && dotnet build Propentro.slnx --configuration Rel
 - **Endpoints**: Grouped in `Api/Endpoints/`, composed via `MapApiEndpoints()`.
 - **GlobalUsings.cs**: After adding a global using, grep for and remove duplicate explicit `using` statements across the project (prevents `IDE0005` errors).
 - **Entity patterns**: `AggregateRoot` for aggregates, `OrganizationEntity` for tenant-scoped, `Entity` for base. Soft delete via `IsActive`. Audit fields via `IAuditableEntity`. Public IDs via `PublicIdGenerator` with entity-specific prefix.
+- **Public ID naming in DTOs/Commands**: Never expose the term "PublicId" in Contracts, Commands, or API responses. The external world sees only `Id`, `UserId`, `RoleId`, `InviteId`, etc. The fact that these are public IDs is an internal implementation detail. Handlers resolve these IDs internally via `entity.PublicId == request.Id`. Internal logs may use `PublicId` in structured property names (e.g., `{UserPublicId}`) since they are not client-facing.
 
 ### Entity Lifecycle Rules
 - **Organization**: Deactivate (`is_active = false`) or CASCADE hard delete (super admin only)

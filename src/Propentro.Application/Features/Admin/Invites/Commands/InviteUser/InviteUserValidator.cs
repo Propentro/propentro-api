@@ -8,6 +8,6 @@ public sealed class InviteUserValidator : AbstractValidator<InviteUserCommand>
     {
         RuleFor(x => x.OrganizationId).NotEmpty();
         RuleFor(x => x.Email).NotEmpty().EmailAddress();
-        RuleFor(x => x.RolePublicId).NotEmpty();
+        RuleFor(x => x.RoleId).NotEmpty();
     }
 }
