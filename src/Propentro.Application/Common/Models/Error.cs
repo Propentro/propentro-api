@@ -16,7 +16,7 @@ public sealed record Error(string Code, string Message, ErrorType Type = ErrorTy
     public static readonly Error None = new(string.Empty, string.Empty);
 
     public static Error Unexpected(string message) =>
-        new("UNEXPECTED_ERROR", message);
+        new("Internal.UnexpectedError", message);
 
     public static Error NotFound(string code, string message) =>
         new(code, message, ErrorType.NotFound);

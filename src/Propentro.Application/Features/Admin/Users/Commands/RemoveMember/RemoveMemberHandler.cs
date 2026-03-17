@@ -52,7 +52,7 @@ public sealed class RemoveMemberHandler(
                 org.ExternalId, user.ExternalId, cancellationToken);
 
             if (clerkResult.IsFailure)
-                return AdminUserErrors.ClerkSyncFailed;
+                return AdminUserErrors.SyncFailed;
         }
 
         // Check if user has other org memberships; if not, deactivate

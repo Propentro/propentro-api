@@ -36,7 +36,7 @@ public sealed class GetRoleHandler(
             roleSql, new { currentUser.OrganizationId, request.Id });
 
         if (role is null)
-            return Error.NotFound("Role.NotFound", "Role not found.");
+            return RoleErrors.NotFound;
 
         const string permissionsSql = """
             SELECT p.code AS permission_code

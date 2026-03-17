@@ -41,17 +41,34 @@ internal static class ResultExtensions
             _ => StatusCodes.Status400BadRequest
         };
 
+        var extensions = new Dictionary<string, object?>
+        {
+            ["code"] = error.Code,
+            ["timestamp"] = DateTimeOffset.UtcNow
+        };
+
+        if (error.Details is not null)
+            extensions["details"] = error.Details;
+
         return Results.Problem(
+            type: GetTypeUri(error.Type),
             statusCode: statusCode,
             title: GetTitle(error.Type),
             detail: error.Message,
-            extensions: new Dictionary<string, object?>
-            {
-                ["code"] = error.Code,
-                ["details"] = error.Details,
-                ["timestamp"] = DateTimeOffset.UtcNow
-            });
+            extensions: extensions);
     }
+
+    private static string GetTypeUri(ErrorType type) => type switch
+    {
+        ErrorType.Failure => "https://propentro.com/errors/failure",
+        ErrorType.NotFound => "https://propentro.com/errors/not-found",
+        ErrorType.Unauthorized => "https://propentro.com/errors/unauthorized",
+        ErrorType.Forbidden => "https://propentro.com/errors/forbidden",
+        ErrorType.Validation => "https://propentro.com/errors/validation",
+        ErrorType.Conflict => "https://propentro.com/errors/conflict",
+        ErrorType.ExternalService => "https://propentro.com/errors/external-service",
+        _ => "https://propentro.com/errors/error"
+    };
 
     private static string GetTitle(ErrorType type) => type switch
     {

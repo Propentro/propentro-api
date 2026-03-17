@@ -34,7 +34,7 @@ public sealed class GetMemberHandler(
             memberSql, new { currentUser.OrganizationId, request.UserId });
 
         if (member is null)
-            return Error.NotFound("Member.NotFound", "Member not found.");
+            return MemberErrors.NotFound;
 
         const string rolesSql = """
             SELECT

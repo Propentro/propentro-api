@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
+using Propentro.Application.Common.Errors;
 using Propentro.Application.Common.Models;
 using Propentro.Contracts.Admin.Organizations;
 using Propentro.Domain.Common;
@@ -42,7 +43,7 @@ public sealed class CreateOrganizationHandler(
             request.Name, request.Slug, cancellationToken);
 
         if (clerkResult.IsFailure)
-            return AdminOrganizationErrors.ClerkSyncFailed;
+            return OrganizationErrors.SyncFailed;
 
         org.ExternalId = clerkResult.Value;
 

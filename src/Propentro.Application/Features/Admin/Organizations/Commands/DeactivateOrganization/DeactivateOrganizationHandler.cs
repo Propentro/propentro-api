@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Interfaces.Authorization;
+using Propentro.Application.Common.Errors;
 using Propentro.Application.Common.Models;
 
 namespace Propentro.Application.Features.Admin.Organizations.Commands.DeactivateOrganization;
@@ -17,7 +18,7 @@ public sealed class DeactivateOrganizationHandler(
             .FirstOrDefaultAsync(o => o.PublicId == request.Id, cancellationToken);
 
         if (org is null)
-            return AdminOrganizationErrors.NotFound;
+            return OrganizationErrors.NotFound;
 
         if (!org.IsActive)
             return AdminOrganizationErrors.AlreadyInactive;
@@ -27,7 +28,7 @@ public sealed class DeactivateOrganizationHandler(
         {
             var clerkResult = await clerkService.DeleteOrganizationAsync(org.ExternalId, cancellationToken);
             if (clerkResult.IsFailure)
-                return AdminOrganizationErrors.ClerkSyncFailed;
+                return OrganizationErrors.SyncFailed;
         }
 
         // Load memberships to get user IDs

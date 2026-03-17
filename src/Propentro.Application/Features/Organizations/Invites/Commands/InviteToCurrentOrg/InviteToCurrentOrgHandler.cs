@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
+using Propentro.Application.Common.Errors;
 using Propentro.Application.Common.Models;
 using Propentro.Application.Features.Admin.Invites;
 using Propentro.Contracts.Organizations.Invites;
@@ -23,7 +24,7 @@ public sealed class InviteToCurrentOrgHandler(
             return InviteErrors.OrganizationNotFound;
 
         if (string.IsNullOrEmpty(org.ExternalId))
-            return Error.Validation("Organization.ClerkNotLinked", "Organization is not linked to Clerk. Cannot send invite.");
+            return OrganizationErrors.NotLinkedToAuthProvider;
 
         var orgExternalId = org.ExternalId;
 
@@ -101,7 +102,7 @@ public sealed class InviteToCurrentOrgHandler(
                 orgExternalId, user.ExternalId, "basic_member", cancellationToken);
 
             if (clerkResult.IsFailure)
-                return InviteErrors.ClerkSyncFailed;
+                return InviteErrors.SyncFailed;
         }
 
         // Create Invite record as Accepted
@@ -141,14 +142,14 @@ public sealed class InviteToCurrentOrgHandler(
                 cancellationToken);
 
         if (hasPendingInvite)
-            return InviteErrors.AlreadyInvited;
+            return InviteErrors.AlreadyPending;
 
         // Send Clerk invitation (orgExternalId already validated non-null above)
         var clerkResult = await clerkService.InviteMemberAsync(
             orgExternalId, request.Email, "org:organization_viewer", cancellationToken);
 
         if (clerkResult.IsFailure)
-            return InviteErrors.ClerkSyncFailed;
+            return InviteErrors.SyncFailed;
 
         // Create Invite record as Pending
         var invite = new Invite

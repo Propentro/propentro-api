@@ -50,7 +50,7 @@ internal sealed class GlobalExceptionHandler(IWebHostEnvironment env) : IExcepti
             Instance = traceId,
             Extensions =
             {
-                ["code"] = "VALIDATION_FAILED",
+                ["code"] = "Validation.Failed",
                 ["errors"] = errors,
                 ["timestamp"] = DateTimeOffset.UtcNow
             }
@@ -68,7 +68,7 @@ internal sealed class GlobalExceptionHandler(IWebHostEnvironment env) : IExcepti
             Instance = traceId,
             Extensions =
             {
-                ["code"] = "CONCURRENCY_CONFLICT",
+                ["code"] = "Concurrency.Conflict",
                 ["timestamp"] = DateTimeOffset.UtcNow
             }
         });
@@ -85,7 +85,7 @@ internal sealed class GlobalExceptionHandler(IWebHostEnvironment env) : IExcepti
             Instance = traceId,
             Extensions =
             {
-                ["code"] = "REQUEST_CANCELED",
+                ["code"] = "Request.Canceled",
                 ["timestamp"] = DateTimeOffset.UtcNow
             }
         });
@@ -104,7 +104,7 @@ internal sealed class GlobalExceptionHandler(IWebHostEnvironment env) : IExcepti
             Instance = traceId,
             Extensions =
             {
-                ["code"] = "INTERNAL_ERROR",
+                ["code"] = "Internal.ServerError",
                 ["timestamp"] = DateTimeOffset.UtcNow
             }
         };

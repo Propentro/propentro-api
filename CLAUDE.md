@@ -89,4 +89,42 @@ dotnet restore Propentro.slnx && dotnet build Propentro.slnx --configuration Rel
 
 ## Error Handling
 
-`GlobalExceptionHandler` maps: `ValidationException` → 400, `DbUpdateConcurrencyException` → 409, `OperationCanceledException` → 499, unhandled → 500. All use ProblemDetails format.
+### Two Error Paths
+1. **Result path** — handler returns `Result<T>` with `Error` → `ToHttpResult()` maps to ProblemDetails
+2. **Exception path** — `GlobalExceptionHandler` catches unhandled exceptions → ProblemDetails
+
+Both paths produce consistent ProblemDetails with `type` URI, `code`, `timestamp`, and optional `details`.
+
+### GlobalExceptionHandler Mapping
+`ValidationException` → 400, `DbUpdateConcurrencyException` → 409, `OperationCanceledException` → 499, unhandled → 500.
+
+### Error Type → HTTP Status
+| `ErrorType` | HTTP Status | Use for |
+|---|---|---|
+| `Validation` | 400 | Input validation failures |
+| `Unauthorized` | 401 | Not authenticated |
+| `Forbidden` | 403 | Not authorized |
+| `NotFound` | 404 | Resource not found |
+| `Conflict` | 409 | State-guard failures (`AlreadyInactive`, `AlreadyActive`, `NotCancellable`, `SlugTaken`) |
+| `ExternalService` | 502 | Third-party API failures (Clerk, email, storage) |
+
+### Error Code Format
+- Dot-notation PascalCase: `Entity.ErrorName` (e.g., `Organization.NotFound`, `Invite.AlreadyPending`)
+- Exception handler codes: `Validation.Failed`, `Concurrency.Conflict`, `Request.Canceled`, `Internal.ServerError`
+- Never use SCREAMING_SNAKE_CASE codes
+
+### Error Classes
+- Define errors as `public static readonly Error` fields in dedicated error classes
+- Shared/cross-feature errors go in `Application/Common/Errors/` (e.g., `OrganizationErrors`, `ConfirmationErrors`)
+- Feature-specific errors go next to their handlers (e.g., `MemberErrors`, `InviteErrors`, `AdminUserErrors`)
+- Never construct errors inline in handlers — always reference an error class field
+- Field name must match the error code suffix (e.g., `AlreadyPending` for code `Invite.AlreadyPending`)
+- If the same error code appears in multiple classes, consolidate into `Common/Errors/`
+
+### External Service Errors (Info Leak Prevention)
+- Never expose third-party service names (Clerk, Resend, etc.) in error codes or messages sent to clients
+- Use generic codes: `ExternalService.NotConfigured`, `ExternalService.Unavailable`, `ExternalService.SyncFailed`
+- Use generic messages: `"An external service is temporarily unavailable. Please try again later."`
+- Raw error bodies and `ex.Message` belong in server logs (Serilog), never in client responses
+- Application-layer errors referencing sync failures use `Entity.SyncFailed` (e.g., `Organization.SyncFailed`, `Member.SyncFailed`)
+- Never return raw infrastructure `Result` to the client — wrap in a domain-specific error

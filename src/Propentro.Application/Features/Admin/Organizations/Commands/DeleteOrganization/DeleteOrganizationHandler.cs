@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Interfaces.Authorization;
+using Propentro.Application.Common.Errors;
 using Propentro.Application.Common.Models;
 
 namespace Propentro.Application.Features.Admin.Organizations.Commands.DeleteOrganization;
@@ -18,14 +19,14 @@ public sealed class DeleteOrganizationHandler(
             .FirstOrDefaultAsync(o => o.PublicId == request.Id, cancellationToken);
 
         if (org is null)
-            return AdminOrganizationErrors.NotFound;
+            return OrganizationErrors.NotFound;
 
         if (org.ExternalId is not null)
         {
             var clerkResult = await clerkService.DeleteOrganizationAsync(
                 org.ExternalId, cancellationToken);
             if (clerkResult.IsFailure)
-                return AdminOrganizationErrors.ClerkSyncFailed;
+                return OrganizationErrors.SyncFailed;
         }
 
         await permissionService.InvalidateOrganizationPermissionsCacheAsync(

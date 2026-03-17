@@ -1,6 +1,7 @@
 using Dapper;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Models;
+using Propentro.Application.Features.Me;
 using Propentro.Contracts.Admin.Me;
 
 namespace Propentro.Application.Features.Admin.Me.Queries.GetAdminMe;
@@ -34,7 +35,7 @@ public sealed class GetAdminMeHandler(
             sql, new { userContext.UserId });
 
         if (result is null)
-            return Error.NotFound("Admin.NotFound", "Admin profile not found.");
+            return MeErrors.AdminNotFound;
 
         return result;
     }

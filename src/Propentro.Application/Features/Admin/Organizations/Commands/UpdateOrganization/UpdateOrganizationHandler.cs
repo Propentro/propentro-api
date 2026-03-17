@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
+using Propentro.Application.Common.Errors;
 using Propentro.Application.Common.Models;
 using Propentro.Contracts.Admin.Organizations;
 
@@ -17,7 +18,7 @@ public sealed class UpdateOrganizationHandler(
             .FirstOrDefaultAsync(o => o.PublicId == request.Id, cancellationToken);
 
         if (org is null || !org.IsActive)
-            return AdminOrganizationErrors.NotFound;
+            return OrganizationErrors.NotFound;
 
         var nameChanged = org.Name != request.Name;
 
@@ -35,7 +36,7 @@ public sealed class UpdateOrganizationHandler(
                 org.ExternalId, request.Name, cancellationToken);
 
             if (clerkResult.IsFailure)
-                return AdminOrganizationErrors.ClerkSyncFailed;
+                return OrganizationErrors.SyncFailed;
         }
 
         var memberCount = await dbContext.OrganizationUsers

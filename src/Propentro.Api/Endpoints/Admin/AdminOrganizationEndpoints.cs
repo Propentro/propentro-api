@@ -8,6 +8,7 @@ using Propentro.Application.Features.Admin.Organizations.Commands.UpdateOrganiza
 using Propentro.Application.Features.Admin.Organizations.Queries.GetOrganization;
 using Propentro.Application.Features.Admin.Organizations.Queries.GetOrganizations;
 using Propentro.Contracts.Admin.Organizations;
+using Propentro.Application.Common.Errors;
 using Propentro.Infrastructure.Authorization;
 
 namespace Propentro.Api.Endpoints.Admin;
@@ -112,10 +113,7 @@ internal static class AdminOrganizationEndpoints
         var confirmHeader = httpContext.Request.Headers["X-Confirm-Delete"].FirstOrDefault();
         if (string.IsNullOrEmpty(confirmHeader) || confirmHeader != id)
         {
-            return Results.Problem(
-                statusCode: 400,
-                title: "Confirmation Required",
-                detail: "X-Confirm-Delete header must match the organization ID.");
+            return ConfirmationErrors.DeleteNotConfirmed.ToHttpResult();
         }
 
         var result = await sender.Send(new DeleteOrganizationCommand(id), ct);
