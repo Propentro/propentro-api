@@ -7,12 +7,10 @@ namespace Propentro.Application.Features.Organizations.Roles.Commands.CreateRole
 public sealed class CreateRoleHandler(
     IAppDbContext dbContext,
     IUserContext currentUser,
-    ICacheService cache,
     IDateTimeProvider dateTimeProvider) : ICommandHandler<CreateRoleCommand, string>
 {
     public async Task<Result<string>> Handle(CreateRoleCommand request, CancellationToken cancellationToken)
     {
-        // Check name uniqueness within org
         var nameExists = await dbContext.Roles
             .IgnoreQueryFilters()
             .AnyAsync(
@@ -36,7 +34,6 @@ public sealed class CreateRoleHandler(
 
         dbContext.Roles.Add(role);
 
-        // Load permissions by codes and add RolePermission entries
         if (request.PermissionCodes.Length > 0)
         {
             var permissions = await dbContext.Permissions
@@ -53,8 +50,6 @@ public sealed class CreateRoleHandler(
                 });
             }
         }
-
-        await cache.RemoveAsync($"org:{currentUser.OrganizationId}:roles", cancellationToken);
 
         return role.PublicId;
     }

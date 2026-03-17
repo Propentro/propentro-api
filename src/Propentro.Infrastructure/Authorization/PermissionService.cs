@@ -6,11 +6,9 @@ namespace Propentro.Infrastructure.Authorization;
 /// <summary>
 /// Provides permission lookup for authorization purposes.
 /// Uses GetOrCreateAsync for stampede-protected caching.
-/// Supports both user-level and organization-level cache invalidation.
 /// </summary>
 public sealed class PermissionService(IDbConnectionFactory db, ICacheService cache) : IPermissionService
 {
-    private const string _cacheKeyPrefix = "permissions:";
     private static readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
 
     public async Task<HashSet<string>> GetUserPermissionsAsync(
@@ -70,23 +68,6 @@ public sealed class PermissionService(IDbConnectionFactory db, ICacheService cac
         return permissions.Contains(permissionCode);
     }
 
-    public async Task InvalidatePermissionsCacheAsync(
-        Guid userId,
-        Guid organizationId,
-        CancellationToken cancellationToken = default)
-    {
-        var cacheKey = GetCacheKey(userId, organizationId);
-        await cache.RemoveAsync(cacheKey, cancellationToken);
-    }
-
-    public async Task InvalidateOrganizationPermissionsCacheAsync(
-        Guid organizationId,
-        CancellationToken cancellationToken = default)
-    {
-        var pattern = $"{_cacheKeyPrefix}{organizationId}:*";
-        await cache.RemoveByPatternAsync(pattern, cancellationToken);
-    }
-
     private static string GetCacheKey(Guid userId, Guid organizationId) =>
-        $"{_cacheKeyPrefix}{organizationId}:{userId}";
+        $"org:{organizationId}:user-permissions:{userId}";
 }

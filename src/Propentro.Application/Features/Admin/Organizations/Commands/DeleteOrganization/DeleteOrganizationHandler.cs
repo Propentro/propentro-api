@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
-using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Errors;
 using Propentro.Application.Common.Models;
 
@@ -9,7 +8,7 @@ namespace Propentro.Application.Features.Admin.Organizations.Commands.DeleteOrga
 public sealed class DeleteOrganizationHandler(
     IAppDbContext dbContext,
     IClerkOrganizationService clerkService,
-    IPermissionService permissionService) : ICommandHandler<DeleteOrganizationCommand>
+    ICacheService cache) : ICommandHandler<DeleteOrganizationCommand>
 {
     public async Task<Result> Handle(
         DeleteOrganizationCommand request, CancellationToken cancellationToken)
@@ -29,8 +28,7 @@ public sealed class DeleteOrganizationHandler(
                 return OrganizationErrors.SyncFailed;
         }
 
-        await permissionService.InvalidateOrganizationPermissionsCacheAsync(
-            org.Id, cancellationToken);
+        await cache.RemoveByPatternAsync($"org:{org.Id}:*", cancellationToken);
 
         dbContext.Organizations.Remove(org);
 

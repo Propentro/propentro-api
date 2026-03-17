@@ -8,7 +8,8 @@ namespace Propentro.Application.Features.Admin.Organizations.Commands.UpdateOrga
 
 public sealed class UpdateOrganizationHandler(
     IAppDbContext dbContext,
-    IClerkOrganizationService clerkService) : ICommandHandler<UpdateOrganizationCommand, AdminOrganizationResponse>
+    IClerkOrganizationService clerkService,
+    ICacheService cache) : ICommandHandler<UpdateOrganizationCommand, AdminOrganizationResponse>
 {
     public async Task<Result<AdminOrganizationResponse>> Handle(
         UpdateOrganizationCommand request, CancellationToken cancellationToken)
@@ -29,7 +30,6 @@ public sealed class UpdateOrganizationHandler(
         org.CurrencyCode = request.CurrencyCode;
         org.Timezone = request.Timezone;
 
-        // Sync name change to Clerk if org has an external ID
         if (nameChanged && org.ExternalId is not null)
         {
             var clerkResult = await clerkService.UpdateOrganizationAsync(
@@ -38,6 +38,8 @@ public sealed class UpdateOrganizationHandler(
             if (clerkResult.IsFailure)
                 return OrganizationErrors.SyncFailed;
         }
+
+        await cache.RemoveAsync($"org:{org.Id}:org-settings", cancellationToken);
 
         var memberCount = await dbContext.OrganizationUsers
             .IgnoreQueryFilters()

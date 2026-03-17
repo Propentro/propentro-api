@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
-using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Models;
 
 namespace Propentro.Application.Features.Admin.Users.Commands.DeleteUser;
@@ -8,7 +7,7 @@ namespace Propentro.Application.Features.Admin.Users.Commands.DeleteUser;
 public sealed class DeleteUserHandler(
     IAppDbContext dbContext,
     IClerkOrganizationService clerkService,
-    IPermissionService permissionService) : ICommandHandler<DeleteUserCommand>
+    ICacheService cache) : ICommandHandler<DeleteUserCommand>
 {
     public async Task<Result> Handle(DeleteUserCommand request, CancellationToken cancellationToken)
     {
@@ -20,18 +19,15 @@ public sealed class DeleteUserHandler(
         if (user is null)
             return AdminUserErrors.UserNotFound;
 
-        // Capture org IDs before removal for cache invalidation
         var organizationIds = user.OrganizationUsers
             .Select(ou => ou.OrganizationId)
             .ToList();
 
-        // Invalidate permission caches for all orgs this user belongs to
         foreach (var orgId in organizationIds)
         {
-            await permissionService.InvalidatePermissionsCacheAsync(user.Id, orgId, cancellationToken);
+            await cache.RemoveByPatternAsync($"org:{orgId}:user-permissions:*", cancellationToken);
         }
 
-        // GDPR: Clerk deletion is best-effort — DB deletion takes priority
         if (user.ExternalId is not null)
         {
             try
@@ -44,7 +40,6 @@ public sealed class DeleteUserHandler(
             }
         }
 
-        // Hard delete the user (FK SET NULL handled by DB cascade rules)
         dbContext.Users.Remove(user);
 
         Log.Information("Hard deleted user {PublicId} ({Email}) — GDPR request", user.PublicId, user.Email);

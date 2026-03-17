@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
-using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Models;
 using Propentro.Domain.Entities.Identity.Events;
 
@@ -9,8 +8,7 @@ namespace Propentro.Application.Features.Organizations.Members.Commands.Deactiva
 public sealed class DeactivateMemberHandler(
     IAppDbContext dbContext,
     IUserContext currentUser,
-    IClerkOrganizationService clerkService,
-    IPermissionService permissionService) : ICommandHandler<DeactivateMemberCommand>
+    IClerkOrganizationService clerkService) : ICommandHandler<DeactivateMemberCommand>
 {
     public async Task<Result> Handle(DeactivateMemberCommand request, CancellationToken cancellationToken)
     {
@@ -36,7 +34,6 @@ public sealed class DeactivateMemberHandler(
         if (user.Id == currentUser.UserId)
             return MemberErrors.CannotDeactivateSelf;
 
-        // Guard: cannot deactivate the last owner
         var ownerRole = await dbContext.Roles
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(r => r.Name == "Owner" && r.IsSystem && r.IsActive, cancellationToken);
@@ -63,7 +60,6 @@ public sealed class DeactivateMemberHandler(
             }
         }
 
-        // Remove from Clerk org first — if Clerk fails, roll back entirely
         var org = await dbContext.Organizations
             .FirstOrDefaultAsync(o => o.Id == currentUser.OrganizationId, cancellationToken);
 
@@ -79,7 +75,6 @@ public sealed class DeactivateMemberHandler(
 
         membership.Status = OrganizationUser.Statuses.Deactivated;
 
-        // If user has no other active memberships, deactivate the user account
         var hasOtherActiveMemberships = await dbContext.OrganizationUsers
             .IgnoreQueryFilters()
             .AnyAsync(ou => ou.UserId == user.Id
@@ -89,8 +84,6 @@ public sealed class DeactivateMemberHandler(
 
         if (!hasOtherActiveMemberships)
             user.IsActive = false;
-
-        await permissionService.InvalidatePermissionsCacheAsync(user.Id, currentUser.OrganizationId, cancellationToken);
 
         dbContext.AddOutboxEvent(new MemberDeactivatedEvent(user.Id, currentUser.OrganizationId));
 

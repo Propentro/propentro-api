@@ -17,4 +17,7 @@ public sealed record UpdateOrganizationSettingsCommand(
     string? TaxNumber,
     string? TaxCountry,
     string CurrencyCode,
-    string Timezone) : ICommand<OrganizationSettingsResponse>;
+    string Timezone) : ICommand<OrganizationSettingsResponse>, ICacheInvalidating
+{
+    public IReadOnlyList<string> CacheKeysToInvalidate { get; } = ["org-settings"];
+}

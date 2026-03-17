@@ -7,7 +7,8 @@ namespace Propentro.Application.Features.Admin.Organizations.Commands.Reactivate
 
 public sealed class ReactivateOrganizationHandler(
     IAppDbContext dbContext,
-    IClerkOrganizationService clerkService) : ICommandHandler<ReactivateOrganizationCommand>
+    IClerkOrganizationService clerkService,
+    ICacheService cache) : ICommandHandler<ReactivateOrganizationCommand>
 {
     public async Task<Result> Handle(
         ReactivateOrganizationCommand request, CancellationToken cancellationToken)
@@ -22,7 +23,6 @@ public sealed class ReactivateOrganizationHandler(
         if (org.IsActive)
             return AdminOrganizationErrors.AlreadyActive;
 
-        // Re-create org in Clerk — deactivation deleted it, so we need a new Clerk entry
         var clerkResult = await clerkService.CreateOrganizationAsync(
             org.Name, org.Slug, cancellationToken);
 
@@ -32,7 +32,9 @@ public sealed class ReactivateOrganizationHandler(
         org.ExternalId = clerkResult.Value;
         org.IsActive = true;
 
-        Log.Information("Reactivated organisation {PublicId} ({Name})", org.PublicId, org.Name);
+        await cache.RemoveAsync($"org:{org.Id}:org-settings", cancellationToken);
+
+        Log.Information("Reactivated organization {PublicId} ({Name})", org.PublicId, org.Name);
 
         return Result.Success();
     }

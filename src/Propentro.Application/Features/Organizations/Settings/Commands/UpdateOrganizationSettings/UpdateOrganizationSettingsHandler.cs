@@ -9,8 +9,7 @@ namespace Propentro.Application.Features.Organizations.Settings.Commands.UpdateO
 public sealed class UpdateOrganizationSettingsHandler(
     IAppDbContext dbContext,
     IUserContext currentUser,
-    IClerkOrganizationService clerkOrganizationService,
-    ICacheService cache) : ICommandHandler<UpdateOrganizationSettingsCommand, OrganizationSettingsResponse>
+    IClerkOrganizationService clerkOrganizationService) : ICommandHandler<UpdateOrganizationSettingsCommand, OrganizationSettingsResponse>
 {
     public async Task<Result<OrganizationSettingsResponse>> Handle(UpdateOrganizationSettingsCommand request, CancellationToken cancellationToken)
     {
@@ -22,8 +21,6 @@ public sealed class UpdateOrganizationSettingsHandler(
 
         var nameChanged = !string.Equals(org.Name, request.Name, StringComparison.Ordinal);
 
-        // Sync name change to Clerk before committing to DB.
-        // If Clerk is unavailable, roll back the entire operation.
         if (nameChanged && !string.IsNullOrEmpty(org.ExternalId))
         {
             var syncResult = await clerkOrganizationService.UpdateOrganizationAsync(
@@ -41,8 +38,6 @@ public sealed class UpdateOrganizationSettingsHandler(
                 return OrganizationErrors.SyncFailed;
             }
         }
-
-        await cache.RemoveAsync($"org:{currentUser.OrganizationId}:org-settings", cancellationToken);
 
         org.Name = request.Name;
         org.ContactName = request.ContactName;

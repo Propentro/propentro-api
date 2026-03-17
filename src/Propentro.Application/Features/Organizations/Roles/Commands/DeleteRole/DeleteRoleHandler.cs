@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
-using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Models;
 
 namespace Propentro.Application.Features.Organizations.Roles.Commands.DeleteRole;
@@ -8,8 +7,6 @@ namespace Propentro.Application.Features.Organizations.Roles.Commands.DeleteRole
 public sealed class DeleteRoleHandler(
     IAppDbContext dbContext,
     IUserContext currentUser,
-    IPermissionService permissionService,
-    ICacheService cache,
     IDateTimeProvider dateTimeProvider) : ICommandHandler<DeleteRoleCommand>
 {
     public async Task<Result> Handle(DeleteRoleCommand request, CancellationToken cancellationToken)
@@ -24,7 +21,6 @@ public sealed class DeleteRoleHandler(
         if (role.IsSystem)
             return RoleErrors.CannotModifySystemRole;
 
-        // Find all members with this role
         var memberRoleAssignments = await dbContext.OrganizationUserRoles
             .IgnoreQueryFilters()
             .Where(our => our.OrganizationId == currentUser.OrganizationId && our.RoleId == role.Id)
@@ -32,7 +28,6 @@ public sealed class DeleteRoleHandler(
 
         if (memberRoleAssignments.Count > 0)
         {
-            // Find the Viewer system role
             var viewerRole = await dbContext.Roles
                 .IgnoreQueryFilters()
                 .FirstAsync(r => r.Name == "Viewer" && r.IsSystem && r.IsActive, cancellationToken);
@@ -65,7 +60,6 @@ public sealed class DeleteRoleHandler(
                 dbContext.OrganizationUserRoles.Remove(assignment);
         }
 
-        // Hard delete RolePermissions
         var rolePermissions = await dbContext.RolePermissions
             .Where(rp => rp.RoleId == role.Id)
             .ToListAsync(cancellationToken);
@@ -73,11 +67,7 @@ public sealed class DeleteRoleHandler(
         foreach (var rp in rolePermissions)
             dbContext.RolePermissions.Remove(rp);
 
-        // Soft delete role
         role.IsActive = false;
-
-        await permissionService.InvalidateOrganizationPermissionsCacheAsync(currentUser.OrganizationId, cancellationToken);
-        await cache.RemoveAsync($"org:{currentUser.OrganizationId}:roles", cancellationToken);
 
         return Result.Success();
     }
