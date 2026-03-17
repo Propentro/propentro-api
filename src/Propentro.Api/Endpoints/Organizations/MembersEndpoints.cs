@@ -32,7 +32,7 @@ internal static class MembersEndpoints
             .WithSummary("Get member detail")
             .WithMetadata(new RequirePermissionAttribute("org:members:read"));
 
-        group.MapPatch("/{userId}", UpdateMemberRolesAsync)
+        group.MapPatch("/{id}/roles", UpdateMemberRolesAsync)
             .WithName("UpdateMemberRoles")
             .WithSummary("Update member roles")
             .WithMetadata(new RequirePermissionAttribute("org:members:manage"))
@@ -43,7 +43,7 @@ internal static class MembersEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
-        group.MapPost("/{userId}/deactivate", DeactivateMemberAsync)
+        group.MapPatch("/{id}/deactivate", DeactivateMemberAsync)
             .WithName("DeactivateMember")
             .WithSummary("Deactivate a member from the organization")
             .WithMetadata(new RequirePermissionAttribute("org:members:manage"))
@@ -54,7 +54,7 @@ internal static class MembersEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
-        group.MapPost("/{userId}/reactivate", ReactivateMemberAsync)
+        group.MapPatch("/{id}/reactivate", ReactivateMemberAsync)
             .WithName("ReactivateMember")
             .WithSummary("Reactivate a deactivated member")
             .WithMetadata(new RequirePermissionAttribute("org:members:manage"))
@@ -90,31 +90,31 @@ internal static class MembersEndpoints
     }
 
     private static async Task<IResult> UpdateMemberRolesAsync(
-        string userId,
+        string id,
         UpdateMemberRolesRequest request,
         ISender sender,
         CancellationToken ct)
     {
-        var command = new UpdateMemberRolesCommand(userId, request.RoleIds);
+        var command = new UpdateMemberRolesCommand(id, request.RoleIds);
         var result = await sender.Send(command, ct);
         return result.ToHttpResult();
     }
 
     private static async Task<IResult> DeactivateMemberAsync(
-        string userId,
+        string id,
         ISender sender,
         CancellationToken ct)
     {
-        var result = await sender.Send(new DeactivateMemberCommand(userId), ct);
+        var result = await sender.Send(new DeactivateMemberCommand(id), ct);
         return result.ToHttpResult();
     }
 
     private static async Task<IResult> ReactivateMemberAsync(
-        string userId,
+        string id,
         ISender sender,
         CancellationToken ct)
     {
-        var result = await sender.Send(new ReactivateMemberCommand(userId), ct);
+        var result = await sender.Send(new ReactivateMemberCommand(id), ct);
         return result.ToHttpResult();
     }
 
