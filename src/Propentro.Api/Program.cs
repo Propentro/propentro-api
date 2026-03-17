@@ -115,8 +115,8 @@ try
     var app = builder.Build();
 
     // Middleware pipeline (order matters!)
-    app.UseExceptionHandler();
     app.UseSerilogRequestLogging();
+    app.UseExceptionHandler();
 
     if (app.Environment.IsDevelopment())
     {

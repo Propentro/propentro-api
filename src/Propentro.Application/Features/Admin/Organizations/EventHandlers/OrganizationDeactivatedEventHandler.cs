@@ -34,9 +34,9 @@ public sealed class OrganizationDeactivatedEventHandler(
             """
             SELECT u.email, u.first_name AS name
             FROM users u
-            WHERE u.id = ANY(@UserIds)
+            WHERE u.id IN @UserIds
             """,
-            new { UserIds = @event.MemberUserIds.ToArray() });
+            new { UserIds = @event.MemberUserIds.Select(id => id.ToString()).ToList() });
 
         foreach (var member in members)
         {
