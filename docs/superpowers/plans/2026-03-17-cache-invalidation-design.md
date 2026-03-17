@@ -1102,7 +1102,7 @@ public sealed class ReactivateOrganizationHandler(
 
         await cache.RemoveAsync($"org:{org.Id}:org-settings", cancellationToken);
 
-        Log.Information("Reactivated organisation {PublicId} ({Name})", org.PublicId, org.Name);
+        Log.Information("Reactivated organization {PublicId} ({Name})", org.PublicId, org.Name);
 
         return Result.Success();
     }
@@ -1288,7 +1288,7 @@ public sealed class AdminDeactivateMemberHandler(
         await cache.RemoveByPatternAsync($"org:{org.Id}:user-permissions:*", cancellationToken);
 
         Log.Information(
-            "Admin deactivated member {UserPublicId} in organisation {OrgPublicId}",
+            "Admin deactivated member {UserPublicId} in organization {OrgPublicId}",
             user.PublicId, org.PublicId);
 
         dbContext.AddOutboxEvent(new MemberDeactivatedEvent(user.Id, org.Id));
@@ -1348,7 +1348,7 @@ public sealed class AdminReactivateMemberHandler(
         await cache.RemoveByPatternAsync($"org:{org.Id}:user-permissions:*", cancellationToken);
 
         Log.Information(
-            "Admin reactivated member {UserPublicId} in organisation {OrgPublicId}",
+            "Admin reactivated member {UserPublicId} in organization {OrgPublicId}",
             user.PublicId, org.PublicId);
 
         dbContext.AddOutboxEvent(new MemberReactivatedEvent(user.Id, org.Id));
