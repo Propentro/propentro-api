@@ -9,7 +9,8 @@ public sealed class DeleteRoleHandler(
     IAppDbContext dbContext,
     IUserContext currentUser,
     IPermissionService permissionService,
-    ICacheService cache) : ICommandHandler<DeleteRoleCommand>
+    ICacheService cache,
+    IDateTimeProvider dateTimeProvider) : ICommandHandler<DeleteRoleCommand>
 {
     public async Task<Result> Handle(DeleteRoleCommand request, CancellationToken cancellationToken)
     {
@@ -23,15 +24,46 @@ public sealed class DeleteRoleHandler(
         if (role.IsSystem)
             return RoleErrors.CannotModifySystemRole;
 
-        // Check no active members have this role
-        var activeMemberCount = await dbContext.OrganizationUserRoles
+        // Find all members with this role
+        var memberRoleAssignments = await dbContext.OrganizationUserRoles
             .IgnoreQueryFilters()
-            .CountAsync(
-                our => our.OrganizationId == currentUser.OrganizationId && our.RoleId == role.Id,
-                cancellationToken);
+            .Where(our => our.OrganizationId == currentUser.OrganizationId && our.RoleId == role.Id)
+            .ToListAsync(cancellationToken);
 
-        if (activeMemberCount > 0)
-            return RoleErrors.HasActiveMembers;
+        if (memberRoleAssignments.Count > 0)
+        {
+            // Find the Viewer system role
+            var viewerRole = await dbContext.Roles
+                .IgnoreQueryFilters()
+                .FirstAsync(r => r.Name == "Viewer" && r.IsSystem && r.IsActive, cancellationToken);
+
+            var affectedUserIds = memberRoleAssignments.Select(a => a.UserId).Distinct().ToList();
+
+            var existingViewerAssignments = await dbContext.OrganizationUserRoles
+                .IgnoreQueryFilters()
+                .Where(our => our.OrganizationId == currentUser.OrganizationId
+                    && our.RoleId == viewerRole.Id
+                    && affectedUserIds.Contains(our.UserId))
+                .Select(our => our.UserId)
+                .ToListAsync(cancellationToken);
+
+            var usersNeedingViewer = affectedUserIds.Except(existingViewerAssignments).ToList();
+
+            foreach (var userId in usersNeedingViewer)
+            {
+                dbContext.OrganizationUserRoles.Add(new OrganizationUserRole
+                {
+                    OrganizationId = currentUser.OrganizationId,
+                    UserId = userId,
+                    RoleId = viewerRole.Id,
+                    AssignedAt = dateTimeProvider.UtcNow,
+                    AssignedBy = currentUser.UserId
+                });
+            }
+
+            foreach (var assignment in memberRoleAssignments)
+                dbContext.OrganizationUserRoles.Remove(assignment);
+        }
 
         // Hard delete RolePermissions
         var rolePermissions = await dbContext.RolePermissions
