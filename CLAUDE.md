@@ -58,6 +58,16 @@ dotnet restore Propentro.slnx && dotnet build Propentro.slnx --configuration Rel
 
 **Auth**: Clerk JWT → `UserContextMiddleware` resolves external IDs to internal DB IDs → `ActiveUserAuthorizationHandler` + `PermissionAuthorizationHandler`.
 
+### Clerk Integration
+- **Clerk roles:** All users get `org:member` in Clerk. Real authorization and role assignment is managed entirely by our `organization_user_roles` table — Clerk is only used for auth + invite transport.
+- **Webhooks:** We subscribe only to `organizationMembership.created`. Do NOT add `user.created` or `user.updated` — user records are created/updated as part of membership processing. The membership event covers both new signups (via invite) and direct adds.
+- **Invite flow:** New user invite → Clerk sends email → user signs up → `organizationMembership.created` webhook → user upsert + local membership + invite accepted. Existing user → direct add to org + Clerk membership + invite accepted immediately.
+
+### Shared Services
+- Cross-feature business logic goes in `Application/Common/Services/` with an interface in `Application/Common/Interfaces/`.
+- Register as `Scoped` in `DependencyInjection.cs` after `AddValidatorsFromAssembly`.
+- Example: `IInviteService` — shared invite logic used by both org-scoped and admin invite handlers.
+
 ## Key Conventions
 
 - **Dapper targets**: Use non-positional `sealed record` with `init` properties. Never use positional records as Dapper targets (constructor matching breaks with nullable params). Response types in `Contracts/` double as Dapper targets.
