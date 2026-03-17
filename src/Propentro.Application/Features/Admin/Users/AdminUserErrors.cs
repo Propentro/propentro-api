@@ -14,11 +14,11 @@ public static class AdminUserErrors
         "AdminUser.AlreadyActive", "User is already active.");
 
     public static readonly Error OrgNotFound = Error.NotFound(
-        "AdminUser.OrganizationNotFound", "Organisation not found.");
+        "AdminUser.OrganizationNotFound", "Organization not found.");
 
     public static readonly Error NotAMember = Error.NotFound(
-        "AdminUser.NotAMember", "User is not a member of this organisation.");
+        "AdminUser.NotAMember", "User is not a member of this organization.");
 
     public static readonly Error ClerkSyncFailed = Error.ExternalService(
-        "AdminUser.ClerkSyncFailed", "Clerk synchronisation failed.");
+        "AdminUser.ClerkSyncFailed", "Clerk synchronization failed.");
 }

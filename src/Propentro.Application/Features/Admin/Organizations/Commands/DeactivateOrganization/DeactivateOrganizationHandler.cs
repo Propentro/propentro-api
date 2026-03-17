@@ -58,7 +58,7 @@ public sealed class DeactivateOrganizationHandler(
             invite.Status = Invite.Statuses.Canceled;
         }
 
-        // Deactivate the organisation
+        // Deactivate the organization
         org.IsActive = false;
 
         // For each member user, check if they have other orgs. If not, deactivate the user.
@@ -92,7 +92,7 @@ public sealed class DeactivateOrganizationHandler(
         // Invalidate permission cache for all members of this org
         await permissionService.InvalidateOrganizationPermissionsCacheAsync(org.Id, cancellationToken);
 
-        Log.Information("Deactivated organisation {PublicId} ({Name}) with {MemberCount} members",
+        Log.Information("Deactivated organization {PublicId} ({Name}) with {MemberCount} members",
             org.PublicId, org.Name, memberUserIds.Count);
 
         return Result.Success();

@@ -22,7 +22,7 @@ public sealed class InviteToCurrentOrgHandler(
             return InviteErrors.OrganizationNotFound;
 
         if (string.IsNullOrEmpty(org.ExternalId))
-            return Error.Validation("Organization.ClerkNotLinked", "Organisation is not linked to Clerk. Cannot send invite.");
+            return Error.Validation("Organization.ClerkNotLinked", "Organization is not linked to Clerk. Cannot send invite.");
 
         var orgExternalId = org.ExternalId;
 
@@ -117,7 +117,7 @@ public sealed class InviteToCurrentOrgHandler(
         });
 
         Log.Information(
-            "Invited existing user {UserPublicId} to organisation {OrgPublicId} with role {RolePublicId}",
+            "Invited existing user {UserPublicId} to organization {OrgPublicId} with role {RolePublicId}",
             user.PublicId, org.PublicId, role.PublicId);
 
         return Result.Success();
@@ -164,7 +164,7 @@ public sealed class InviteToCurrentOrgHandler(
         });
 
         Log.Information(
-            "Created pending invite for {Email} to organisation {OrgPublicId}",
+            "Created pending invite for {Email} to organization {OrgPublicId}",
             request.Email, org.PublicId);
 
         return Result.Success();

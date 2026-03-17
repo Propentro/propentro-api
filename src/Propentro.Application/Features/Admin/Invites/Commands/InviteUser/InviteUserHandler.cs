@@ -88,7 +88,7 @@ public sealed class InviteUserHandler(
 
         // Sync to Clerk — org and user must be linked
         if (string.IsNullOrEmpty(org.ExternalId))
-            return Error.Validation("Organization.ClerkNotLinked", "Organisation is not linked to Clerk. Cannot send invite.");
+            return Error.Validation("Organization.ClerkNotLinked", "Organization is not linked to Clerk. Cannot send invite.");
 
         if (!string.IsNullOrEmpty(user.ExternalId))
         {
@@ -113,7 +113,7 @@ public sealed class InviteUserHandler(
         });
 
         Log.Information(
-            "Invited existing user {UserPublicId} to organisation {OrgPublicId} with role {RolePublicId}",
+            "Invited existing user {UserPublicId} to organization {OrgPublicId} with role {RolePublicId}",
             user.PublicId, org.PublicId, role.PublicId);
 
         return Result.Success();
@@ -139,7 +139,7 @@ public sealed class InviteUserHandler(
 
         // Send Clerk invitation — org must be linked to Clerk
         if (string.IsNullOrEmpty(org.ExternalId))
-            return Error.Validation("Organization.ClerkNotLinked", "Organisation is not linked to Clerk. Cannot send invite.");
+            return Error.Validation("Organization.ClerkNotLinked", "Organization is not linked to Clerk. Cannot send invite.");
 
         var clerkResult = await clerkService.InviteMemberAsync(
             org.ExternalId, request.Email, "org:organization_viewer", cancellationToken);
@@ -162,7 +162,7 @@ public sealed class InviteUserHandler(
         });
 
         Log.Information(
-            "Created pending invite for {Email} to organisation {OrgPublicId}",
+            "Created pending invite for {Email} to organization {OrgPublicId}",
             request.Email, org.PublicId);
 
         return Result.Success();
