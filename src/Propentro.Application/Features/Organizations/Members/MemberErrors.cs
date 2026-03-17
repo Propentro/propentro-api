@@ -37,7 +37,7 @@ public static class MemberErrors
     public static readonly Error CannotDeactivateSelf = new(
         "Member.CannotDeactivateSelf",
         "You cannot deactivate your own membership.",
-        ErrorType.Forbidden);
+        ErrorType.Conflict);
 
     public static readonly Error SyncFailed = Error.ExternalService(
         "Member.SyncFailed",
