@@ -7,10 +7,10 @@ public static class AdminUserErrors
     public static readonly Error UserNotFound = Error.NotFound(
         "AdminUser.NotFound", "User not found.");
 
-    public static readonly Error AlreadyInactive = Error.Validation(
+    public static readonly Error AlreadyInactive = Error.Conflict(
         "AdminUser.AlreadyInactive", "User is already inactive.");
 
-    public static readonly Error AlreadyActive = Error.Validation(
+    public static readonly Error AlreadyActive = Error.Conflict(
         "AdminUser.AlreadyActive", "User is already active.");
 
     public static readonly Error OrgNotFound = Error.NotFound(

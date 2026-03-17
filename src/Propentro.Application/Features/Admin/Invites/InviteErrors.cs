@@ -22,6 +22,6 @@ public static class InviteErrors
     public static readonly Error InviteNotFound = Error.NotFound(
         "Invite.NotFound", "Invite not found.");
 
-    public static readonly Error NotCancellable = Error.Validation(
+    public static readonly Error NotCancellable = Error.Conflict(
         "Invite.NotCancellable", "Only pending invites can be canceled.");
 }

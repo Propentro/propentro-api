@@ -13,7 +13,7 @@ public static class AdminOrganizationErrors
     public static readonly Error SyncFailed = Error.ExternalService(
         "Organization.SyncFailed", "Failed to sync organization. Please try again.");
 
-    public static readonly Error AlreadyInactive = Error.Validation(
+    public static readonly Error AlreadyInactive = Error.Conflict(
         "Organization.AlreadyInactive", "Organization is already inactive.");
 
     public static readonly Error AlreadyActive = Error.Conflict(
