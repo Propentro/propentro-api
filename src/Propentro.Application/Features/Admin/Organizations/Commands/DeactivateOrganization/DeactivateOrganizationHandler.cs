@@ -55,7 +55,7 @@ public sealed class DeactivateOrganizationHandler(
 
         foreach (var invite in pendingInvites)
         {
-            invite.Status = Invite.Statuses.Cancelled;
+            invite.Status = Invite.Statuses.Canceled;
         }
 
         // Deactivate the organisation

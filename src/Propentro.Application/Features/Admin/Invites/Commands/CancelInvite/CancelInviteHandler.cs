@@ -25,8 +25,8 @@ public sealed class CancelInviteHandler(
         if (invite.Status != Invite.Statuses.Pending)
             return InviteErrors.NotCancellable;
 
-        invite.Status = Invite.Statuses.Cancelled;
-        invite.CancelledById = request.CancelledByUserId;
+        invite.Status = Invite.Statuses.Canceled;
+        invite.CanceledById = request.CanceledByUserId;
         invite.UpdatedAt = dateTimeProvider.UtcNow;
 
         // Revoke Clerk invitation if org has ExternalId
@@ -36,7 +36,7 @@ public sealed class CancelInviteHandler(
                 invite.Organization.ExternalId, invite.Email, cancellationToken);
         }
 
-        Log.Information("Cancelled invite {InvitePublicId} for {Email}",
+        Log.Information("Canceled invite {InvitePublicId} for {Email}",
             invite.PublicId, invite.Email);
 
         return Result.Success();
