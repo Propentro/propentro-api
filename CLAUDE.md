@@ -112,12 +112,30 @@ dotnet restore Propentro.slnx && dotnet build Propentro.slnx --configuration Rel
 
 | You added/changed... | Required test |
 |---|---|
-| New endpoint | Integration test in `Api.Tests/Features/` |
-| New validator | Unit test in `Application.Tests/Validators/` |
-| New outbox event handler | Unit test in `Application.Tests/Features/.../EventHandlers/` |
-| Business logic in entity | Unit test in `Domain.Tests/Entities/` |
-| Infrastructure service logic | Unit test in `Infrastructure.Tests/` |
-| New layer/convention rule | Architecture test in `Architecture.Tests/` (rare) |
+| New endpoint | Integration test: happy path, 401, 403, 400 (if validator), cross-tenant 404 (if org-scoped), 409 (if state transition) |
+| State transition in entity | Unit test in Domain.Tests |
+| Hard delete / cascade logic | Unit test + integration test with X-Confirm-Delete |
+| Validator with 2+ rules or conditional logic | Unit test in Application.Tests |
+| Validator with only simple rules | No unit test — integration test 400 case sufficient |
+| Outbox event handler with side effects | Unit test in Application.Tests |
+| Pure infrastructure logic (templates, formatting) | Unit test in Infrastructure.Tests |
+| Simple CRUD handler | No unit test — integration test sufficient |
+
+### Risky Areas (Always Require Unit Tests)
+- State transitions (entity methods that change status)
+- Hard delete / cascade operations
+- Permission/authorization logic
+- Money calculations (minor units)
+- Conditional business logic (if/else in handlers)
+- External service integration logic (email templates, webhook processing)
+
+### Not Risky (Integration Test Sufficient)
+- Simple validators (single rule, no conditional logic)
+- CRUD listings and simple GETs
+- Dapper read queries
+- EF Core configurations
+
+For the full testing philosophy, decision tree, and coverage matrix, see `docs/testing-strategy.md`.
 
 ### Integration Tests (`Api.Tests`)
 

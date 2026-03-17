@@ -33,4 +33,14 @@ public sealed class DeactivateOrganizationTests(PropentroApiFactory factory)
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    [Fact]
+    public async Task Deactivate_Organization_Unauthenticated_Returns_401()
+    {
+        var client = factory.CreateAnonymousClient();
+
+        var response = await client.PatchAsync("/v1/admin/organizations/org_000000000000/deactivate", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
 }

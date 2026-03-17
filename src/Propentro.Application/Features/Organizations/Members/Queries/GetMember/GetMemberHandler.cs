@@ -38,7 +38,7 @@ public sealed class GetMemberHandler(
 
         const string rolesSql = """
             SELECT
-                r.public_id AS role_id,
+                r.public_id AS id,
                 r.name,
                 r.is_system
             FROM organization_user_roles our

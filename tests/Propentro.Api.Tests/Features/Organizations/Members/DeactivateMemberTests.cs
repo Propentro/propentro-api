@@ -36,4 +36,15 @@ public sealed class DeactivateMemberTests(PropentroApiFactory factory)
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
+
+    [Fact]
+    public async Task Deactivate_Cross_Tenant_Member_Returns_404()
+    {
+        var client = factory.CreateClientAsUser1();
+        var crossTenantUserId = factory.Seeder.User2PublicId;
+
+        var response = await client.PatchAsync($"{BaseUrl}/{crossTenantUserId}/deactivate", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }

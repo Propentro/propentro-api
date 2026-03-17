@@ -12,12 +12,13 @@ using Npgsql;
 using NSubstitute;
 using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Interfaces.Email;
-using Propentro.Application.Common.Interfaces.Notifications;
+
 using Propentro.Application.Common.Interfaces.Persistence;
 using Propentro.Application.Common.Interfaces.Storage;
 using Propentro.Application.Common.Models;
 using Propentro.Infrastructure.Authorization;
 using Propentro.Infrastructure.Persistence;
+using Propentro.Infrastructure.Webhooks;
 using Testcontainers.PostgreSql;
 
 namespace Propentro.Api.Tests.Shared;
@@ -59,11 +60,6 @@ public sealed class PropentroApiFactory : WebApplicationFactory<Program>, IAsync
     /// Mock for blob storage operations.
     /// </summary>
     public IBlobStorageService BlobStorageServiceMock { get; } = CreateBlobStorageMock();
-
-    /// <summary>
-    /// Mock for notification creation.
-    /// </summary>
-    public INotificationService NotificationServiceMock { get; } = Substitute.For<INotificationService>();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -111,8 +107,8 @@ public sealed class PropentroApiFactory : WebApplicationFactory<Program>, IAsync
             services.RemoveAll<IBlobStorageService>();
             services.AddSingleton(BlobStorageServiceMock);
 
-            services.RemoveAll<INotificationService>();
-            services.AddSingleton(NotificationServiceMock);
+            // Remove webhook signature verifier so tests can send requests without valid Svix signatures
+            services.RemoveAll<ClerkWebhookVerifier>();
         });
     }
 

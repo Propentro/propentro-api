@@ -65,4 +65,14 @@ public sealed class GetOrganizationSettingsTests(PropentroApiFactory factory)
         settings.Name.Should().NotBe("Test Organization 2");
         settings.CurrencyCode.Should().NotBe("USD");
     }
+
+    [Fact]
+    public async Task Get_Settings_Without_Permission_Returns_403()
+    {
+        var client = factory.CreateClientAsUser2();
+
+        var response = await client.GetAsync("/v1/organizations/settings");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }

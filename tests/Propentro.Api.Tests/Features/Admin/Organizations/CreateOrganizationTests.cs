@@ -84,4 +84,15 @@ public sealed class CreateOrganizationTests(PropentroApiFactory factory)
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
+
+    [Fact]
+    public async Task Create_Organization_With_Empty_Name_Returns_400()
+    {
+        var client = factory.CreateClientAsAdmin();
+        var request = new CreateOrganizationRequest("", "empty-name", null, null, "EUR", "UTC", "starter");
+
+        var response = await client.PostAsJsonAsync("/v1/admin/organizations", request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }
