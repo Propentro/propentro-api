@@ -1,5 +1,6 @@
 using System.Data.Common;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -15,6 +16,7 @@ using Propentro.Application.Common.Interfaces.Notifications;
 using Propentro.Application.Common.Interfaces.Persistence;
 using Propentro.Application.Common.Interfaces.Storage;
 using Propentro.Application.Common.Models;
+using Propentro.Infrastructure.Authorization;
 using Propentro.Infrastructure.Persistence;
 using Testcontainers.PostgreSql;
 
@@ -87,6 +89,14 @@ public sealed class PropentroApiFactory : WebApplicationFactory<Program>, IAsync
 
             // Disable Quartz hosted service (outbox processing)
             services.RemoveAll<Microsoft.Extensions.Hosting.IHostedService>();
+
+            // Replace SystemAdminAuthorizationHandler with test version (skips Clerk API call)
+            var systemAdminDescriptor = services.FirstOrDefault(
+                d => d.ServiceType == typeof(IAuthorizationHandler)
+                     && d.ImplementationType == typeof(SystemAdminAuthorizationHandler));
+            if (systemAdminDescriptor is not null)
+                services.Remove(systemAdminDescriptor);
+            services.AddScoped<IAuthorizationHandler, TestSystemAdminAuthorizationHandler>();
 
             // Replace external service dependencies with mocks
             services.RemoveAll<IClerkOrganizationService>();
