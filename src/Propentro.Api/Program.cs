@@ -77,10 +77,15 @@ try
     });
 
     // Health Checks
-    var healthChecks = builder.Services.AddHealthChecks()
-        .AddNpgSql(builder.Configuration.GetConnectionString("Database")!,
+    var healthChecks = builder.Services.AddHealthChecks();
+
+    var dbConnectionString = builder.Configuration.GetConnectionString("Database");
+    if (!string.IsNullOrWhiteSpace(dbConnectionString))
+    {
+        healthChecks.AddNpgSql(dbConnectionString,
             name: "postgresql",
             tags: ["db", "ready"]);
+    }
 
     var redisConnectionString = builder.Configuration.GetConnectionString("Cache");
     if (!string.IsNullOrWhiteSpace(redisConnectionString))
