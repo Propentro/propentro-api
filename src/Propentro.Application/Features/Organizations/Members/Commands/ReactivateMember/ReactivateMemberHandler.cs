@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Propentro.Application.Common.Interfaces.Authentication;
-using Propentro.Application.Common.Interfaces.Authorization;
 using Propentro.Application.Common.Models;
 using Propentro.Domain.Entities.Identity.Events;
 
@@ -9,8 +8,7 @@ namespace Propentro.Application.Features.Organizations.Members.Commands.Reactiva
 public sealed class ReactivateMemberHandler(
     IAppDbContext dbContext,
     IUserContext currentUser,
-    IClerkOrganizationService clerkService,
-    IPermissionService permissionService) : ICommandHandler<ReactivateMemberCommand>
+    IClerkOrganizationService clerkService) : ICommandHandler<ReactivateMemberCommand>
 {
     public async Task<Result> Handle(ReactivateMemberCommand request, CancellationToken cancellationToken)
     {
@@ -36,8 +34,6 @@ public sealed class ReactivateMemberHandler(
         membership.Status = OrganizationUser.Statuses.Active;
         user.IsActive = true;
 
-        // Re-add to Clerk org using their existing Clerk ID (direct membership, no invite email)
-        // Graceful degradation: if Clerk fails, log warning but proceed — admin can re-invite manually
         var org = await dbContext.Organizations
             .FirstOrDefaultAsync(o => o.Id == currentUser.OrganizationId, cancellationToken);
 
@@ -47,8 +43,6 @@ public sealed class ReactivateMemberHandler(
             if (clerkResult.IsFailure)
                 Log.Warning("Failed to re-add user {UserId} to Clerk org — member reactivated in DB but Clerk sync pending", user.PublicId);
         }
-
-        await permissionService.InvalidatePermissionsCacheAsync(user.Id, currentUser.OrganizationId, cancellationToken);
 
         dbContext.AddOutboxEvent(new MemberReactivatedEvent(user.Id, currentUser.OrganizationId));
 
