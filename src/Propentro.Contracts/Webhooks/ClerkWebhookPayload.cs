@@ -89,4 +89,13 @@ public sealed record ClerkPublicUserData
 {
     [JsonPropertyName("user_id")]
     public string? UserId { get; init; }
+
+    [JsonPropertyName("first_name")]
+    public string? FirstName { get; init; }
+
+    [JsonPropertyName("last_name")]
+    public string? LastName { get; init; }
+
+    [JsonPropertyName("identifier")]
+    public string? Identifier { get; init; }
 }
