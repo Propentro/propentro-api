@@ -139,3 +139,8 @@ Both paths produce consistent ProblemDetails with `type` URI, `code`, `timestamp
 - Raw error bodies and `ex.Message` belong in server logs (Serilog), never in client responses
 - Application-layer errors referencing sync failures use `Entity.SyncFailed` (e.g., `Organization.SyncFailed`, `Member.SyncFailed`)
 - Never return raw infrastructure `Result` to the client — wrap in a domain-specific error
+
+## Future Work & Cross-Cutting Concerns
+
+- **TODO tracking:** `docs/TODO.md` — centralized list of Phase 2 items, scheduled jobs, and documentation tasks
+- **Business feature checklist:** When implementing any business feature, check `docs/TODO.md` for the cross-cutting concerns checklist (activity logging, notifications, tags)
