@@ -89,7 +89,7 @@ public sealed class SyncUserHandler(
             if (!string.IsNullOrEmpty(invite.Organization.ExternalId) && !string.IsNullOrEmpty(user.ExternalId))
             {
                 await clerkService.AddMemberAsync(
-                    invite.Organization.ExternalId, user.ExternalId, "basic_member", cancellationToken);
+                    invite.Organization.ExternalId, user.ExternalId, cancellationToken);
             }
 
             invite.Status = Invite.Statuses.Accepted;

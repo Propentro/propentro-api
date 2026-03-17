@@ -99,7 +99,7 @@ public sealed class InviteToCurrentOrgHandler(
         if (!string.IsNullOrEmpty(user.ExternalId))
         {
             var clerkResult = await clerkService.AddMemberAsync(
-                orgExternalId, user.ExternalId, "basic_member", cancellationToken);
+                orgExternalId, user.ExternalId, cancellationToken);
 
             if (clerkResult.IsFailure)
                 return InviteErrors.SyncFailed;
@@ -146,7 +146,7 @@ public sealed class InviteToCurrentOrgHandler(
 
         // Send Clerk invitation (orgExternalId already validated non-null above)
         var clerkResult = await clerkService.InviteMemberAsync(
-            orgExternalId, request.Email, "org:organization_viewer", cancellationToken);
+            orgExternalId, request.Email, cancellationToken);
 
         if (clerkResult.IsFailure)
             return InviteErrors.SyncFailed;

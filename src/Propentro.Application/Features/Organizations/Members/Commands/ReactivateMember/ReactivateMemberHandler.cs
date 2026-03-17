@@ -42,20 +42,7 @@ public sealed class ReactivateMemberHandler(
 
         if (org?.ExternalId is not null && user.ExternalId is not null)
         {
-            var userRole = await dbContext.OrganizationUserRoles
-                .IgnoreQueryFilters()
-                .Include(our => our.Role)
-                .Where(our => our.OrganizationId == currentUser.OrganizationId && our.UserId == user.Id)
-                .FirstOrDefaultAsync(cancellationToken);
-
-            string clerkRole = userRole?.Role.Name switch
-            {
-                "Owner" => "org:organization_owner",
-                "Manager" => "org:organization_manager",
-                _ => "org:organization_viewer"
-            };
-
-            var clerkResult = await clerkService.AddMemberAsync(org.ExternalId, user.ExternalId, clerkRole, cancellationToken);
+            var clerkResult = await clerkService.AddMemberAsync(org.ExternalId, user.ExternalId, cancellationToken);
             if (clerkResult.IsFailure)
                 Log.Warning("Failed to re-add user {UserId} to Clerk org — member reactivated in DB but Clerk sync pending", user.PublicId);
         }

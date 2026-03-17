@@ -95,7 +95,7 @@ public sealed class InviteUserHandler(
         if (!string.IsNullOrEmpty(user.ExternalId))
         {
             var clerkResult = await clerkService.AddMemberAsync(
-                org.ExternalId, user.ExternalId, "basic_member", cancellationToken);
+                org.ExternalId, user.ExternalId, cancellationToken);
 
             if (clerkResult.IsFailure)
                 return InviteErrors.SyncFailed;
@@ -144,7 +144,7 @@ public sealed class InviteUserHandler(
             return OrganizationErrors.NotLinkedToAuthProvider;
 
         var clerkResult = await clerkService.InviteMemberAsync(
-            org.ExternalId, request.Email, "org:organization_viewer", cancellationToken);
+            org.ExternalId, request.Email, cancellationToken);
 
         if (clerkResult.IsFailure)
             return InviteErrors.SyncFailed;

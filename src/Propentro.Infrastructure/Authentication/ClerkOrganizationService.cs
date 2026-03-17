@@ -24,6 +24,8 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
         "ExternalService.SyncFailed",
         "An external service is temporarily unavailable. Please try again later.");
 
+    private const string DefaultClerkRole = "org:member";
+
     private readonly string? _secretKey = configuration["Clerk:SecretKey"];
 
     public async Task<Result> UpdateOrganizationAsync(
@@ -69,7 +71,6 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
     public async Task<Result> InviteMemberAsync(
         string orgExternalId,
         string email,
-        string clerkRole,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_secretKey))
@@ -82,7 +83,7 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
         {
             var response = await httpClient.PostAsJsonAsync(
                 $"organizations/{orgExternalId}/invitations",
-                new { email_address = email, role = clerkRole },
+                new { email_address = email, role = DefaultClerkRole },
                 cancellationToken);
 
             if (response.IsSuccessStatusCode)
@@ -109,7 +110,6 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
     public async Task<Result> AddMemberAsync(
         string orgExternalId,
         string userExternalId,
-        string clerkRole,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_secretKey))
@@ -122,7 +122,7 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
         {
             var response = await httpClient.PostAsJsonAsync(
                 $"organizations/{orgExternalId}/memberships",
-                new { user_id = userExternalId, role = clerkRole },
+                new { user_id = userExternalId, role = DefaultClerkRole },
                 cancellationToken);
 
             if (response.IsSuccessStatusCode)
