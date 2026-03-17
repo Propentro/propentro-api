@@ -31,7 +31,7 @@ internal static class AdminInviteEndpoints
             .WithName("AdminListOrganizationInvites")
             .WithSummary("List organization invites");
 
-        group.MapDelete("/invites/{id}", CancelAsync)
+        group.MapPatch("/invites/{id}/cancel", CancelAsync)
             .WithName("AdminCancelInvite")
             .WithSummary("Cancel invite");
     }
