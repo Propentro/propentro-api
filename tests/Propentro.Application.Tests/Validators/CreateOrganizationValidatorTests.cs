@@ -8,7 +8,7 @@ public class CreateOrganizationValidatorTests
     private readonly CreateOrganizationValidator _validator = new();
 
     private static CreateOrganizationCommand CreateValidCommand() =>
-        new("Test Org", "test-org", "Contact", "contact@example.com", "EUR", "UTC", "starter");
+        new("Test Org", "test-org", "EUR", "UTC");
 
     [Fact]
     public void Valid_Command_Should_Pass()
@@ -48,22 +48,6 @@ public class CreateOrganizationValidatorTests
         result.ShouldHaveValidationErrorFor(x => x.Slug);
     }
 
-    [Fact]
-    public void Invalid_ContactEmail_Should_Fail()
-    {
-        var command = CreateValidCommand() with { ContactEmail = "not-an-email" };
-        var result = _validator.TestValidate(command);
-        result.ShouldHaveValidationErrorFor(x => x.ContactEmail);
-    }
-
-    [Fact]
-    public void Null_ContactEmail_Should_Pass()
-    {
-        var command = CreateValidCommand() with { ContactEmail = null };
-        var result = _validator.TestValidate(command);
-        result.ShouldNotHaveValidationErrorFor(x => x.ContactEmail);
-    }
-
     [Theory]
     [InlineData("")]
     [InlineData("US")]
@@ -73,26 +57,5 @@ public class CreateOrganizationValidatorTests
         var command = CreateValidCommand() with { CurrencyCode = code };
         var result = _validator.TestValidate(command);
         result.ShouldHaveValidationErrorFor(x => x.CurrencyCode);
-    }
-
-    [Theory]
-    [InlineData("invalid")]
-    [InlineData("free")]
-    public void Invalid_SubscriptionPlan_Should_Fail(string plan)
-    {
-        var command = CreateValidCommand() with { SubscriptionPlan = plan };
-        var result = _validator.TestValidate(command);
-        result.ShouldHaveValidationErrorFor(x => x.SubscriptionPlan);
-    }
-
-    [Theory]
-    [InlineData("starter")]
-    [InlineData("pro")]
-    [InlineData("enterprise")]
-    public void Valid_SubscriptionPlan_Should_Pass(string plan)
-    {
-        var command = CreateValidCommand() with { SubscriptionPlan = plan };
-        var result = _validator.TestValidate(command);
-        result.ShouldNotHaveValidationErrorFor(x => x.SubscriptionPlan);
     }
 }
