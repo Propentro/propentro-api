@@ -69,8 +69,8 @@ internal static class AdminOrganizationEndpoints
         CancellationToken ct)
     {
         var command = new CreateOrganizationCommand(
-            request.Name, request.Slug, request.ContactName, request.ContactEmail,
-            request.CurrencyCode, request.Timezone, request.SubscriptionPlan);
+            request.Name, request.Slug,
+            request.CurrencyCode, request.Timezone);
         var result = await sender.Send(command, ct);
         return result.ToHttpResult();
     }
