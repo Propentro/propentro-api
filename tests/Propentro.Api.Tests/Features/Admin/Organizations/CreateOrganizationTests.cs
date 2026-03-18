@@ -17,11 +17,8 @@ public sealed class CreateOrganizationTests(PropentroApiFactory factory)
         var request = new CreateOrganizationRequest(
             "New Admin Org",
             "new-admin-org",
-            "Jane Doe",
-            "jane@example.com",
             "USD",
-            "America/New_York",
-            "starter");
+            "America/New_York");
 
         // Act
         var response = await client.PostAsJsonAsync("/v1/admin/organizations", request);
@@ -33,8 +30,6 @@ public sealed class CreateOrganizationTests(PropentroApiFactory factory)
         body.Should().NotBeNull();
         body!.Name.Should().Be("New Admin Org");
         body.Slug.Should().Be("new-admin-org");
-        body.ContactName.Should().Be("Jane Doe");
-        body.ContactEmail.Should().Be("jane@example.com");
         body.CurrencyCode.Should().Be("USD");
         body.Timezone.Should().Be("America/New_York");
         body.SubscriptionPlan.Should().Be("starter");
@@ -51,11 +46,8 @@ public sealed class CreateOrganizationTests(PropentroApiFactory factory)
         var request = new CreateOrganizationRequest(
             "Forbidden Org",
             "forbidden-org",
-            null,
-            null,
             "EUR",
-            "UTC",
-            "pro");
+            "UTC");
 
         // Act
         var response = await client.PostAsJsonAsync("/v1/admin/organizations", request);
@@ -72,11 +64,8 @@ public sealed class CreateOrganizationTests(PropentroApiFactory factory)
         var request = new CreateOrganizationRequest(
             "Anon Org",
             "anon-org",
-            null,
-            null,
             "GBP",
-            "Europe/London",
-            "enterprise");
+            "Europe/London");
 
         // Act
         var response = await client.PostAsJsonAsync("/v1/admin/organizations", request);
@@ -89,7 +78,7 @@ public sealed class CreateOrganizationTests(PropentroApiFactory factory)
     public async Task Create_Organization_With_Empty_Name_Returns_400()
     {
         var client = factory.CreateClientAsAdmin();
-        var request = new CreateOrganizationRequest("", "empty-name", null, null, "EUR", "UTC", "starter");
+        var request = new CreateOrganizationRequest("", "empty-name", "EUR", "UTC");
 
         var response = await client.PostAsJsonAsync("/v1/admin/organizations", request);
 

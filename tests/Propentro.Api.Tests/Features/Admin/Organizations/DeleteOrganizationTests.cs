@@ -19,11 +19,8 @@ public sealed class DeleteOrganizationTests(PropentroApiFactory factory)
         var createRequest = new CreateOrganizationRequest(
             "Org to Delete",
             "org-to-delete",
-            null,
-            null,
             "EUR",
-            "UTC",
-            "starter");
+            "UTC");
 
         var createResponse = await client.PostAsJsonAsync(BaseUrl, createRequest);
         createResponse.StatusCode.Should().Be(HttpStatusCode.OK);
