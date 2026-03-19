@@ -54,12 +54,12 @@ internal static class AdminOrganizationEndpoints
     private static async Task<IResult> ListAsync(
         ISender sender,
         string? search,
-        bool? isActive,
+        string? status,
         int page = 1,
         int pageSize = 25,
         CancellationToken ct = default)
     {
-        var result = await sender.Send(new GetOrganizationsQuery(search, isActive, page, pageSize), ct);
+        var result = await sender.Send(new GetOrganizationsQuery(search, status, page, pageSize), ct);
         return result.ToHttpResult();
     }
 

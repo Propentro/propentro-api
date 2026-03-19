@@ -20,10 +20,10 @@ public sealed class GetUsersHandler(
 
         var whereBuilder = new StringBuilder("WHERE 1=1");
 
-        if (request.IsActive.HasValue)
+        if (!string.IsNullOrWhiteSpace(request.Status))
         {
             whereBuilder.Append(" AND u.is_active = @IsActive");
-            parameters.Add("IsActive", request.IsActive.Value);
+            parameters.Add("IsActive", request.Status.Equals("active", StringComparison.OrdinalIgnoreCase));
         }
 
         if (!string.IsNullOrWhiteSpace(request.Search))

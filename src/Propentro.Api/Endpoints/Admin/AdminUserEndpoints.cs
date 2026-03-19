@@ -43,13 +43,13 @@ internal static class AdminUserEndpoints
     private static async Task<IResult> ListAsync(
         ISender sender,
         string? search,
-        bool? isActive,
+        string? status,
         int page = 1,
         int pageSize = 25,
         CancellationToken cancellationToken = default)
     {
         var result = await sender.Send(
-            new GetUsersQuery(search, isActive, page, pageSize), cancellationToken);
+            new GetUsersQuery(search, status, page, pageSize), cancellationToken);
         return result.ToHttpResult();
     }
 
