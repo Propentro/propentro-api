@@ -24,11 +24,21 @@ public sealed class UpdateOrganizationHandler(
         var nameChanged = org.Name != request.Name;
 
         org.Name = request.Name;
+        org.Slug = request.Slug;
         org.ContactName = request.ContactName;
         org.ContactEmail = request.ContactEmail;
         org.ContactPhone = request.ContactPhone;
         org.CurrencyCode = request.CurrencyCode;
         org.Timezone = request.Timezone;
+        org.AddressLine1 = request.AddressLine1;
+        org.AddressLine2 = request.AddressLine2;
+        org.City = request.City;
+        org.Region = request.Region;
+        org.PostalCode = request.PostalCode;
+        org.CountryCode = request.CountryCode;
+        org.LegalName = request.LegalName;
+        org.TaxNumber = request.TaxNumber;
+        org.TaxCountry = request.TaxCountry;
 
         if (nameChanged && org.ExternalId is not null)
         {
@@ -57,6 +67,15 @@ public sealed class UpdateOrganizationHandler(
             ContactPhone = org.ContactPhone,
             CurrencyCode = org.CurrencyCode,
             Timezone = org.Timezone,
+            AddressLine1 = org.AddressLine1,
+            AddressLine2 = org.AddressLine2,
+            City = org.City,
+            Region = org.Region,
+            PostalCode = org.PostalCode,
+            CountryCode = org.CountryCode,
+            LegalName = org.LegalName,
+            TaxNumber = org.TaxNumber,
+            TaxCountry = org.TaxCountry,
             IsActive = org.IsActive,
             MemberCount = memberCount,
             CreatedAt = org.CreatedAt

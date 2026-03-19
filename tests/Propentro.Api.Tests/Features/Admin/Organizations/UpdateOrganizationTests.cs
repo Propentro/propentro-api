@@ -20,6 +20,7 @@ public sealed class UpdateOrganizationTests(PropentroApiFactory factory)
         var request = new UpdateOrganizationRequest
         {
             Name = "Updated Org Name",
+            Slug = "updated-org-name",
             ContactName = "Jane Admin",
             ContactEmail = "jane@example.com",
             ContactPhone = "+1234567890",
@@ -47,6 +48,7 @@ public sealed class UpdateOrganizationTests(PropentroApiFactory factory)
         var request = new UpdateOrganizationRequest
         {
             Name = "Forbidden Update",
+            Slug = "forbidden-update",
             CurrencyCode = "EUR",
             Timezone = "UTC"
         };
@@ -66,6 +68,7 @@ public sealed class UpdateOrganizationTests(PropentroApiFactory factory)
         var request = new UpdateOrganizationRequest
         {
             Name = "Anon Update",
+            Slug = "anon-update",
             CurrencyCode = "GBP",
             Timezone = "Europe/London"
         };
@@ -85,6 +88,7 @@ public sealed class UpdateOrganizationTests(PropentroApiFactory factory)
         var request = new UpdateOrganizationRequest
         {
             Name = "Ghost Org",
+            Slug = "ghost-org",
             CurrencyCode = "USD",
             Timezone = "UTC"
         };
@@ -105,6 +109,7 @@ public sealed class UpdateOrganizationTests(PropentroApiFactory factory)
         var request = new UpdateOrganizationRequest
         {
             Name = "",
+            Slug = "empty-name",
             CurrencyCode = "USD",
             Timezone = "UTC"
         };
