@@ -4,8 +4,6 @@ using Propentro.Application.Common.Errors;
 using Propentro.Application.Common.Models;
 using Propentro.Contracts.Admin.Organizations;
 using Propentro.Domain.Common;
-using Propentro.Domain.Constants;
-
 namespace Propentro.Application.Features.Admin.Organizations.Commands.CreateOrganization;
 
 public sealed class CreateOrganizationHandler(
@@ -31,7 +29,6 @@ public sealed class CreateOrganizationHandler(
             AuthProvider = "clerk",
             CurrencyCode = request.CurrencyCode,
             Timezone = request.Timezone,
-            SubscriptionPlan = SubscriptionPlans.Starter,
             IsActive = true
         };
 
@@ -57,7 +54,6 @@ public sealed class CreateOrganizationHandler(
             ContactEmail = org.ContactEmail,
             CurrencyCode = org.CurrencyCode,
             Timezone = org.Timezone,
-            SubscriptionPlan = org.SubscriptionPlan,
             IsActive = org.IsActive,
             MemberCount = 0,
             CreatedAt = org.CreatedAt

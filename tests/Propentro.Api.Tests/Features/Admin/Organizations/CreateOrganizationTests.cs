@@ -32,7 +32,6 @@ public sealed class CreateOrganizationTests(PropentroApiFactory factory)
         body.Slug.Should().Be("new-admin-org");
         body.CurrencyCode.Should().Be("USD");
         body.Timezone.Should().Be("America/New_York");
-        body.SubscriptionPlan.Should().Be("starter");
         body.IsActive.Should().BeTrue();
         body.MemberCount.Should().Be(0);
         body.OrganizationId.Should().StartWith("org_");

@@ -31,9 +31,6 @@ public sealed class OrganizationConfiguration : IEntityTypeConfiguration<Organiz
         builder.Property(e => e.TaxCountry).HasColumnName("tax_country");
         builder.Property(e => e.CurrencyCode).HasColumnName("currency_code").IsRequired().HasDefaultValue("EUR").HasMaxLength(3).IsFixedLength();
         builder.Property(e => e.Timezone).HasColumnName("timezone").IsRequired().HasDefaultValue("UTC");
-        builder.Property(e => e.SubscriptionPlan).HasColumnName("subscription_plan").IsRequired().HasDefaultValue("starter");
-        builder.Property(e => e.UiSettings).HasColumnName("ui_settings").HasColumnType("jsonb").HasDefaultValueSql("'{}'::jsonb");
-        builder.Property(e => e.NotificationSettings).HasColumnName("notification_settings").HasColumnType("jsonb").HasDefaultValueSql("'{}'::jsonb");
         builder.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
         builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
         builder.Property(e => e.CreatedById).HasColumnName("created_by_id");
