@@ -1,6 +1,6 @@
+using System.Globalization;
 using System.Net;
 using System.Text;
-using System.Globalization;
 using System.Text.Json;
 using FluentAssertions;
 using Propentro.Api.Tests.Shared;

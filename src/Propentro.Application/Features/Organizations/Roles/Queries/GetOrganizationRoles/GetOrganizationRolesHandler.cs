@@ -82,14 +82,14 @@ public sealed class GetOrganizationRolesHandler(
                 g => (IReadOnlyList<string>)g.Select(p => p.PermissionCode).ToList());
 
         var result = roles.Select(r => new RoleResponse
-            {
-                RoleId = r.RoleId,
-                Name = r.Name,
-                Description = r.Description,
-                IsSystem = r.IsSystem,
-                MemberCount = r.MemberCount,
-                PermissionCodes = permissionsLookup.GetValueOrDefault(r.RoleInternalId, [])
-            })
+        {
+            RoleId = r.RoleId,
+            Name = r.Name,
+            Description = r.Description,
+            IsSystem = r.IsSystem,
+            MemberCount = r.MemberCount,
+            PermissionCodes = permissionsLookup.GetValueOrDefault(r.RoleInternalId, [])
+        })
             .ToList();
 
         return new PagedResult<RoleResponse>(result, totalCount, request.Page, request.PageSize);

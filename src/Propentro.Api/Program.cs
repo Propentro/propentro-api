@@ -1,12 +1,12 @@
 using System.Globalization;
 using System.Security.Claims;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Propentro.Api.Endpoints;
 using Propentro.Api.Middleware;
 using Propentro.Application;
 using Propentro.Infrastructure;
 using Scalar.AspNetCore;
-using System.Threading.RateLimiting;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Serilog;
 using Serilog.Events;
 

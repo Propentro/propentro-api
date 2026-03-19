@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Errors;
+using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Models;
 
 namespace Propentro.Application.Features.Admin.Organizations.Commands.ReactivateOrganization;

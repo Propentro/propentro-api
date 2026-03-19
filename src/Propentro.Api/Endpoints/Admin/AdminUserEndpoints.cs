@@ -1,11 +1,11 @@
 using MediatR;
 using Propentro.Api.Extensions;
+using Propentro.Application.Common.Errors;
 using Propentro.Application.Features.Admin.Users.Commands.DeactivateUser;
 using Propentro.Application.Features.Admin.Users.Commands.DeleteUser;
 using Propentro.Application.Features.Admin.Users.Commands.ReactivateUser;
 using Propentro.Application.Features.Admin.Users.Queries.GetUser;
 using Propentro.Application.Features.Admin.Users.Queries.GetUsers;
-using Propentro.Application.Common.Errors;
 using Propentro.Infrastructure.Authorization;
 
 namespace Propentro.Api.Endpoints.Admin;

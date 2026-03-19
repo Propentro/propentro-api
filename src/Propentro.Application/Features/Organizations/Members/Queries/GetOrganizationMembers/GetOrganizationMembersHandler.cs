@@ -130,15 +130,15 @@ public sealed class GetOrganizationMembersHandler(
                 }).ToList());
 
         var items = members.Select(m => new MemberListItemResponse
-            {
-                UserId = m.UserId,
-                Email = m.Email,
-                FirstName = m.FirstName,
-                LastName = m.LastName,
-                Status = m.Status,
-                JoinedAt = m.JoinedAt,
-                Roles = rolesLookup.GetValueOrDefault(m.UserInternalId, [])
-            })
+        {
+            UserId = m.UserId,
+            Email = m.Email,
+            FirstName = m.FirstName,
+            LastName = m.LastName,
+            Status = m.Status,
+            JoinedAt = m.JoinedAt,
+            Roles = rolesLookup.GetValueOrDefault(m.UserInternalId, [])
+        })
             .ToList();
 
         return new PagedResult<MemberListItemResponse>(items, total, request.Page, request.PageSize);
