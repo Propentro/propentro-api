@@ -17,13 +17,15 @@ public sealed class UpdateOrganizationTests(PropentroApiFactory factory)
         // Arrange
         var client = factory.CreateClientAsAdmin();
         var orgId = factory.Seeder.Organization2PublicId;
-        var request = new UpdateOrganizationRequest(
-            "Updated Org Name",
-            "Jane Admin",
-            "jane@example.com",
-            "+1234567890",
-            "USD",
-            "America/New_York");
+        var request = new UpdateOrganizationRequest
+        {
+            Name = "Updated Org Name",
+            ContactName = "Jane Admin",
+            ContactEmail = "jane@example.com",
+            ContactPhone = "+1234567890",
+            CurrencyCode = "USD",
+            Timezone = "America/New_York"
+        };
 
         // Act
         var response = await client.PatchAsJsonAsync($"{BaseUrl}/{orgId}", request);
@@ -42,13 +44,12 @@ public sealed class UpdateOrganizationTests(PropentroApiFactory factory)
         // Arrange
         var client = factory.CreateClientAsUser1();
         var orgId = factory.Seeder.Organization2PublicId;
-        var request = new UpdateOrganizationRequest(
-            "Forbidden Update",
-            null,
-            null,
-            null,
-            "EUR",
-            "UTC");
+        var request = new UpdateOrganizationRequest
+        {
+            Name = "Forbidden Update",
+            CurrencyCode = "EUR",
+            Timezone = "UTC"
+        };
 
         // Act
         var response = await client.PatchAsJsonAsync($"{BaseUrl}/{orgId}", request);
@@ -62,13 +63,12 @@ public sealed class UpdateOrganizationTests(PropentroApiFactory factory)
     {
         // Arrange
         var client = factory.CreateAnonymousClient();
-        var request = new UpdateOrganizationRequest(
-            "Anon Update",
-            null,
-            null,
-            null,
-            "GBP",
-            "Europe/London");
+        var request = new UpdateOrganizationRequest
+        {
+            Name = "Anon Update",
+            CurrencyCode = "GBP",
+            Timezone = "Europe/London"
+        };
 
         // Act
         var response = await client.PatchAsJsonAsync($"{BaseUrl}/org_000000000000", request);
@@ -82,13 +82,12 @@ public sealed class UpdateOrganizationTests(PropentroApiFactory factory)
     {
         // Arrange
         var client = factory.CreateClientAsAdmin();
-        var request = new UpdateOrganizationRequest(
-            "Ghost Org",
-            null,
-            null,
-            null,
-            "USD",
-            "UTC");
+        var request = new UpdateOrganizationRequest
+        {
+            Name = "Ghost Org",
+            CurrencyCode = "USD",
+            Timezone = "UTC"
+        };
 
         // Act
         var response = await client.PatchAsJsonAsync($"{BaseUrl}/org_000000000000", request);
@@ -103,13 +102,12 @@ public sealed class UpdateOrganizationTests(PropentroApiFactory factory)
         // Arrange
         var client = factory.CreateClientAsAdmin();
         var orgId = factory.Seeder.Organization2PublicId;
-        var request = new UpdateOrganizationRequest(
-            "",
-            null,
-            null,
-            null,
-            "USD",
-            "UTC");
+        var request = new UpdateOrganizationRequest
+        {
+            Name = "",
+            CurrencyCode = "USD",
+            Timezone = "UTC"
+        };
 
         // Act
         var response = await client.PatchAsJsonAsync($"{BaseUrl}/{orgId}", request);

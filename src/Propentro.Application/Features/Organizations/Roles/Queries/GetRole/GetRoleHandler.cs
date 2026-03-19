@@ -49,13 +49,15 @@ public sealed class GetRoleHandler(
         var permissions = (await connection.QueryAsync<string>(
             permissionsSql, new { role.RoleInternalId })).ToList();
 
-        return new RoleResponse(
-            role.RoleId,
-            role.Name,
-            role.Description,
-            role.IsSystem,
-            role.MemberCount,
-            permissions);
+        return new RoleResponse
+        {
+            RoleId = role.RoleId,
+            Name = role.Name,
+            Description = role.Description,
+            IsSystem = role.IsSystem,
+            MemberCount = role.MemberCount,
+            PermissionCodes = permissions
+        };
     }
 
     private sealed class RoleQueryResult

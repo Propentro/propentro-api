@@ -17,7 +17,7 @@ public sealed class AdminInviteUserTests(PropentroApiFactory factory)
         // Arrange
         var client = factory.CreateClientAsUser1();
         var orgId = factory.Seeder.Organization1PublicId;
-        var request = new InviteUserRequest("newuser@example.com", factory.Seeder.DefaultRolePublicId);
+        var request = new InviteUserRequest { Email = "newuser@example.com", RoleId = factory.Seeder.DefaultRolePublicId };
 
         // Act
         var response = await client.PostAsJsonAsync(InviteUrl(orgId), request);
@@ -31,7 +31,7 @@ public sealed class AdminInviteUserTests(PropentroApiFactory factory)
     {
         // Arrange
         var client = factory.CreateAnonymousClient();
-        var request = new InviteUserRequest("newuser@example.com", "rol_000000000000");
+        var request = new InviteUserRequest { Email = "newuser@example.com", RoleId = "rol_000000000000" };
 
         // Act
         var response = await client.PostAsJsonAsync(InviteUrl("org_000000000000"), request);
@@ -46,7 +46,7 @@ public sealed class AdminInviteUserTests(PropentroApiFactory factory)
         // Arrange
         var client = factory.CreateClientAsAdmin();
         var orgId = factory.Seeder.Organization1PublicId;
-        var request = new InviteUserRequest("not-an-email", factory.Seeder.DefaultRolePublicId);
+        var request = new InviteUserRequest { Email = "not-an-email", RoleId = factory.Seeder.DefaultRolePublicId };
 
         // Act
         var response = await client.PostAsJsonAsync(InviteUrl(orgId), request);
@@ -60,7 +60,7 @@ public sealed class AdminInviteUserTests(PropentroApiFactory factory)
     {
         var client = factory.CreateClientAsAdmin();
         var fakeOrgId = "org_000000000000";
-        var request = new InviteUserRequest("newuser@example.com", factory.Seeder.DefaultRolePublicId);
+        var request = new InviteUserRequest { Email = "newuser@example.com", RoleId = factory.Seeder.DefaultRolePublicId };
 
         var response = await client.PostAsJsonAsync(InviteUrl(fakeOrgId), request);
 

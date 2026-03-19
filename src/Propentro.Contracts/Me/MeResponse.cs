@@ -1,15 +1,19 @@
 namespace Propentro.Contracts.Me;
 
-public sealed record MeResponse(
-    string UserId,
-    string Email,
-    string? FirstName,
-    string? LastName,
-    MeOrganizationResponse Organization,
-    IReadOnlyList<string> Roles,
-    IReadOnlyList<string> Permissions);
+public sealed record MeResponse
+{
+    public string UserId { get; init; } = null!;
+    public string Email { get; init; } = null!;
+    public string? FirstName { get; init; }
+    public string? LastName { get; init; }
+    public MeOrganizationResponse Organization { get; init; } = null!;
+    public IReadOnlyList<string> Roles { get; init; } = [];
+    public IReadOnlyList<string> Permissions { get; init; } = [];
+}
 
-public sealed record MeOrganizationResponse(
-    string OrganizationId,
-    string Name,
-    string Slug);
+public sealed record MeOrganizationResponse
+{
+    public string OrganizationId { get; init; } = null!;
+    public string Name { get; init; } = null!;
+    public string Slug { get; init; } = null!;
+}

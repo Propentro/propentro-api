@@ -17,7 +17,7 @@ public sealed class UpdateMemberRolesTests(PropentroApiFactory factory)
         // Arrange — Update AdminUser's roles to the default role in Org1
         var client = factory.CreateClientAsUser1();
         var adminUserId = factory.Seeder.AdminUserPublicId;
-        var request = new UpdateMemberRolesRequest([factory.Seeder.DefaultRolePublicId]);
+        var request = new UpdateMemberRolesRequest { RoleIds = [factory.Seeder.DefaultRolePublicId] };
 
         // Act
         var response = await client.PatchAsJsonAsync($"{BaseUrl}/{adminUserId}/roles", request);
@@ -32,7 +32,7 @@ public sealed class UpdateMemberRolesTests(PropentroApiFactory factory)
         // Arrange
         var client = factory.CreateAnonymousClient();
         var fakeId = "usr_000000000000";
-        var request = new UpdateMemberRolesRequest(["rol_000000000000"]);
+        var request = new UpdateMemberRolesRequest { RoleIds = ["rol_000000000000"] };
 
         // Act
         var response = await client.PatchAsJsonAsync($"{BaseUrl}/{fakeId}/roles", request);
@@ -47,7 +47,7 @@ public sealed class UpdateMemberRolesTests(PropentroApiFactory factory)
         // Arrange
         var client = factory.CreateClientAsUser1();
         var adminUserId = factory.Seeder.AdminUserPublicId;
-        var request = new UpdateMemberRolesRequest([]);
+        var request = new UpdateMemberRolesRequest { RoleIds = [] };
 
         // Act
         var response = await client.PatchAsJsonAsync($"{BaseUrl}/{adminUserId}/roles", request);
@@ -62,7 +62,7 @@ public sealed class UpdateMemberRolesTests(PropentroApiFactory factory)
         // Arrange
         var client = factory.CreateClientAsUser1();
         var fakeId = "usr_000000000000";
-        var request = new UpdateMemberRolesRequest([factory.Seeder.DefaultRolePublicId]);
+        var request = new UpdateMemberRolesRequest { RoleIds = [factory.Seeder.DefaultRolePublicId] };
 
         // Act
         var response = await client.PatchAsJsonAsync($"{BaseUrl}/{fakeId}/roles", request);
@@ -77,7 +77,7 @@ public sealed class UpdateMemberRolesTests(PropentroApiFactory factory)
         // Arrange — User1 is in Org1, User2 is in Org2
         var client = factory.CreateClientAsUser1();
         var user2Id = factory.Seeder.User2PublicId;
-        var request = new UpdateMemberRolesRequest([factory.Seeder.DefaultRolePublicId]);
+        var request = new UpdateMemberRolesRequest { RoleIds = [factory.Seeder.DefaultRolePublicId] };
 
         // Act
         var response = await client.PatchAsJsonAsync($"{BaseUrl}/{user2Id}/roles", request);

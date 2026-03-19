@@ -14,11 +14,13 @@ public sealed class CreateOrganizationTests(PropentroApiFactory factory)
     {
         // Arrange
         var client = factory.CreateClientAsAdmin();
-        var request = new CreateOrganizationRequest(
-            "New Admin Org",
-            "new-admin-org",
-            "USD",
-            "America/New_York");
+        var request = new CreateOrganizationRequest
+        {
+            Name = "New Admin Org",
+            Slug = "new-admin-org",
+            CurrencyCode = "USD",
+            Timezone = "America/New_York"
+        };
 
         // Act
         var response = await client.PostAsJsonAsync("/v1/admin/organizations", request);
@@ -42,11 +44,13 @@ public sealed class CreateOrganizationTests(PropentroApiFactory factory)
     {
         // Arrange
         var client = factory.CreateClientAsUser1();
-        var request = new CreateOrganizationRequest(
-            "Forbidden Org",
-            "forbidden-org",
-            "EUR",
-            "UTC");
+        var request = new CreateOrganizationRequest
+        {
+            Name = "Forbidden Org",
+            Slug = "forbidden-org",
+            CurrencyCode = "EUR",
+            Timezone = "UTC"
+        };
 
         // Act
         var response = await client.PostAsJsonAsync("/v1/admin/organizations", request);
@@ -60,11 +64,13 @@ public sealed class CreateOrganizationTests(PropentroApiFactory factory)
     {
         // Arrange
         var client = factory.CreateAnonymousClient();
-        var request = new CreateOrganizationRequest(
-            "Anon Org",
-            "anon-org",
-            "GBP",
-            "Europe/London");
+        var request = new CreateOrganizationRequest
+        {
+            Name = "Anon Org",
+            Slug = "anon-org",
+            CurrencyCode = "GBP",
+            Timezone = "Europe/London"
+        };
 
         // Act
         var response = await client.PostAsJsonAsync("/v1/admin/organizations", request);
@@ -77,7 +83,13 @@ public sealed class CreateOrganizationTests(PropentroApiFactory factory)
     public async Task Create_Organization_With_Empty_Name_Returns_400()
     {
         var client = factory.CreateClientAsAdmin();
-        var request = new CreateOrganizationRequest("", "empty-name", "EUR", "UTC");
+        var request = new CreateOrganizationRequest
+        {
+            Name = "",
+            Slug = "empty-name",
+            CurrencyCode = "EUR",
+            Timezone = "UTC"
+        };
 
         var response = await client.PostAsJsonAsync("/v1/admin/organizations", request);
 

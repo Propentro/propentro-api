@@ -16,10 +16,12 @@ public sealed class DeleteRoleTests(PropentroApiFactory factory)
     {
         // Arrange — create a throwaway role via the API
         var client = factory.CreateClientAsUser1();
-        var createRequest = new CreateRoleRequest(
-            Name: "Role to Delete",
-            Description: "Will be deleted",
-            PermissionCodes: ["org:settings:read"]);
+        var createRequest = new CreateRoleRequest
+        {
+            Name = "Role to Delete",
+            Description = "Will be deleted",
+            PermissionCodes = ["org:settings:read"]
+        };
 
         var createResponse = await client.PostAsJsonAsync("/v1/organizations/roles", createRequest);
         createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
