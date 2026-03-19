@@ -87,8 +87,12 @@ internal static class AdminOrganizationEndpoints
         ISender sender, CancellationToken ct)
     {
         var command = new UpdateOrganizationCommand(
-            id, request.Name, request.ContactName, request.ContactEmail,
-            request.ContactPhone, request.CurrencyCode, request.Timezone);
+            id, request.Name, request.Slug,
+            request.ContactName, request.ContactEmail,
+            request.ContactPhone, request.CurrencyCode, request.Timezone,
+            request.AddressLine1, request.AddressLine2,
+            request.City, request.Region, request.PostalCode, request.CountryCode,
+            request.LegalName, request.TaxNumber, request.TaxCountry);
         var result = await sender.Send(command, ct);
         return result.ToHttpResult();
     }

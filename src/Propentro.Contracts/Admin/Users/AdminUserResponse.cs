@@ -15,5 +15,7 @@ public sealed record UserOrganizationInfo
 {
     public string OrganizationId { get; init; } = null!;
     public string Name { get; init; } = null!;
+    public string Status { get; init; } = null!;
+    public DateTimeOffset JoinedAt { get; init; }
     public IReadOnlyList<MemberRoleInfo> Roles { get; init; } = [];
 }

@@ -8,7 +8,9 @@ public class UpdateOrganizationValidatorTests
     private readonly UpdateOrganizationValidator _validator = new();
 
     private static UpdateOrganizationCommand CreateValidCommand() =>
-        new("org_a1b2c3d4e5f6", "Updated Org", null, null, null, "EUR", "UTC");
+        new("org_a1b2c3d4e5f6", "Updated Org", "updated-org",
+            null, null, null, "EUR", "UTC",
+            null, null, null, null, null, null, null, null, null);
 
     [Fact]
     public void Valid_Command_Should_Pass()

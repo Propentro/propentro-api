@@ -33,8 +33,10 @@ public sealed class GetUserHandler(
 
         const string orgsSql = """
             SELECT
-                o.public_id AS organization_id,
-                o.name      AS name
+                o.public_id    AS organization_id,
+                o.name         AS name,
+                ou.status      AS status,
+                ou.created_at  AS joined_at
             FROM organization_users ou
             JOIN organizations o ON o.id = ou.organization_id
             WHERE ou.user_id = (SELECT id FROM users WHERE public_id = @Id)
