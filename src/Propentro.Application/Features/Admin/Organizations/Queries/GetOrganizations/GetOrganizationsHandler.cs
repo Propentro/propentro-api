@@ -20,10 +20,10 @@ public sealed class GetOrganizationsHandler(
 
         var whereBuilder = new StringBuilder("WHERE 1=1");
 
-        if (request.IsActive.HasValue)
+        if (!string.IsNullOrWhiteSpace(request.Status))
         {
             whereBuilder.Append(" AND o.is_active = @IsActive");
-            parameters.Add("IsActive", request.IsActive.Value);
+            parameters.Add("IsActive", request.Status.Equals("active", StringComparison.OrdinalIgnoreCase));
         }
 
         if (!string.IsNullOrWhiteSpace(request.Search))
@@ -50,14 +50,13 @@ public sealed class GetOrganizationsHandler(
                 o.public_id         AS organization_id,
                 o.name              AS name,
                 o.slug              AS slug,
-                o.subscription_plan AS subscription_plan,
                 o.is_active         AS is_active,
                 COUNT(ou.user_id)   AS member_count,
                 o.created_at        AS created_at
             FROM organizations o
             LEFT JOIN organization_users ou ON ou.organization_id = o.id
             {where}
-            GROUP BY o.id, o.public_id, o.name, o.slug, o.subscription_plan,
+            GROUP BY o.id, o.public_id, o.name, o.slug,
                      o.is_active, o.created_at
             ORDER BY o.created_at DESC
             OFFSET @Offset LIMIT @Limit

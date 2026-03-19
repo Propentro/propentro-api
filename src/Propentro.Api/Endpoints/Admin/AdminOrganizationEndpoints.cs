@@ -1,5 +1,6 @@
 using MediatR;
 using Propentro.Api.Extensions;
+using Propentro.Application.Common.Errors;
 using Propentro.Application.Features.Admin.Organizations.Commands.CreateOrganization;
 using Propentro.Application.Features.Admin.Organizations.Commands.DeactivateOrganization;
 using Propentro.Application.Features.Admin.Organizations.Commands.DeleteOrganization;
@@ -8,7 +9,6 @@ using Propentro.Application.Features.Admin.Organizations.Commands.UpdateOrganiza
 using Propentro.Application.Features.Admin.Organizations.Queries.GetOrganization;
 using Propentro.Application.Features.Admin.Organizations.Queries.GetOrganizations;
 using Propentro.Contracts.Admin.Organizations;
-using Propentro.Application.Common.Errors;
 using Propentro.Infrastructure.Authorization;
 
 namespace Propentro.Api.Endpoints.Admin;
@@ -54,12 +54,12 @@ internal static class AdminOrganizationEndpoints
     private static async Task<IResult> ListAsync(
         ISender sender,
         string? search,
-        bool? isActive,
+        string? status,
         int page = 1,
         int pageSize = 25,
         CancellationToken ct = default)
     {
-        var result = await sender.Send(new GetOrganizationsQuery(search, isActive, page, pageSize), ct);
+        var result = await sender.Send(new GetOrganizationsQuery(search, status, page, pageSize), ct);
         return result.ToHttpResult();
     }
 

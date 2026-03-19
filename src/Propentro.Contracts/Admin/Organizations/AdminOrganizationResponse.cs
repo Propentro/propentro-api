@@ -10,7 +10,6 @@ public sealed record AdminOrganizationResponse
     public string? ContactPhone { get; init; }
     public string CurrencyCode { get; init; } = null!;
     public string Timezone { get; init; } = null!;
-    public string SubscriptionPlan { get; init; } = null!;
     public bool IsActive { get; init; }
     public int MemberCount { get; init; }
     public DateTimeOffset CreatedAt { get; init; }

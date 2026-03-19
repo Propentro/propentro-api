@@ -16,11 +16,13 @@ public sealed class DeleteOrganizationTests(PropentroApiFactory factory)
     {
         // Arrange — create a throwaway org via the API
         var client = factory.CreateClientAsAdmin();
-        var createRequest = new CreateOrganizationRequest(
-            "Org to Delete",
-            "org-to-delete",
-            "EUR",
-            "UTC");
+        var createRequest = new CreateOrganizationRequest
+        {
+            Name = "Org to Delete",
+            Slug = "org-to-delete",
+            CurrencyCode = "EUR",
+            Timezone = "UTC"
+        };
 
         var createResponse = await client.PostAsJsonAsync(BaseUrl, createRequest);
         createResponse.StatusCode.Should().Be(HttpStatusCode.OK);

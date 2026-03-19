@@ -15,10 +15,12 @@ public sealed class CreateRoleTests(PropentroApiFactory factory)
     {
         // Arrange
         var client = factory.CreateClientAsUser1();
-        var request = new CreateRoleRequest(
-            Name: "Custom Role",
-            Description: "A custom test role",
-            PermissionCodes: ["org:settings:read", "org:members:read"]);
+        var request = new CreateRoleRequest
+        {
+            Name = "Custom Role",
+            Description = "A custom test role",
+            PermissionCodes = ["org:settings:read", "org:members:read"]
+        };
 
         // Act
         var response = await client.PostAsJsonAsync("/v1/organizations/roles", request);
@@ -38,10 +40,11 @@ public sealed class CreateRoleTests(PropentroApiFactory factory)
     {
         // Arrange
         var client = factory.CreateClientAsUser1();
-        var request = new CreateRoleRequest(
-            Name: "",
-            Description: null,
-            PermissionCodes: ["org:settings:read"]);
+        var request = new CreateRoleRequest
+        {
+            Name = "",
+            PermissionCodes = ["org:settings:read"]
+        };
 
         // Act
         var response = await client.PostAsJsonAsync("/v1/organizations/roles", request);
@@ -55,10 +58,11 @@ public sealed class CreateRoleTests(PropentroApiFactory factory)
     {
         // Arrange
         var client = factory.CreateAnonymousClient();
-        var request = new CreateRoleRequest(
-            Name: "Unauthorized Role",
-            Description: null,
-            PermissionCodes: ["org:settings:read"]);
+        var request = new CreateRoleRequest
+        {
+            Name = "Unauthorized Role",
+            PermissionCodes = ["org:settings:read"]
+        };
 
         // Act
         var response = await client.PostAsJsonAsync("/v1/organizations/roles", request);
@@ -71,10 +75,11 @@ public sealed class CreateRoleTests(PropentroApiFactory factory)
     public async Task Create_Role_Without_Permission_Returns_403()
     {
         var client = factory.CreateClientAsUser2();
-        var request = new CreateRoleRequest(
-            Name: "Forbidden Role",
-            Description: null,
-            PermissionCodes: ["org:settings:read"]);
+        var request = new CreateRoleRequest
+        {
+            Name = "Forbidden Role",
+            PermissionCodes = ["org:settings:read"]
+        };
 
         var response = await client.PostAsJsonAsync("/v1/organizations/roles", request);
 

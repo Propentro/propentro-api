@@ -82,7 +82,7 @@ dotnet restore Propentro.slnx && dotnet build Propentro.slnx --configuration Rel
 
 ## Key Conventions
 
-- **Dapper targets**: Use non-positional `sealed record` with `init` properties. Never use positional records as Dapper targets (constructor matching breaks with nullable params). Response types in `Contracts/` double as Dapper targets.
+- **Contract record style**: All types in `Contracts/` — both requests and responses — use non-positional `sealed record` with `init` properties. Never use positional records. Response types double as Dapper targets (constructor matching breaks with nullable params). Positional records are fine for MediatR commands/queries and domain events.
 - **Private fields**: `_camelCase` prefix (enforced by `.editorconfig`).
 - **Namespaces**: File-scoped.
 - **Endpoints**: Grouped in `Api/Endpoints/`, composed via `MapApiEndpoints()`.

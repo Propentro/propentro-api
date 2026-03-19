@@ -16,7 +16,7 @@ public sealed class InviteUserTests(PropentroApiFactory factory)
     {
         // Arrange
         var client = factory.CreateAnonymousClient();
-        var request = new InviteUserRequest("newuser@example.com", "rol_000000000000");
+        var request = new InviteUserRequest { Email = "newuser@example.com", RoleId = "rol_000000000000" };
 
         // Act
         var response = await client.PostAsJsonAsync(InviteUrl, request);
@@ -30,7 +30,7 @@ public sealed class InviteUserTests(PropentroApiFactory factory)
     {
         // Arrange
         var client = factory.CreateClientAsUser1();
-        var request = new InviteUserRequest("not-an-email", factory.Seeder.DefaultRolePublicId);
+        var request = new InviteUserRequest { Email = "not-an-email", RoleId = factory.Seeder.DefaultRolePublicId };
 
         // Act
         var response = await client.PostAsJsonAsync(InviteUrl, request);
@@ -43,7 +43,7 @@ public sealed class InviteUserTests(PropentroApiFactory factory)
     public async Task Invite_As_User_Without_Permission_Returns_403()
     {
         var client = factory.CreateClientAsUser2();
-        var request = new InviteUserRequest("new@example.com", "rol_000000000000");
+        var request = new InviteUserRequest { Email = "new@example.com", RoleId = "rol_000000000000" };
 
         var response = await client.PostAsJsonAsync(InviteUrl, request);
 

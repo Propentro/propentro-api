@@ -51,14 +51,16 @@ public sealed class GetMemberHandler(
         var roles = (await connection.QueryAsync<MemberRoleResponse>(
             rolesSql, new { currentUser.OrganizationId, member.UserInternalId })).ToList();
 
-        return new MemberListItemResponse(
-            member.UserId,
-            member.Email,
-            member.FirstName,
-            member.LastName,
-            member.Status,
-            member.JoinedAt,
-            roles);
+        return new MemberListItemResponse
+        {
+            UserId = member.UserId,
+            Email = member.Email,
+            FirstName = member.FirstName,
+            LastName = member.LastName,
+            Status = member.Status,
+            JoinedAt = member.JoinedAt,
+            Roles = roles
+        };
     }
 
     private sealed class MemberQueryResult

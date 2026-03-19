@@ -1,11 +1,11 @@
 using MediatR;
 using Propentro.Api.Extensions;
+using Propentro.Application.Common.Errors;
 using Propentro.Application.Features.Admin.Users.Commands.DeactivateUser;
 using Propentro.Application.Features.Admin.Users.Commands.DeleteUser;
 using Propentro.Application.Features.Admin.Users.Commands.ReactivateUser;
 using Propentro.Application.Features.Admin.Users.Queries.GetUser;
 using Propentro.Application.Features.Admin.Users.Queries.GetUsers;
-using Propentro.Application.Common.Errors;
 using Propentro.Infrastructure.Authorization;
 
 namespace Propentro.Api.Endpoints.Admin;
@@ -43,13 +43,13 @@ internal static class AdminUserEndpoints
     private static async Task<IResult> ListAsync(
         ISender sender,
         string? search,
-        bool? isActive,
+        string? status,
         int page = 1,
         int pageSize = 25,
         CancellationToken cancellationToken = default)
     {
         var result = await sender.Send(
-            new GetUsersQuery(search, isActive, page, pageSize), cancellationToken);
+            new GetUsersQuery(search, status, page, pageSize), cancellationToken);
         return result.ToHttpResult();
     }
 

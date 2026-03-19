@@ -1,6 +1,8 @@
 namespace Propentro.Contracts.Organizations.Invites;
 
-public sealed record InviteResult(
-    bool IsDirectAdd,
-    string? MemberId = null,
-    string? InviteId = null);
+public sealed record InviteResult
+{
+    public bool IsDirectAdd { get; init; }
+    public string? MemberId { get; init; }
+    public string? InviteId { get; init; }
+}

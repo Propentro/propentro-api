@@ -64,17 +64,21 @@ public sealed class GetMeHandler(
             userContext.OrganizationId,
             cancellationToken);
 
-        var response = new MeResponse(
-            result.UserId,
-            result.Email,
-            result.FirstName,
-            result.LastName,
-            new MeOrganizationResponse(
-                result.OrganizationId,
-                result.OrganizationName,
-                result.OrganizationSlug),
-            roles,
-            permissions.Order().ToList());
+        var response = new MeResponse
+        {
+            UserId = result.UserId,
+            Email = result.Email,
+            FirstName = result.FirstName,
+            LastName = result.LastName,
+            Organization = new MeOrganizationResponse
+            {
+                OrganizationId = result.OrganizationId,
+                Name = result.OrganizationName,
+                Slug = result.OrganizationSlug
+            },
+            Roles = roles,
+            Permissions = permissions.Order().ToList()
+        };
 
         return response;
     }

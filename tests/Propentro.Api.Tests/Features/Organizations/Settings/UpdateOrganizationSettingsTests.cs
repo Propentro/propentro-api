@@ -14,22 +14,24 @@ public sealed class UpdateOrganizationSettingsTests(PropentroApiFactory factory)
     {
         // Arrange
         var client = factory.CreateClientAsUser1();
-        var request = new UpdateOrganizationSettingsRequest(
-            Name: "Updated Organization Name",
-            ContactName: "John Doe",
-            ContactEmail: "contact@updated.com",
-            ContactPhone: "+1234567890",
-            AddressLine1: "123 Main St",
-            AddressLine2: "Suite 100",
-            City: "New York",
-            Region: "NY",
-            PostalCode: "10001",
-            CountryCode: "US",
-            LegalName: "Updated Org LLC",
-            TaxNumber: "TAX123",
-            TaxCountry: "US",
-            CurrencyCode: "USD",
-            Timezone: "America/New_York");
+        var request = new UpdateOrganizationSettingsRequest
+        {
+            Name = "Updated Organization Name",
+            ContactName = "John Doe",
+            ContactEmail = "contact@updated.com",
+            ContactPhone = "+1234567890",
+            AddressLine1 = "123 Main St",
+            AddressLine2 = "Suite 100",
+            City = "New York",
+            Region = "NY",
+            PostalCode = "10001",
+            CountryCode = "US",
+            LegalName = "Updated Org LLC",
+            TaxNumber = "TAX123",
+            TaxCountry = "US",
+            CurrencyCode = "USD",
+            Timezone = "America/New_York"
+        };
 
         // Act
         var response = await client.PatchAsJsonAsync("/v1/organizations/settings", request);
@@ -61,22 +63,13 @@ public sealed class UpdateOrganizationSettingsTests(PropentroApiFactory factory)
     {
         // Arrange
         var client = factory.CreateClientAsUser1();
-        var request = new UpdateOrganizationSettingsRequest(
-            Name: "Valid Name",
-            ContactName: null,
-            ContactEmail: "not-an-email",
-            ContactPhone: null,
-            AddressLine1: null,
-            AddressLine2: null,
-            City: null,
-            Region: null,
-            PostalCode: null,
-            CountryCode: null,
-            LegalName: null,
-            TaxNumber: null,
-            TaxCountry: null,
-            CurrencyCode: "EUR",
-            Timezone: "UTC");
+        var request = new UpdateOrganizationSettingsRequest
+        {
+            Name = "Valid Name",
+            ContactEmail = "not-an-email",
+            CurrencyCode = "EUR",
+            Timezone = "UTC"
+        };
 
         // Act
         var response = await client.PatchAsJsonAsync("/v1/organizations/settings", request);
@@ -90,22 +83,12 @@ public sealed class UpdateOrganizationSettingsTests(PropentroApiFactory factory)
     {
         // Arrange
         var client = factory.CreateAnonymousClient();
-        var request = new UpdateOrganizationSettingsRequest(
-            Name: "Some Name",
-            ContactName: null,
-            ContactEmail: null,
-            ContactPhone: null,
-            AddressLine1: null,
-            AddressLine2: null,
-            City: null,
-            Region: null,
-            PostalCode: null,
-            CountryCode: null,
-            LegalName: null,
-            TaxNumber: null,
-            TaxCountry: null,
-            CurrencyCode: "EUR",
-            Timezone: "UTC");
+        var request = new UpdateOrganizationSettingsRequest
+        {
+            Name = "Some Name",
+            CurrencyCode = "EUR",
+            Timezone = "UTC"
+        };
 
         // Act
         var response = await client.PatchAsJsonAsync("/v1/organizations/settings", request);
@@ -118,22 +101,12 @@ public sealed class UpdateOrganizationSettingsTests(PropentroApiFactory factory)
     public async Task Update_Settings_Without_Permission_Returns_403()
     {
         var client = factory.CreateClientAsUser2();
-        var request = new UpdateOrganizationSettingsRequest(
-            Name: "Forbidden Update",
-            ContactName: null,
-            ContactEmail: null,
-            ContactPhone: null,
-            AddressLine1: null,
-            AddressLine2: null,
-            City: null,
-            Region: null,
-            PostalCode: null,
-            CountryCode: null,
-            LegalName: null,
-            TaxNumber: null,
-            TaxCountry: null,
-            CurrencyCode: "EUR",
-            Timezone: "UTC");
+        var request = new UpdateOrganizationSettingsRequest
+        {
+            Name = "Forbidden Update",
+            CurrencyCode = "EUR",
+            Timezone = "UTC"
+        };
 
         var response = await client.PatchAsJsonAsync("/v1/organizations/settings", request);
 

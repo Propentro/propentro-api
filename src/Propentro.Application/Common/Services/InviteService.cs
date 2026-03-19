@@ -107,7 +107,7 @@ public sealed class InviteService(
             "Invited existing user {UserPublicId} to organization {OrgPublicId} with role {RolePublicId}",
             user.PublicId, org.PublicId, role.PublicId);
 
-        return new InviteResult(true, MemberId: user.PublicId);
+        return new InviteResult { IsDirectAdd = true, MemberId = user.PublicId };
     }
 
     private async Task<Result<InviteResult>> HandleNewUserAsync(
@@ -152,6 +152,6 @@ public sealed class InviteService(
             "Created pending invite for {Email} to organization {OrgPublicId}",
             email, org.PublicId);
 
-        return new InviteResult(false, InviteId: invite.PublicId);
+        return new InviteResult { IsDirectAdd = false, InviteId = invite.PublicId };
     }
 }

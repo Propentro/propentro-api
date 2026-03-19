@@ -17,10 +17,12 @@ public sealed class UpdateRoleTests(PropentroApiFactory factory)
         // Arrange
         var client = factory.CreateClientAsUser1();
         var roleId = factory.Seeder.DefaultRolePublicId;
-        var request = new UpdateRoleRequest(
-            Name: "Updated Role Name",
-            Description: "Updated description",
-            PermissionCodes: ["org:settings:read", "org:members:read", "org:roles:manage", "org:roles:read", "org:members:manage"]);
+        var request = new UpdateRoleRequest
+        {
+            Name = "Updated Role Name",
+            Description = "Updated description",
+            PermissionCodes = ["org:settings:read", "org:members:read", "org:roles:manage", "org:roles:read", "org:members:manage"]
+        };
 
         // Act
         var response = await client.PatchAsJsonAsync($"{BaseUrl}/{roleId}", request);
@@ -34,10 +36,7 @@ public sealed class UpdateRoleTests(PropentroApiFactory factory)
     {
         // Arrange
         var client = factory.CreateAnonymousClient();
-        var request = new UpdateRoleRequest(
-            Name: "Should Not Work",
-            Description: null,
-            PermissionCodes: null);
+        var request = new UpdateRoleRequest { Name = "Should Not Work" };
 
         // Act
         var response = await client.PatchAsJsonAsync($"{BaseUrl}/rol_000000000000", request);
@@ -52,10 +51,7 @@ public sealed class UpdateRoleTests(PropentroApiFactory factory)
         // Arrange
         var client = factory.CreateClientAsUser1();
         var fakeRoleId = "rol_000000000000";
-        var request = new UpdateRoleRequest(
-            Name: "Does Not Exist",
-            Description: null,
-            PermissionCodes: null);
+        var request = new UpdateRoleRequest { Name = "Does Not Exist" };
 
         // Act
         var response = await client.PatchAsJsonAsync($"{BaseUrl}/{fakeRoleId}", request);
@@ -71,10 +67,7 @@ public sealed class UpdateRoleTests(PropentroApiFactory factory)
         // so we use User1 to try updating a nonexistent role
         var client = factory.CreateClientAsUser1();
         var fakeRoleId = "rol_ffffffffffff";
-        var request = new UpdateRoleRequest(
-            Name: "Cross Tenant",
-            Description: null,
-            PermissionCodes: null);
+        var request = new UpdateRoleRequest { Name = "Cross Tenant" };
 
         // Act
         var response = await client.PatchAsJsonAsync($"{BaseUrl}/{fakeRoleId}", request);
@@ -87,10 +80,7 @@ public sealed class UpdateRoleTests(PropentroApiFactory factory)
     public async Task Update_Role_Without_Permission_Returns_403()
     {
         var client = factory.CreateClientAsUser2();
-        var request = new UpdateRoleRequest(
-            Name: "Forbidden Update",
-            Description: null,
-            PermissionCodes: null);
+        var request = new UpdateRoleRequest { Name = "Forbidden Update" };
 
         var response = await client.PatchAsJsonAsync($"{BaseUrl}/rol_000000000000", request);
 

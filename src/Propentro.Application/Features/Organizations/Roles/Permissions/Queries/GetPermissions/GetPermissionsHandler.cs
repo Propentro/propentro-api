@@ -25,9 +25,15 @@ public sealed class GetPermissionsHandler(
         var result = rows
             .GroupBy(p => p.GroupName)
             .OrderBy(g => g.Key)
-            .Select(g => new PermissionGroupResponse(
-                g.Key,
-                g.Select(p => new PermissionItemResponse(p.Code, p.Description)).ToList()))
+            .Select(g => new PermissionGroupResponse
+            {
+                Group = g.Key,
+                Permissions = g.Select(p => new PermissionItemResponse
+                {
+                    Code = p.Code,
+                    Description = p.Description
+                }).ToList()
+            })
             .ToList();
 
         return result;

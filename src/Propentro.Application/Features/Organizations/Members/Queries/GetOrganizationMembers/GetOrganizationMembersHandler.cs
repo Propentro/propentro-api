@@ -122,16 +122,23 @@ public sealed class GetOrganizationMembersHandler(
             .GroupBy(r => r.UserInternalId)
             .ToDictionary(
                 g => g.Key,
-                g => (IReadOnlyList<MemberRoleResponse>)g.Select(r => new MemberRoleResponse(r.RoleId, r.Name, r.IsSystem)).ToList());
+                g => (IReadOnlyList<MemberRoleResponse>)g.Select(r => new MemberRoleResponse
+                {
+                    Id = r.RoleId,
+                    Name = r.Name,
+                    IsSystem = r.IsSystem
+                }).ToList());
 
-        var items = members.Select(m => new MemberListItemResponse(
-            m.UserId,
-            m.Email,
-            m.FirstName,
-            m.LastName,
-            m.Status,
-            m.JoinedAt,
-            rolesLookup.GetValueOrDefault(m.UserInternalId, [])))
+        var items = members.Select(m => new MemberListItemResponse
+        {
+            UserId = m.UserId,
+            Email = m.Email,
+            FirstName = m.FirstName,
+            LastName = m.LastName,
+            Status = m.Status,
+            JoinedAt = m.JoinedAt,
+            Roles = rolesLookup.GetValueOrDefault(m.UserInternalId, [])
+        })
             .ToList();
 
         return new PagedResult<MemberListItemResponse>(items, total, request.Page, request.PageSize);

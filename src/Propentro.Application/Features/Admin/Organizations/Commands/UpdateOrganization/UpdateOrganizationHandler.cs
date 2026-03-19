@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Errors;
+using Propentro.Application.Common.Interfaces.Authentication;
 using Propentro.Application.Common.Models;
 using Propentro.Contracts.Admin.Organizations;
 
@@ -57,7 +57,6 @@ public sealed class UpdateOrganizationHandler(
             ContactPhone = org.ContactPhone,
             CurrencyCode = org.CurrencyCode,
             Timezone = org.Timezone,
-            SubscriptionPlan = org.SubscriptionPlan,
             IsActive = org.IsActive,
             MemberCount = memberCount,
             CreatedAt = org.CreatedAt

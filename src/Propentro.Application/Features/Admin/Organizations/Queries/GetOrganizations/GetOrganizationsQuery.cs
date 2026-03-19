@@ -5,6 +5,6 @@ namespace Propentro.Application.Features.Admin.Organizations.Queries.GetOrganiza
 
 public sealed record GetOrganizationsQuery(
     string? Search,
-    bool? IsActive,
+    string? Status,
     int Page = 1,
     int PageSize = 25) : IQuery<PagedResult<AdminOrganizationListResponse>>;

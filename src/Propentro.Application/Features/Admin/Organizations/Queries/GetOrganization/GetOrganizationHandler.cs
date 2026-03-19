@@ -24,7 +24,6 @@ public sealed class GetOrganizationHandler(
                 o.contact_phone     AS contact_phone,
                 o.currency_code     AS currency_code,
                 o.timezone          AS timezone,
-                o.subscription_plan AS subscription_plan,
                 o.is_active         AS is_active,
                 COUNT(ou.user_id)   AS member_count,
                 o.created_at        AS created_at

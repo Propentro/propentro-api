@@ -35,11 +35,6 @@ public sealed class Organization : Entity, IAuditableEntity, ISoftDeletable
     // Business settings
     public string CurrencyCode { get; set; } = "EUR";
     public string Timezone { get; set; } = "UTC";
-    public string SubscriptionPlan { get; set; } = "starter";
-
-    // JSONB settings (stored as string, parsed in app layer)
-    public string UiSettings { get; set; } = "{}";
-    public string NotificationSettings { get; set; } = "{}";
 
     // IAuditableEntity
     public DateTimeOffset CreatedAt { get; set; }
