@@ -7,6 +7,7 @@ using Propentro.Application.Features.Admin.Organizations.Commands.DeleteOrganiza
 using Propentro.Application.Features.Admin.Organizations.Commands.ReactivateOrganization;
 using Propentro.Application.Features.Admin.Organizations.Commands.UpdateOrganization;
 using Propentro.Application.Features.Admin.Organizations.Queries.GetOrganization;
+using Propentro.Application.Features.Admin.Organizations.Queries.GetOrganizationRoles;
 using Propentro.Application.Features.Admin.Organizations.Queries.GetOrganizations;
 using Propentro.Contracts.Admin.Organizations;
 using Propentro.Infrastructure.Authorization;
@@ -49,6 +50,10 @@ internal static class AdminOrganizationEndpoints
         group.MapDelete("/{id}", DeleteAsync)
             .WithName("AdminDeleteOrganization")
             .WithSummary("Hard delete organization (irreversible)");
+
+        group.MapGet("/{id}/roles", GetRolesAsync)
+            .WithName("AdminGetOrganizationRoles")
+            .WithSummary("Get all roles for an organization (lookup)");
     }
 
     private static async Task<IResult> ListAsync(
@@ -121,6 +126,13 @@ internal static class AdminOrganizationEndpoints
         }
 
         var result = await sender.Send(new DeleteOrganizationCommand(id), ct);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> GetRolesAsync(
+        string id, ISender sender, CancellationToken ct)
+    {
+        var result = await sender.Send(new GetOrganizationRolesQuery(id), ct);
         return result.ToHttpResult();
     }
 }
