@@ -56,6 +56,8 @@ public sealed class InviteService(
         string email,
         CancellationToken cancellationToken)
     {
+        var normalizedEmail = email.ToLowerInvariant();
+
         var isMember = await dbContext.OrganizationUsers
             .IgnoreQueryFilters()
             .AnyAsync(
@@ -64,6 +66,17 @@ public sealed class InviteService(
 
         if (isMember)
             return InviteErrors.AlreadyMember;
+
+        var hasPendingInvite = await dbContext.Invites
+            .IgnoreQueryFilters()
+            .AnyAsync(
+                i => i.Email == normalizedEmail
+                     && i.OrganizationId == org.Id
+                     && i.Status == Invite.Statuses.Pending,
+                cancellationToken);
+
+        if (hasPendingInvite)
+            return InviteErrors.AlreadyPending;
 
         if (!user.IsActive)
             user.IsActive = true;
