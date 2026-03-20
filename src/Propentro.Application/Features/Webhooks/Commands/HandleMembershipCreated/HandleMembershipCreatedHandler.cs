@@ -80,10 +80,11 @@ public sealed class HandleMembershipCreatedHandler(
         }
 
         // 4. Find pending invite for this email + org to get role assignment
+        var normalizedEmail = request.Email.ToLowerInvariant();
         var pendingInvite = await dbContext.Invites
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(
-                i => string.Equals(i.Email, request.Email, StringComparison.OrdinalIgnoreCase)
+                i => i.Email == normalizedEmail
                      && i.OrganizationId == org.Id
                      && i.Status == Invite.Statuses.Pending
                      && (!i.ExpiresAt.HasValue || i.ExpiresAt > dateTimeProvider.UtcNow),

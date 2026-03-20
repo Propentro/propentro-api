@@ -20,6 +20,8 @@ public sealed class InviteService(
         Guid invitedByUserId,
         CancellationToken cancellationToken)
     {
+        var normalizedEmail = email.ToLowerInvariant();
+
         if (string.IsNullOrEmpty(org.ExternalId))
             return OrganizationErrors.NotLinkedToAuthProvider;
 
@@ -37,7 +39,7 @@ public sealed class InviteService(
         var user = await dbContext.Users
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(
-                u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase),
+                u => u.Email == normalizedEmail,
                 cancellationToken);
 
         if (user is not null)
@@ -117,10 +119,11 @@ public sealed class InviteService(
         string email,
         CancellationToken cancellationToken)
     {
+        var normalizedEmail = email.ToLowerInvariant();
         var hasPendingInvite = await dbContext.Invites
             .IgnoreQueryFilters()
             .AnyAsync(
-                i => string.Equals(i.Email, email, StringComparison.OrdinalIgnoreCase)
+                i => i.Email == normalizedEmail
                      && i.OrganizationId == org.Id
                      && i.Status == Invite.Statuses.Pending,
                 cancellationToken);
