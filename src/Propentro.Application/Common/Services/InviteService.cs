@@ -80,6 +80,9 @@ public sealed class InviteService(
         {
             pendingInvite.Status = Invite.Statuses.Canceled;
             pendingInvite.CanceledById = invitedByUserId;
+
+            await clerkService.RevokeInvitationAsync(
+                org.ExternalId!, normalizedEmail, cancellationToken);
         }
 
         if (!user.IsActive)
@@ -151,6 +154,9 @@ public sealed class InviteService(
         {
             pendingInvite.Status = Invite.Statuses.Canceled;
             pendingInvite.CanceledById = invitedByUserId;
+
+            await clerkService.RevokeInvitationAsync(
+                org.ExternalId!, normalizedEmail, cancellationToken);
         }
 
         var clerkResult = await clerkService.InviteMemberAsync(
