@@ -20,6 +20,7 @@ using Propentro.Infrastructure.Resilience;
 using Propentro.Infrastructure.Storage;
 using Propentro.Infrastructure.Webhooks;
 using Quartz;
+using Serilog;
 
 namespace Propentro.Infrastructure;
 
@@ -198,10 +199,16 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var webhookSecret = configuration["Clerk:WebhookSecret"]
-            ?? throw new InvalidOperationException("Clerk:WebhookSecret must be configured. Webhook signature verification cannot be skipped.");
+        var webhookSecret = configuration["Clerk:WebhookSecret"];
 
-        services.AddSingleton<ClerkWebhookVerifier>();
+        if (!string.IsNullOrEmpty(webhookSecret))
+        {
+            services.AddSingleton<ClerkWebhookVerifier>();
+        }
+        else
+        {
+            Log.Warning("Clerk:WebhookSecret is not configured — webhook signature verification is disabled");
+        }
 
         services.AddSingleton<WebhookIdempotencyStore>();
 
