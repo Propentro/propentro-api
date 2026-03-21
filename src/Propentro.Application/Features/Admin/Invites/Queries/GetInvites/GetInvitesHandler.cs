@@ -20,9 +20,11 @@ public sealed class GetInvitesHandler(
 
         var whereBuilder = new StringBuilder("WHERE 1=1");
 
-        var status = request.Status ?? "pending";
-        whereBuilder.Append(" AND i.status = @Status");
-        parameters.Add("Status", status);
+        if (!string.IsNullOrEmpty(request.Status))
+        {
+            whereBuilder.Append(" AND i.status = @Status");
+            parameters.Add("Status", request.Status);
+        }
 
         var where = whereBuilder.ToString();
 
