@@ -6,6 +6,7 @@ public sealed record AdminMemberResponse
     public string Email { get; init; } = null!;
     public string? FirstName { get; init; }
     public string? LastName { get; init; }
+    public string Status { get; init; } = null!;
     public IReadOnlyList<MemberRoleInfo> Roles { get; init; } = [];
     public DateTimeOffset JoinedAt { get; init; }
 }

@@ -35,6 +35,7 @@ public sealed class GetAdminOrganizationMembersHandler(
                 u.email       AS email,
                 u.first_name  AS first_name,
                 u.last_name   AS last_name,
+                ou.status     AS status,
                 ou.created_at AS joined_at
             FROM organization_users ou
             JOIN users u ON u.id = ou.user_id
