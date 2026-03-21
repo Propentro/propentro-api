@@ -21,7 +21,7 @@ public sealed class InviteConfiguration : IEntityTypeConfiguration<Invite>
         builder.Property(e => e.CanceledById).HasColumnName("canceled_by_id");
         builder.Property(e => e.ExpiresAt).HasColumnName("expires_at");
         builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
-        builder.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+        builder.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
         builder.HasOne(e => e.Organization)
             .WithMany()

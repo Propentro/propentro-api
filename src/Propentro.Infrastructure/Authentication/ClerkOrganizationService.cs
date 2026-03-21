@@ -295,7 +295,7 @@ public sealed class ClerkOrganizationService(HttpClient httpClient, IConfigurati
             // Revoke the invitation
             var revokeResponse = await httpClient.PostAsync(
                 $"organizations/{externalOrgId}/invitations/{invitationId}/revoke",
-                null,
+                new StringContent("{}", System.Text.Encoding.UTF8, "application/json"),
                 cancellationToken);
 
             if (revokeResponse.IsSuccessStatusCode)

@@ -20,6 +20,8 @@ public sealed class InviteService(
         Guid invitedByUserId,
         CancellationToken cancellationToken)
     {
+        var normalizedEmail = email.ToLowerInvariant();
+
         if (string.IsNullOrEmpty(org.ExternalId))
             return OrganizationErrors.NotLinkedToAuthProvider;
 
@@ -37,7 +39,7 @@ public sealed class InviteService(
         var user = await dbContext.Users
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(
-                u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase),
+                u => u.Email == normalizedEmail,
                 cancellationToken);
 
         if (user is not null)
@@ -54,6 +56,8 @@ public sealed class InviteService(
         string email,
         CancellationToken cancellationToken)
     {
+        var normalizedEmail = email.ToLowerInvariant();
+
         var isMember = await dbContext.OrganizationUsers
             .IgnoreQueryFilters()
             .AnyAsync(
@@ -62,6 +66,24 @@ public sealed class InviteService(
 
         if (isMember)
             return InviteErrors.AlreadyMember;
+
+        // Cancel any existing pending invite — this user will be added directly
+        var pendingInvite = await dbContext.Invites
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(
+                i => i.Email == normalizedEmail
+                     && i.OrganizationId == org.Id
+                     && i.Status == Invite.Statuses.Pending,
+                cancellationToken);
+
+        if (pendingInvite is not null)
+        {
+            pendingInvite.Status = Invite.Statuses.Canceled;
+            pendingInvite.CanceledById = invitedByUserId;
+
+            await clerkService.RevokeInvitationAsync(
+                org.ExternalId!, normalizedEmail, cancellationToken);
+        }
 
         if (!user.IsActive)
             user.IsActive = true;
@@ -117,16 +139,25 @@ public sealed class InviteService(
         string email,
         CancellationToken cancellationToken)
     {
-        var hasPendingInvite = await dbContext.Invites
+        var normalizedEmail = email.ToLowerInvariant();
+
+        // Cancel any existing pending invite before creating a new one
+        var pendingInvite = await dbContext.Invites
             .IgnoreQueryFilters()
-            .AnyAsync(
-                i => string.Equals(i.Email, email, StringComparison.OrdinalIgnoreCase)
+            .FirstOrDefaultAsync(
+                i => i.Email == normalizedEmail
                      && i.OrganizationId == org.Id
                      && i.Status == Invite.Statuses.Pending,
                 cancellationToken);
 
-        if (hasPendingInvite)
-            return InviteErrors.AlreadyPending;
+        if (pendingInvite is not null)
+        {
+            pendingInvite.Status = Invite.Statuses.Canceled;
+            pendingInvite.CanceledById = invitedByUserId;
+
+            await clerkService.RevokeInvitationAsync(
+                org.ExternalId!, normalizedEmail, cancellationToken);
+        }
 
         var clerkResult = await clerkService.InviteMemberAsync(
             org.ExternalId!, email, cancellationToken);
